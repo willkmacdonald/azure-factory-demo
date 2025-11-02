@@ -1,4 +1,5 @@
 """Data storage and management for factory production metrics."""
+
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 import json
@@ -8,10 +9,30 @@ from .config import DATA_FILE
 
 # Simple in-memory data structures
 MACHINES = [
-    {"id": 1, "name": "CNC-001", "type": "CNC Machining Center", "ideal_cycle_time": 45},
-    {"id": 2, "name": "Assembly-001", "type": "Assembly Station", "ideal_cycle_time": 120},
-    {"id": 3, "name": "Packaging-001", "type": "Automated Packaging Line", "ideal_cycle_time": 30},
-    {"id": 4, "name": "Testing-001", "type": "Quality Testing Station", "ideal_cycle_time": 90},
+    {
+        "id": 1,
+        "name": "CNC-001",
+        "type": "CNC Machining Center",
+        "ideal_cycle_time": 45,
+    },
+    {
+        "id": 2,
+        "name": "Assembly-001",
+        "type": "Assembly Station",
+        "ideal_cycle_time": 120,
+    },
+    {
+        "id": 3,
+        "name": "Packaging-001",
+        "type": "Automated Packaging Line",
+        "ideal_cycle_time": 30,
+    },
+    {
+        "id": 4,
+        "name": "Testing-001",
+        "type": "Quality Testing Station",
+        "ideal_cycle_time": 90,
+    },
 ]
 
 SHIFTS = [
@@ -46,7 +67,7 @@ def save_data(data: Dict[str, Any]) -> None:
     """Save production data to JSON file."""
     path = get_data_path()
     try:
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(data, f, indent=2, default=str)
     except (IOError, OSError) as e:
         raise RuntimeError(f"Failed to save data to {path}: {e}")
@@ -63,7 +84,7 @@ def load_data() -> Optional[Dict[str, Any]]:
     if not path.exists():
         return None
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return json.load(f)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse JSON from {path}: {e}")
@@ -93,7 +114,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
     end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     start_date = end_date - timedelta(days=days - 1)
 
-    production_data = {}
+    production_data: Dict[str, Dict[str, Any]] = {}
 
     current_date = start_date
     for day_num in range(days):
@@ -118,7 +139,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
                         "type": "assembly",
                         "description": "Loose fastener issue - tooling calibration required",
                         "parts_affected": random.randint(5, 15),
-                        "severity": "High"
+                        "severity": "High",
                     }
                     for _ in range(4)  # Multiple incidents
                 ]
@@ -127,32 +148,38 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
                 quality_issues = []
                 if random.random() < 0.15:  # 15% chance of minor issue
                     defect_type = random.choice(list(DEFECT_TYPES.keys()))
-                    quality_issues = [{
-                        "type": defect_type,
-                        "description": DEFECT_TYPES[defect_type]["description"],
-                        "parts_affected": random.randint(1, 5),
-                        "severity": DEFECT_TYPES[defect_type]["severity"]
-                    }]
+                    quality_issues = [
+                        {
+                            "type": defect_type,
+                            "description": DEFECT_TYPES[defect_type]["description"],
+                            "parts_affected": random.randint(1, 5),
+                            "severity": DEFECT_TYPES[defect_type]["severity"],
+                        }
+                    ]
 
             # Scenario 2: Major breakdown on day 22 for Packaging-001
             if day_num == 21 and machine_name == "Packaging-001":
                 downtime_hours = 4.0
-                downtime_events = [{
-                    "reason": "mechanical",
-                    "description": "Critical bearing failure requiring emergency replacement",
-                    "duration_hours": 4.0
-                }]
+                downtime_events = [
+                    {
+                        "reason": "mechanical",
+                        "description": "Critical bearing failure requiring emergency replacement",
+                        "duration_hours": 4.0,
+                    }
+                ]
                 parts_produced = int(parts_produced * 0.5)  # Major production loss
             else:
                 downtime_hours = random.uniform(0.2, 0.8)  # Normal minor downtime
                 downtime_events = []
                 if random.random() < 0.3:  # 30% chance of logged downtime
                     reason = random.choice(list(DOWNTIME_REASONS.keys()))
-                    downtime_events = [{
-                        "reason": reason,
-                        "description": DOWNTIME_REASONS[reason],
-                        "duration_hours": round(random.uniform(0.1, 0.5), 2)
-                    }]
+                    downtime_events = [
+                        {
+                            "reason": reason,
+                            "description": DOWNTIME_REASONS[reason],
+                            "duration_hours": round(random.uniform(0.1, 0.5), 2),
+                        }
+                    ]
 
             # Calculate derived metrics
             scrap_parts = int(parts_produced * scrap_rate)
@@ -171,7 +198,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
                     "scrap_parts": shift_scrap,
                     "good_parts": shift_parts - shift_scrap,
                     "uptime_hours": 8.0 - (downtime_hours * 0.5),
-                    "downtime_hours": downtime_hours * 0.5
+                    "downtime_hours": downtime_hours * 0.5,
                 }
 
             # Store machine data for this day
@@ -184,7 +211,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
                 "downtime_hours": downtime_hours,
                 "downtime_events": downtime_events,
                 "quality_issues": quality_issues,
-                "shifts": shift_metrics
+                "shifts": shift_metrics,
             }
 
         current_date += timedelta(days=1)
@@ -195,7 +222,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
         "end_date": end_date.isoformat(),
         "machines": MACHINES,
         "shifts": SHIFTS,
-        "production": production_data
+        "production": production_data,
     }
 
 
@@ -212,6 +239,6 @@ def initialize_data(days: int = 30) -> None:
     print(f"✓ Generated data from {data['start_date']} to {data['end_date']}")
 
     # Print summary
-    total_days = len(data['production'])
+    total_days = len(data["production"])
     print(f"✓ {total_days} days of data for {len(MACHINES)} machines")
     print(f"✓ Data saved to {DATA_FILE}")

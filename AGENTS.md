@@ -1,23 +1,29 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The core application lives in `src/`, with `main.py` providing the Typer CLI, `metrics.py` hosting the analytics functions, and `dashboard.py` powering the Streamlit UI. Shared configuration and data helpers sit in `config.py` and `data.py`. Generated artifacts land in `data/production.json`, while automated checks reside under `tests/`. Interactive dashboards start from `run_dashboard.py`, and documentation lives at the repository root alongside installation plans.
+Core code sits in `src/`: `main.py` exposes the Typer CLI, `metrics.py` powers analytics, and `dashboard.py` renders the Streamlit UI. Config, data, and models live in `config.py`, `data.py`, `models.py`. Data persists in `data/production.json`, tests stay under `tests/`, and `run_dashboard.py` launches the dashboard. React + TypeScript work should live in a sibling `frontend/` folder that uses the shared API layer.
 
 ## Build, Test, and Development Commands
-- `python -m src.main setup` – generate the 30-day factory dataset in `data/`.
-- `python -m src.main chat` – launch the text chatbot for manual verification.
-- `python -m src.main voice` – exercise the Whisper/TTS flow (requires `OPENAI_API_KEY`).
-- `python run_dashboard.py` – open the Streamlit dashboard locally.
-- `pytest` – execute the unit and smoke tests.
+Key commands: `python -m src.main setup` (generate data), `python -m src.main chat` (chatbot), `python -m src.main voice` (voice, speech keys required), `python run_dashboard.py` (dashboard), and `pytest` (unit + smoke tests).
 
-## Coding Style & Naming Conventions
-Target Python 3.11 with 4-space indentation and type-aware docstrings where logic is non-trivial. Follow snake_case for functions, lower_snake_case for module-level variables, and PascalCase for Typer command classes (if introduced). Format Python files with `black .` before pushing; keep imports standard-library → third-party → local. Keep Streamlit layout definitions declarative and isolate tool-specific constants inside `config.py`.
+## Coding Style, Tooling & Naming
+Follow `.claude/CLAUDE.md`: Python-first, synchronous by default. Use 4-space indentation, snake_case for functions and module variables, PascalCase for classes, and import order standard library → third party → local. Run `black` (line length 88), rely on Pydantic/SQLModel for validation, keep Streamlit pages declarative, and use Rich sparingly. React features should lean on TypeScript plus Material-UI, Recharts, and MSAL helpers.
 
 ## Testing Guidelines
-Use `pytest` from the project root; tests assume the generated dataset exists, so run the setup command first or mock data paths. Add new tests in `tests/` mirroring the module under test (`test_<module>.py`). For coverage checks, run `pytest --cov=src --cov-report=html` and review `htmlcov/index.html` before submission. Favor deterministic fixtures over on-the-fly random generation so chatbot behaviours remain reproducible.
+Run `pytest` from the root after generating data or supplying fixtures. Mirror modules with `tests/test_<module>.py`, keep fixtures stable, and use `pytest --cov=src --cov-report=html` when coverage matters. Reach for async test clients only when FastAPI endpoints truly demand them.
 
 ## Commit & Pull Request Guidelines
-Write commit subjects in imperative mood (e.g., `Add downtime visualization tweak`) and limit them to ~60 characters with concise bodies when needed. Every pull request should summarize user-facing changes, list validation steps (commands run, datasets updated), and reference related issues or plans (e.g., `implementation-plan.md`). Attach screenshots or terminal snippets for dashboard or voice updates, and call out any required configuration changes to `.env` or Azure resources.
+Write imperative commit subjects (≤60 characters) and add detail only when needed. Pull requests should explain the change, list validation steps, link to plans or issues, and include screenshots when visuals shift. Flag `.env` or Azure configuration edits so setups stay reproducible.
+
+## Development Preferences Snapshot
+CLAUDE defaults apply:
+- FastAPI for APIs, React + TypeScript (Material-UI, Recharts) for dashboards, Typer + Rich for CLI UX
+- Azure-first: Azure OpenAI, Blob Storage, Azure AD/MSAL, and Azure Container Apps/App Service
+- SQLModel or Tortoise for durable storage; JSON/SQLite or Blob JSON for prototypes
+- Dramatiq/Celery only when workloads demand it; ship Docker images and Vite builds when deploying
 
 ## Security & Configuration Tips
-Never commit `.env` or credential-bearing files; rely on `.env.example` to document expected variables (`AZURE_ENDPOINT`, `AZURE_API_KEY`, etc.). Rotate keys used for demos and prefer environment-specific overrides via shell exports when screen-recording. Validate external dependencies against `requirements.txt` and pin any new additions to maintain reproducible deployments.
+Keep secrets out of version control; update `.env.example` when Azure endpoints, keys, or storage strings change. Rotate demo keys, prefer environment overrides when recording, add defensive error handling, and lean on Key Vault or managed identities in Azure.
+
+## Prototype Defaults
+For demos and spikes, favor synchronous I/O, manual smoke tests, consolidated modules, and minimal dependencies. Note shortcuts in PR descriptions so future contributors can harden them later.

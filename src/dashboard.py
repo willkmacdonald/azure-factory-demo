@@ -1,4 +1,5 @@
 """Interactive web dashboard for factory operations metrics."""
+
 import sys
 from pathlib import Path
 
@@ -45,7 +46,12 @@ with tab1:
     st.header("Overall Equipment Effectiveness")
 
     # Get metrics
-    metrics = calculate_oee(start_date, end_date, machine_filter)
+    metrics_result = calculate_oee(start_date, end_date, machine_filter)
+    metrics = (
+        metrics_result.model_dump()
+        if hasattr(metrics_result, "model_dump")
+        else metrics_result
+    )
 
     # Gauge chart
     fig_gauge = go.Figure(
@@ -81,7 +87,12 @@ with tab1:
 
     while current <= end_dt:
         date_str = current.strftime("%Y-%m-%d")
-        day_metrics = calculate_oee(date_str, date_str, machine_filter)
+        day_metrics_result = calculate_oee(date_str, date_str, machine_filter)
+        day_metrics = (
+            day_metrics_result.model_dump()
+            if hasattr(day_metrics_result, "model_dump")
+            else day_metrics_result
+        )
         daily_data.append({"date": date_str, "oee": day_metrics["oee"] * 100})
         current += timedelta(days=1)
 
@@ -111,7 +122,12 @@ with tab2:
     st.header("Availability & Downtime")
 
     # Get downtime data
-    downtime_data = get_downtime_analysis(start_date, end_date, machine_filter)
+    downtime_result = get_downtime_analysis(start_date, end_date, machine_filter)
+    downtime_data = (
+        downtime_result.model_dump()
+        if hasattr(downtime_result, "model_dump")
+        else downtime_result
+    )
 
     # Downtime by reason bar chart
     downtime_by_reason = downtime_data.get("downtime_by_reason", {})
@@ -152,10 +168,20 @@ with tab3:
     st.header("Quality Metrics")
 
     # Get quality data
-    quality_data = get_quality_issues(
+    quality_result = get_quality_issues(
         start_date, end_date, machine_name=machine_filter
     )
-    scrap_data = get_scrap_metrics(start_date, end_date, machine_filter)
+    quality_data = (
+        quality_result.model_dump()
+        if hasattr(quality_result, "model_dump")
+        else quality_result
+    )
+    scrap_result = get_scrap_metrics(start_date, end_date, machine_filter)
+    scrap_data = (
+        scrap_result.model_dump()
+        if hasattr(scrap_result, "model_dump")
+        else scrap_result
+    )
 
     # Scrap rate trend
     daily_scrap: list[Dict[str, Any]] = []
@@ -164,10 +190,13 @@ with tab3:
 
     while current <= end_dt:
         date_str = current.strftime("%Y-%m-%d")
-        day_scrap = get_scrap_metrics(date_str, date_str, machine_filter)
-        daily_scrap.append(
-            {"date": date_str, "scrap_rate": day_scrap["scrap_rate"] * 100}
+        day_scrap_result = get_scrap_metrics(date_str, date_str, machine_filter)
+        day_scrap = (
+            day_scrap_result.model_dump()
+            if hasattr(day_scrap_result, "model_dump")
+            else day_scrap_result
         )
+        daily_scrap.append({"date": date_str, "scrap_rate": day_scrap["scrap_rate"]})
         current += timedelta(days=1)
 
     df_scrap = pd.DataFrame(daily_scrap)

@@ -1,4 +1,5 @@
 """Tests for configuration module."""
+
 import pytest
 
 
@@ -18,9 +19,7 @@ def test_voice_config_constants():
     assert WHISPER_MODEL == "whisper-1", "WHISPER_MODEL should be 'whisper-1'"
 
     # Test RECORDING_DURATION is positive integer
-    assert isinstance(
-        RECORDING_DURATION, int
-    ), "RECORDING_DURATION must be an integer"
+    assert isinstance(RECORDING_DURATION, int), "RECORDING_DURATION must be an integer"
     assert RECORDING_DURATION > 0, "RECORDING_DURATION must be positive"
 
 
@@ -39,10 +38,18 @@ def test_audio_dependencies_import():
 
 def test_existing_config_constants():
     """Verify existing configuration constants are accessible."""
-    from src.config import AZURE_API_KEY, AZURE_ENDPOINT, AZURE_DEPLOYMENT_NAME, FACTORY_NAME, DATA_FILE
+    from src.config import (
+        AZURE_API_KEY,
+        AZURE_ENDPOINT,
+        AZURE_DEPLOYMENT_NAME,
+        FACTORY_NAME,
+        DATA_FILE,
+    )
 
     # These can be None/default, just verify they're accessible
-    assert AZURE_DEPLOYMENT_NAME is not None, "AZURE_DEPLOYMENT_NAME should have a default value"
+    assert (
+        AZURE_DEPLOYMENT_NAME is not None
+    ), "AZURE_DEPLOYMENT_NAME should have a default value"
     assert FACTORY_NAME is not None, "FACTORY_NAME should have a default value"
     assert DATA_FILE is not None, "DATA_FILE should have a default value"
     # AZURE_API_KEY and AZURE_ENDPOINT can be None if not set in environment

@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 venv/
 env/
+*.egg-info/
 
 # Environment
 .env
@@ -15,6 +16,16 @@ archive/
 .vscode/
 .idea/
 *.swp
+
+# Testing
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
 
 # Claude Code
 .claude/
