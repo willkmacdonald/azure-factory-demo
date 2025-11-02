@@ -1,0 +1,308 @@
+"""
+Chat Service - Shared chat logic for CLI and API
+
+This module provides reusable chat functionality for both the CLI interface
+and the REST API. It handles Azure OpenAI integration, tool calling, and
+conversation management.
+
+Extracted from src/main.py in PR4 to enable code reuse between CLI and web interfaces.
+"""
+
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
+import json
+import logging
+
+from openai import AsyncAzureOpenAI
+
+logger = logging.getLogger(__name__)
+
+# Import from shared package (proper Python imports, no sys.path manipulation)
+from shared.config import FACTORY_NAME, AZURE_DEPLOYMENT_NAME
+from shared.data import load_data, MACHINES
+from shared.metrics import (
+    calculate_oee,
+    get_scrap_metrics,
+    get_quality_issues,
+    get_downtime_analysis,
+)
+
+
+# Tool definitions for Azure OpenAI
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_oee",
+            "description": (
+                "Calculate Overall Equipment Effectiveness (OEE) for a "
+                "date range. Returns OEE percentage and breakdown."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                    },
+                    "machine_name": {
+                        "type": "string",
+                        "description": "Optional machine name filter",
+                    },
+                },
+                "required": ["start_date", "end_date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_scrap_metrics",
+            "description": (
+                "Get scrap production metrics including total scrap, "
+                "scrap rate, and breakdown by machine."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                    },
+                    "machine_name": {
+                        "type": "string",
+                        "description": "Optional machine name filter",
+                    },
+                },
+                "required": ["start_date", "end_date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_quality_issues",
+            "description": (
+                "Get quality defect events with details about defect types, "
+                "severity, and affected parts."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                    },
+                    "severity": {
+                        "type": "string",
+                        "description": "Optional severity filter: Low, Medium, or High",
+                    },
+                    "machine_name": {
+                        "type": "string",
+                        "description": "Optional machine name filter",
+                    },
+                },
+                "required": ["start_date", "end_date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_downtime_analysis",
+            "description": (
+                "Analyze downtime events including reasons, duration, "
+                "and major incidents."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                    },
+                    "machine_name": {
+                        "type": "string",
+                        "description": "Optional machine name filter",
+                    },
+                },
+                "required": ["start_date", "end_date"],
+            },
+        },
+    },
+]
+
+
+async def build_system_prompt() -> str:
+    """Build system prompt with factory context, date range, and available machines.
+
+    Returns:
+        str: System prompt containing factory context and instructions
+
+    Raises:
+        RuntimeError: If no data is available
+    """
+    logger.debug("Building system prompt with factory context")
+    data = load_data()
+    if not data:
+        logger.error("No data available for building system prompt")
+        raise RuntimeError("No data available. Run 'python -m src.main setup' first.")
+    start_date = data["start_date"].split("T")[0]
+    end_date = data["end_date"].split("T")[0]
+    machines = ", ".join([str(m["name"]) for m in MACHINES])
+
+    logger.debug(f"System prompt built for date range: {start_date} to {end_date}")
+    return f"""You are a factory operations assistant for {FACTORY_NAME}.
+
+You have access to 30 days of production data ({start_date} to {end_date}) covering:
+- 4 machines: {machines}
+- 2 shifts: Day (6am-2pm) and Night (2pm-10pm)
+- Metrics: OEE, scrap, quality issues, downtime
+
+When answering:
+1. Use tools to get accurate data
+2. Provide specific numbers and percentages
+3. Explain trends and patterns
+4. Compare metrics when relevant
+5. Be concise but thorough
+
+Today's date is {datetime.now().strftime('%Y-%m-%d')}. When users ask about \
+"today", "this week", or relative dates, calculate the appropriate date range \
+based on the data available."""
+
+
+async def execute_tool(tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a tool function and return results as dictionary.
+
+    Args:
+        tool_name: Name of the tool to execute
+        tool_args: Arguments to pass to the tool function
+
+    Returns:
+        Dict containing tool execution results or error message
+    """
+    logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
+    try:
+        result: Any
+        if tool_name == "calculate_oee":
+            result = calculate_oee(**tool_args)
+        elif tool_name == "get_scrap_metrics":
+            result = get_scrap_metrics(**tool_args)
+        elif tool_name == "get_quality_issues":
+            result = get_quality_issues(**tool_args)
+        elif tool_name == "get_downtime_analysis":
+            result = get_downtime_analysis(**tool_args)
+        else:
+            logger.warning(f"Unknown tool requested: {tool_name}")
+            return {"error": f"Unknown tool: {tool_name}"}
+
+        # Convert Pydantic model to dictionary if needed
+        if hasattr(result, "model_dump"):
+            result_dict = result.model_dump()
+        else:
+            result_dict = result
+
+        logger.debug(f"Tool {tool_name} completed successfully")
+        return result_dict
+    except Exception as e:
+        logger.error(f"Error executing tool {tool_name}: {e}", exc_info=True)
+        return {"error": f"Tool execution failed: {str(e)}"}
+
+
+async def get_chat_response(
+    client: AsyncAzureOpenAI,
+    system_prompt: str,
+    conversation_history: List[Dict[str, Any]],
+    user_message: str,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Get Azure OpenAI response with tool calling.
+
+    Handles the tool-calling loop: sends message, executes requested tools,
+    and returns final response with updated conversation history.
+
+    Args:
+        client: AsyncAzureOpenAI client instance
+        system_prompt: System prompt with factory context
+        conversation_history: Previous conversation messages
+        user_message: Current user message
+
+    Returns:
+        Tuple of (response_text, new_history)
+        - response_text: AI's final response
+        - new_history: List of new messages added during this turn
+    """
+    logger.info(f"Processing chat message: {user_message[:50]}...")
+
+    # Build messages list with system prompt, history, and new message
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_history)
+    messages.append({"role": "user", "content": user_message})
+
+    # Track where new messages start (after existing history)
+    history_start_index = len(messages) - 1  # Index of new user message
+
+    # Tool calling loop - continues until AI provides final answer
+    iteration = 0
+    while True:
+        iteration += 1
+        logger.debug(f"Chat iteration {iteration}: Calling Azure OpenAI API")
+
+        try:
+            response = await client.chat.completions.create(
+                model=AZURE_DEPLOYMENT_NAME,
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",
+            )
+        except Exception as e:
+            logger.error(f"Azure OpenAI API call failed: {e}", exc_info=True)
+            raise
+
+        message = response.choices[0].message
+
+        # If no tool calls, we have the final answer
+        if not message.tool_calls:
+            logger.info("Chat completed successfully without tool calls" if iteration == 1 else f"Chat completed after {iteration} iterations")
+            # Extract new messages added during this conversation turn
+            new_history = messages[history_start_index:]
+            # Add final assistant response
+            new_history.append({"role": "assistant", "content": message.content})
+            return message.content, new_history
+
+        # Add assistant message with tool calls to history
+        logger.debug(f"AI requested {len(message.tool_calls)} tool call(s)")
+        messages.append(message.model_dump())
+
+        # Execute each requested tool
+        for tool_call in message.tool_calls:
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
+
+            # Execute tool and get result
+            result = await execute_tool(tool_name, tool_args)
+
+            # Add tool result to messages
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_name,
+                    "content": json.dumps(result),
+                }
+            )

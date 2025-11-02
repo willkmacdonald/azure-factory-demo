@@ -1,6 +1,24 @@
 # Factory Operations Chatbot
 
-A triple-interface AI demonstration system for factory operations analysis, featuring an AI-powered chatbot (text and voice) and interactive web dashboard. Built with Azure AI Foundry for LLM capabilities, using synthetic manufacturing data.
+A cloud-native AI demonstration system for factory operations analysis, featuring an AI-powered chatbot (text and voice) and interactive web dashboard. Built with Azure AI Foundry for LLM capabilities, React for the frontend, FastAPI for the backend, and deployed on Azure Container Apps.
+
+## 🚀 Migration Status
+
+**This project is undergoing a phased migration from Streamlit/CLI to React + Azure Container Apps.**
+
+- **Legacy System**: Streamlit dashboard + Typer CLI (fully functional)
+- **New System**: React frontend + FastAPI backend + Azure Container Apps (in development)
+- **Migration Plan**: See [implementation-plan-prs.md](implementation-plan-prs.md) for the 15-PR phased approach
+
+**Current Progress:**
+- ✅ **PR1**: FastAPI Project Setup & Health Check (Complete)
+- ✅ **PR2**: Metrics API Endpoints (Complete) - 4 REST endpoints for OEE, scrap, quality, downtime
+- ✅ **PR3**: Data Management Endpoints (Complete) - Setup, stats, machines, date-range endpoints
+- ✅ **PR4**: Extract Chat Service (Complete) - Refactored to shared package
+- ✅ **PR5**: Chat API Endpoint (Complete) - Async AI chat with tool calling
+- ⏳ **PR6**: React Project Setup (Next)
+
+Both systems currently coexist and share the same metrics engine and data layer.
 
 ## Features
 
@@ -17,37 +35,99 @@ A triple-interface AI demonstration system for factory operations analysis, feat
 
 ## Tech Stack
 
-- **Python 3.11+**
-- **Azure AI Foundry** - GPT-4 or other deployed models with tool-calling
-- **OpenAI API** - Whisper (speech-to-text) and TTS (text-to-speech) for voice interface
-- **Typer** - CLI framework
+### New Architecture (React + Azure)
+- **Frontend**:
+  - React + TypeScript
+  - Material-UI (MUI) - Component library
+  - Recharts - Data visualization
+  - Vite - Build tool
+  - Axios - HTTP client
+  - @azure/msal-react - Azure AD authentication
+
+- **Backend**:
+  - FastAPI - Async REST API framework with CORS
+  - Python 3.11+
+  - Pydantic - Data validation and response models
+  - Azure AI Foundry - GPT-4 with async tool-calling
+  - Azure OpenAI - AsyncAzureOpenAI client for chat
+  - Comprehensive logging (debug, info, warning, error levels)
+
+- **Cloud & Deployment**:
+  - Azure Container Apps - Serverless container hosting
+  - Azure Blob Storage - Cloud data storage
+  - Azure Container Registry - Docker image storage
+  - Azure AD - Authentication
+  - Docker + Docker Compose - Containerization
+
+### Legacy System (Streamlit + CLI)
+- **Typer** - CLI framework with Rich output
 - **Rich** - Beautiful terminal formatting
-- **Streamlit** - Interactive web dashboard framework
-- **Plotly** - Interactive data visualization
-- **OpenAI SDK** - Client library for OpenRouter and OpenAI APIs
-- **PyAudio** - Cross-platform audio recording
-- **pygame** - Reliable cross-platform audio playback
+- **Streamlit** - Interactive web dashboard (legacy)
+- **Plotly** - Visualization (legacy)
+- **PyAudio** - Audio recording
+- **pygame** - Audio playback
 
 ## Installation
 
-1. **Clone and setup**:
+### Option 1: New System (React + FastAPI + Docker)
+
+1. **Clone and setup environment**:
 ```bash
 git clone <repository-url>
 cd factory-agent
+cp .env.example .env
+# Edit .env with your Azure credentials (see below)
+```
+
+2. **Run with Docker Compose** (recommended):
+```bash
+docker-compose up --build
+```
+- Backend API: http://localhost:8000
+- Frontend: http://localhost:3000
+- API docs: http://localhost:8000/docs
+
+3. **Or run manually**:
+
+**Backend:**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev  # Development server on port 5173
+# Or: npm run build && npm run preview  # Production build on port 3000
+```
+
+### Option 2: Legacy System (Streamlit + CLI)
+
+1. **Setup Python environment**:
+```bash
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2. **Configure Azure AI Foundry**:
+2. **Configure environment**:
 ```bash
 cp .env.example .env
-# Edit .env and add:
-# - AZURE_ENDPOINT: Your Azure OpenAI endpoint (e.g., https://your-resource.openai.azure.com/)
-# - AZURE_API_KEY: Your Azure API key from Azure Portal -> Keys and Endpoint
-# - AZURE_DEPLOYMENT_NAME: Your model deployment name (e.g., gpt-4)
-# - OPENAI_API_KEY: from https://platform.openai.com/api-keys (optional, for voice interface)
+# Edit .env with your Azure credentials
 ```
+
+### Azure Configuration (Both Systems)
+
+**Edit `.env` and add**:
+- `AZURE_ENDPOINT`: Your Azure OpenAI endpoint (e.g., https://your-resource.openai.azure.com/)
+- `AZURE_API_KEY`: Your Azure API key from Azure Portal → Keys and Endpoint
+- `AZURE_DEPLOYMENT_NAME`: Your model deployment name (e.g., gpt-4)
+- `OPENAI_API_KEY`: From https://platform.openai.com/api-keys (optional, for voice interface)
 
 **Getting Azure credentials**:
 1. Go to [Azure Portal](https://portal.azure.com)
@@ -58,15 +138,85 @@ cp .env.example .env
 
 ## Usage
 
-### Setup
-Generate synthetic factory data (required for both chatbot and dashboard):
+### New System (React + FastAPI)
+
+#### 1. Generate Test Data
+First, generate synthetic factory data (required for all interfaces):
+```bash
+# Using the new backend API
+curl -X POST http://localhost:8000/api/setup
+
+# Or using legacy CLI
+python -m src.main setup
+```
+
+This creates 30 days of production data with planted scenarios.
+
+#### 2. Access the Web Dashboard
+Open your browser to:
+- **Frontend**: http://localhost:5173 (dev) or http://localhost:3000 (production)
+- **API Documentation**: http://localhost:8000/docs (interactive Swagger UI)
+- **Health Check**: http://localhost:8000/health
+
+#### 3. Backend API Endpoints
+
+The FastAPI backend provides the following REST endpoints:
+
+**Metrics:**
+- `GET /api/metrics/oee?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&machine=<name>` - OEE metrics
+- `GET /api/metrics/scrap?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&machine=<name>` - Scrap analysis
+- `GET /api/metrics/quality?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&severity=<level>` - Quality issues
+- `GET /api/metrics/downtime?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&machine=<name>` - Downtime analysis
+
+**Data Management:**
+- `POST /api/setup` - Generate synthetic data
+- `GET /api/stats` - Data statistics
+- `GET /api/machines` - List available machines
+- `GET /api/date-range` - Get available data date range
+
+**AI Chat:**
+- `POST /api/chat` - AI-powered chat with tool calling and conversation history
+  - Request: `{"message": "What was the OEE in October?", "history": []}`
+  - Response: `{"response": "The OEE was 89.2%...", "history": [...]}`
+  - Features: Natural language queries, automatic tool selection, maintains context
+
+**Voice (Coming Soon - PR12):**
+- `POST /api/voice/transcribe` - Speech-to-text (Azure OpenAI Whisper)
+- `POST /api/voice/synthesize` - Text-to-speech (Azure OpenAI TTS)
+
+#### 4. Frontend Development
+
+The React frontend is built with TypeScript and Material-UI:
+
+```bash
+cd frontend
+npm run dev        # Start development server (http://localhost:5173)
+npm run build      # Build for production
+npm run preview    # Preview production build
+npm run lint       # Run ESLint
+```
+
+**Key Features:**
+- Split-pane layout (Dashboard | Console)
+- OEE gauge and trend charts
+- Downtime and quality tables
+- Interactive chat console
+- Machine filtering
+- Date range selection
+
+---
+
+### Legacy System (CLI + Streamlit)
+
+#### Setup
+Generate synthetic factory data:
 ```bash
 python -m src.main setup
 ```
 
 This creates 30 days of production data with planted scenarios and saves it to `data/production.json`.
 
-### Chat Interface
+#### Chat Interface (Legacy)
 Launch the interactive AI chatbot:
 ```bash
 python -m src.main chat
@@ -85,7 +235,7 @@ Assistant: [Uses get_quality_issues tool and explains the quality spike]
 
 Type `exit`, `quit`, or press Ctrl+C to end the chat session.
 
-### Voice Interface
+#### Voice Interface (Legacy)
 Launch the voice-based chatbot:
 ```bash
 python -m src.main voice
@@ -119,7 +269,7 @@ Same as text chat:
 - "Show me quality issues from day 15"
 - "Which machine had the most downtime?"
 
-### Web Dashboard
+#### Web Dashboard (Legacy - Streamlit)
 Launch the interactive web dashboard:
 ```bash
 python run_dashboard.py
@@ -138,7 +288,7 @@ The dashboard opens automatically in your browser at `http://localhost:8501` and
 
 Use the sidebar to filter metrics by specific machines or view all machines combined.
 
-### Stats
+#### Stats (Legacy CLI)
 View data statistics:
 ```bash
 python -m src.main stats
@@ -191,41 +341,161 @@ The synthetic data includes interesting scenarios for demonstration:
 3. **Performance Improvement**: OEE increases from 65% to 80% over 30 days - shows trend analysis
 4. **Shift Differences**: Night shift consistently 5-8% lower performance - enables shift comparison
 
+## Deployment
+
+### Docker (Local Development)
+
+Run both frontend and backend with Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+This starts:
+- **Backend**: http://localhost:8000 (FastAPI + Uvicorn)
+- **Frontend**: http://localhost:3000 (React + Nginx)
+
+### Azure Container Apps (Production)
+
+**Coming Soon** - See [implementation-plan-prs.md](implementation-plan-prs.md) for deployment roadmap (PR14-PR15).
+
+The production deployment will include:
+- Azure Container Registry for Docker images
+- Azure Container Apps for serverless hosting
+- Azure Blob Storage for data persistence
+- Azure AD for authentication
+- GitHub Actions for CI/CD
+
+---
+
 ## Project Structure
 
 ```
 factory-agent/
-├── src/
-│   ├── __init__.py         # Package initialization
-│   ├── config.py           # Configuration (11 lines)
-│   ├── data.py             # Data storage and generation (217 lines)
-│   ├── metrics.py          # Analysis functions (276 lines)
-│   ├── main.py             # CLI interface and chatbot (352 lines)
-│   └── dashboard.py        # Streamlit web dashboard (226 lines)
+├── backend/                         # NEW: FastAPI backend
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── main.py             # FastAPI app with CORS
+│   │   │   └── routes/
+│   │   │       ├── metrics.py      # Metrics endpoints
+│   │   │       ├── data.py         # Data management endpoints
+│   │   │       └── chat.py         # AI chat endpoint
+│   │   ├── services/
+│   │   │   └── chat_service.py     # Shared chat logic
+│   │   ├── metrics.py              # Analysis functions (shared)
+│   │   ├── models.py               # Pydantic models (shared)
+│   │   ├── data.py                 # Data storage (shared, Azure Blob support)
+│   │   └── config.py               # Configuration (shared)
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .env.example
+│
+├── frontend/                        # NEW: React frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── dashboard/
+│   │   │   │   ├── OEEGauge.tsx
+│   │   │   │   ├── TrendChart.tsx
+│   │   │   │   ├── DowntimeTable.tsx
+│   │   │   │   ├── QualityTable.tsx
+│   │   │   │   └── MachineFilter.tsx
+│   │   │   ├── console/
+│   │   │   │   ├── ChatConsole.tsx
+│   │   │   │   ├── MessageList.tsx
+│   │   │   │   ├── MessageItem.tsx
+│   │   │   │   └── ChatInput.tsx
+│   │   │   ├── DashboardPanel.tsx
+│   │   │   └── ConsolePanel.tsx
+│   │   ├── services/
+│   │   │   └── api.ts              # Axios API client
+│   │   ├── App.tsx                 # Main app with split-pane
+│   │   └── main.tsx                # Entry point
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── Dockerfile
+│   └── nginx.conf
+│
+├── src/                             # LEGACY: Original CLI/Streamlit
+│   ├── __init__.py
+│   ├── config.py                   # Configuration (20 lines)
+│   ├── data.py                     # Data storage (217 lines)
+│   ├── metrics.py                  # Analysis functions (276 lines)
+│   ├── main.py                     # CLI interface (695 lines)
+│   └── dashboard.py                # Streamlit dashboard (225 lines)
+│
 ├── tests/
-│   └── test_main.py        # Smoke tests for chat logic (175 lines)
+│   ├── test_chat_service.py        # Chat service tests
+│   ├── test_api.py                 # API endpoint tests
+│   └── test_config.py              # Configuration tests
+│
 ├── data/
-│   └── production.json     # Generated synthetic data
-├── run_dashboard.py        # Dashboard launcher script
-├── .env.example            # Environment variable template
-├── .gitignore              # Git ignore rules
-├── requirements.txt        # Python dependencies (6 packages)
-├── implementation-plan.md  # Development roadmap
-├── dashboards.md           # Dashboard implementation plan
-└── README.md              # This file
+│   └── production.json             # Generated synthetic data
+│
+├── docs/                           # NEW: Deployment documentation
+│   ├── azure-blob-setup.md
+│   ├── azure-voice-setup.md
+│   ├── azure-ad-setup.md
+│   └── azure-deployment.md
+│
+├── .github/
+│   └── workflows/
+│       └── azure-deploy.yml        # NEW: CI/CD pipeline
+│
+├── docker-compose.yml              # NEW: Local development
+├── .env.example
+├── .gitignore
+├── requirements.txt                # Legacy dependencies
+├── implementation-plan.md          # Original plan
+├── implementation-plan-prs.md      # NEW: 15-PR migration plan
+└── README.md                       # This file
 ```
 
-**Total implementation**: ~1,100 lines across 5 core modules + 175 lines of tests
+**Legacy System**: ~1,434 lines across 5 modules + 222 lines of tests
+**New System**: In development (see implementation-plan-prs.md for progress)
 
 ## How It Works
 
-### Core Components
+### New Architecture (React + FastAPI)
+
+1. **Frontend (React)**:
+   - Split-pane layout with Dashboard and Console panels
+   - Material-UI components for consistent design
+   - Recharts for data visualization
+   - Axios for API communication
+   - Real-time chat interface
+
+2. **Backend (FastAPI)**:
+   - RESTful API endpoints for metrics, data, and chat
+   - Async request handling
+   - Pydantic models for validation
+   - CORS enabled for frontend communication
+   - Automatic API documentation (Swagger UI)
+
+3. **Shared Metrics Engine** (`backend/src/metrics.py`):
+   - Provides 4 analysis functions (OEE, scrap, quality, downtime)
+   - Reused by both legacy and new systems
+   - No changes from original implementation
+
+4. **AI Chat Service** (`shared/chat_service.py`):
+   - Async tool-calling pattern with Azure AI Foundry (AsyncAzureOpenAI)
+   - Maintains conversation history across turns
+   - Routes tool calls to metrics functions
+   - Comprehensive logging for debugging
+   - Shared by CLI, voice, and web chat interfaces
+   - Configuration via environment variables
+
+5. **Data Layer** (`backend/src/data.py`):
+   - Supports local JSON files (default)
+   - Azure Blob Storage support (optional)
+   - Generates synthetic factory data
+
+### Legacy Architecture (Streamlit + CLI)
 
 1. **Data Generation** (`src/data.py`): Creates 30 days of realistic factory data with planted scenarios
 2. **Metrics Engine** (`src/metrics.py`): Provides 4 analysis functions that process the data
 3. **CLI Interface** (`src/main.py`): Typer-based commands with Rich formatting and reusable chat functions
 4. **Web Dashboard** (`src/dashboard.py`): Streamlit app with Plotly visualizations
-5. **Tool-Calling Pattern**: Claude receives tool definitions, calls them with arguments, and synthesizes responses
+5. **Tool-Calling Pattern**: AI receives tool definitions, calls them with arguments, and synthesizes responses
 6. **Conversation Loop**: Maintains history and handles multi-turn tool calling
 
 ### Reusable Chat Functions (PR #3)
@@ -240,23 +510,46 @@ These functions enable both text and voice interfaces to share the same chat log
 
 ### Architecture Flow
 
+**New System (React + FastAPI):**
+```
+React Frontend → Axios HTTP Client → FastAPI Backend → Metrics Functions → JSON/Azure Blob → Response
+
+Chat Flow:
+User Message → POST /api/chat → Chat Service → Azure AI (tool-calling) →
+Metrics Functions → JSON Data → AI Response → Frontend
+
+Dashboard Flow:
+Component Mount → GET /api/metrics/* → Metrics Functions → JSON Data → Recharts Visualization
+```
+
+**Legacy System (CLI + Streamlit):**
 ```
 Text Chat Interface:
-User Question → Claude API (OpenRouter) → Tool Selection → Metrics Functions → JSON Data → Response
+User Question → Azure AI → Tool Selection → Metrics Functions → JSON Data → Response
 
 Voice Chat Interface:
-Audio Input → Whisper API → Text → Claude API (OpenRouter) → Tool Selection →
+Audio Input → Whisper API → Text → Azure AI → Tool Selection →
 Metrics Functions → JSON Data → Response → TTS API → Audio Output
 
 Dashboard Interface:
 User Interaction → Streamlit UI → Metrics Functions → JSON Data → Plotly Charts
 ```
 
-All three interfaces share the same underlying metrics engine and data storage, ensuring consistency.
+All interfaces (new and legacy) share the same underlying metrics engine and data storage, ensuring consistency.
 
 ## Development Notes
 
-This is a demo/prototype project built following simplicity-first principles:
+### Migration Philosophy
+
+This project is being migrated from a simple demo to a cloud-native application while maintaining:
+- **Phased approach**: 15 small PRs instead of one big rewrite
+- **Backward compatibility**: Legacy system remains functional during migration
+- **Shared core logic**: Metrics engine reused across all interfaces
+- **Incremental value**: Each PR delivers testable functionality
+
+### Legacy System Design (Streamlit + CLI)
+
+Built following simplicity-first principles for rapid prototyping:
 - **JSON files** instead of database (easier to inspect and debug)
 - **Synchronous I/O** (appropriate for single-user demos)
 - **Smoke test coverage** (6 tests, 100% coverage of core chat functions)
@@ -264,20 +557,44 @@ This is a demo/prototype project built following simplicity-first principles:
 - **Streamlit for dashboards** (Python-native, zero JavaScript required)
 - **~1,100 lines total** (compact and maintainable)
 
+### New System Design (React + FastAPI + Azure)
+
+Production-ready architecture with modern best practices:
+- **Async FastAPI backend** (scalable, high performance)
+- **React + TypeScript frontend** (type-safe, component-based)
+- **Azure Blob Storage** (cloud-native data persistence)
+- **Docker containerization** (portable, reproducible deployments)
+- **Azure Container Apps** (serverless, auto-scaling)
+- **Azure AD authentication** (enterprise-grade security)
+- **CI/CD with GitHub Actions** (automated deployments)
+
 ### Testing
 
-Run tests with pytest:
+**Backend tests:**
 ```bash
+cd backend
 pytest tests/ -v
 ```
 
-Current coverage: 6 smoke tests covering all extracted chat functions (`_build_system_prompt`, `_get_chat_response`, `execute_tool`)
+**Frontend tests:**
+```bash
+cd frontend
+npm run test
+```
+
+**Coverage**:
+- Legacy: 6 smoke tests covering core chat functions
+- New system: API endpoint tests, chat service tests (expanding with each PR)
 
 ### Design Philosophy
-- **Text chatbot** for exploratory analysis and natural language queries
-- **Voice interface** for hands-free operation and accessibility
-- **Web dashboard** for visual analysis and at-a-glance metrics
-- All three interfaces complement each other for comprehensive factory operations monitoring
+
+**Multi-Interface Approach:**
+- **Web dashboard (React)**: Visual analysis and at-a-glance metrics
+- **Chat interface**: Exploratory analysis and natural language queries
+- **Voice interface**: Hands-free operation and accessibility
+- **REST API**: Programmatic access for integrations
+
+All interfaces provide complementary ways to interact with the same factory data.
 
 ## License
 
