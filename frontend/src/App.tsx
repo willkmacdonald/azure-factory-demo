@@ -1,69 +1,45 @@
-import { Box, Container, Paper, Typography, Divider } from '@mui/material';
-import ApiHealthCheck from './components/ApiHealthCheck';
+import { Routes, Route } from 'react-router-dom';
+import MainLayout from './components/layout/MainLayout';
+import DashboardPage from './pages/DashboardPage';
+import MachinesPage from './pages/MachinesPage';
+import AlertsPage from './pages/AlertsPage';
+import ChatPage from './pages/ChatPage';
 import './App.css';
 
 /**
  * Main Application Component for Factory Agent
  *
- * This is the initial PR11 setup with a basic layout structure.
- * Future PRs will add:
- * - PR12: Machine filters and date range selectors
- * - PR13: Dashboard visualizations (OEE, charts, tables)
- * - PR14: Chat console with AI integration
+ * PR12: Added routing infrastructure with MainLayout and page components
+ * - React Router v6 with BrowserRouter (configured in main.tsx)
+ * - MainLayout with responsive AppBar and Drawer navigation
+ * - Route definitions for Dashboard, Machines, Alerts, and Chat pages
+ * - Placeholder pages for future feature implementation
+ *
+ * Future PRs will enhance pages with:
+ * - PR13: Dashboard visualizations (metrics, charts, OEE gauges)
+ * - PR14: Machine status cards and alert management
+ * - PR15: AI Chat interface with Azure OpenAI integration
+ * - PR16: Authentication with Azure AD
+ * - PR17: Deployment and CI/CD
  */
 function App() {
-  // State variables will be added in PR12 when filters are implemented
-
   return (
-    <Container maxWidth="xl" sx={{ height: '100vh', py: 2 }}>
-      <Typography variant="h3" component="h1" gutterBottom>
-        Factory Agent
-      </Typography>
-      <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-        AI-Powered Factory Operations Dashboard
-      </Typography>
+    <Routes>
+      {/* Main layout route with nested child routes */}
+      <Route path="/" element={<MainLayout />}>
+        {/* Index route - Dashboard */}
+        <Route index element={<DashboardPage />} />
 
-      <Box sx={{ display: 'flex', gap: 2, height: 'calc(100% - 100px)', mt: 2 }}>
-        {/* Dashboard Panel (left) - Placeholder for PR12 */}
-        <Paper sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          <Typography variant="h5" gutterBottom>
-            Dashboard Panel
-          </Typography>
-          <Typography color="text.secondary">
-            Dashboard components will be added in PR12 and PR13.
-            This will include machine filters, date range selectors, OEE gauges,
-            trend charts, downtime tables, and quality metrics.
-          </Typography>
+        {/* Machines route */}
+        <Route path="machines" element={<MachinesPage />} />
 
-          <Divider sx={{ my: 3 }} />
+        {/* Alerts route */}
+        <Route path="alerts" element={<AlertsPage />} />
 
-          {/* PR11: API Health Check */}
-          <Typography variant="h6" gutterBottom>
-            PR11: API Connectivity Test
-          </Typography>
-          <ApiHealthCheck />
-        </Paper>
-
-        {/* Console Panel (right) - Placeholder for PR14 */}
-        <Paper
-          sx={{
-            flex: 1,
-            overflow: 'auto',
-            p: 2,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <Typography variant="h5" gutterBottom>
-            AI Console Panel
-          </Typography>
-          <Typography color="text.secondary">
-            Chat console will be added in PR14.
-            This will include message history, input field, and AI-powered responses.
-          </Typography>
-        </Paper>
-      </Box>
-    </Container>
+        {/* AI Chat route */}
+        <Route path="chat" element={<ChatPage />} />
+      </Route>
+    </Routes>
   );
 }
 
