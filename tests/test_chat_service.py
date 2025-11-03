@@ -25,10 +25,10 @@ class TestBuildSystemPrompt:
     """Smoke tests for build_system_prompt()."""
 
     @pytest.mark.anyio
-    @patch("shared.chat_service.load_data")
-    async def test_includes_factory_context(self, mock_load_data):
+    @patch("shared.chat_service.load_data_async")
+    async def test_includes_factory_context(self, mock_load_data_async):
         """Verify prompt includes factory name, dates, and machines."""
-        mock_load_data.return_value = {
+        mock_load_data_async.return_value = {
             "start_date": "2024-01-01T00:00:00",
             "end_date": "2024-01-30T23:59:59",
         }

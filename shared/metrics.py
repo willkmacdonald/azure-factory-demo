@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
-from .data import load_data, MACHINES
+from .data import load_data, load_data_async, MACHINES
 from .models import (
     OEEMetrics,
     ScrapMetrics,
@@ -34,11 +34,11 @@ def get_date_range(start_date: str, end_date: str) -> List[str]:
     return dates
 
 
-def calculate_oee(
+async def calculate_oee(
     start_date: str, end_date: str, machine_name: Optional[str] = None
 ) -> OEEMetrics | Dict[str, str]:
     """
-    Calculate Overall Equipment Effectiveness (OEE) for date range.
+    Calculate Overall Equipment Effectiveness (OEE) for date range (async for FastAPI).
 
     OEE = Availability × Performance × Quality
 
@@ -50,7 +50,7 @@ def calculate_oee(
     Returns:
         OEEMetrics model or error dictionary
     """
-    data = load_data()
+    data = await load_data_async()
     if not data:
         return {"error": "No data available"}
 
@@ -106,11 +106,11 @@ def calculate_oee(
     )
 
 
-def get_scrap_metrics(
+async def get_scrap_metrics(
     start_date: str, end_date: str, machine_name: Optional[str] = None
 ) -> ScrapMetrics | Dict[str, str]:
     """
-    Get scrap metrics for date range.
+    Get scrap metrics for date range (async for FastAPI).
 
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD)
@@ -120,7 +120,7 @@ def get_scrap_metrics(
     Returns:
         ScrapMetrics model or error dictionary
     """
-    data = load_data()
+    data = await load_data_async()
     if not data:
         return {"error": "No data available"}
 
@@ -159,14 +159,14 @@ def get_scrap_metrics(
     )
 
 
-def get_quality_issues(
+async def get_quality_issues(
     start_date: str,
     end_date: str,
     severity: Optional[str] = None,
     machine_name: Optional[str] = None,
 ) -> QualityIssues | Dict[str, str]:
     """
-    Get quality issues for date range.
+    Get quality issues for date range (async for FastAPI).
 
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD)
@@ -177,7 +177,7 @@ def get_quality_issues(
     Returns:
         QualityIssues model or error dictionary
     """
-    data = load_data()
+    data = await load_data_async()
     if not data:
         return {"error": "No data available"}
 
@@ -224,11 +224,11 @@ def get_quality_issues(
     )
 
 
-def get_downtime_analysis(
+async def get_downtime_analysis(
     start_date: str, end_date: str, machine_name: Optional[str] = None
 ) -> DowntimeAnalysis | Dict[str, str]:
     """
-    Analyze downtime events.
+    Analyze downtime events (async for FastAPI).
 
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD)
@@ -238,7 +238,7 @@ def get_downtime_analysis(
     Returns:
         DowntimeAnalysis model or error dictionary
     """
-    data = load_data()
+    data = await load_data_async()
     if not data:
         return {"error": "No data available"}
 

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import json
 import random
 from pathlib import Path
+import aiofiles
 from .config import DATA_FILE
 
 # Simple in-memory data structures
@@ -75,7 +76,7 @@ def save_data(data: Dict[str, Any]) -> None:
 
 def load_data() -> Optional[Dict[str, Any]]:
     """
-    Load production data from JSON file.
+    Load production data from JSON file (synchronous for CLI use).
 
     Returns:
         Dictionary containing production data, or None if file doesn't exist.
@@ -86,6 +87,26 @@ def load_data() -> Optional[Dict[str, Any]]:
     try:
         with open(path, "r") as f:
             return json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse JSON from {path}: {e}")
+    except (IOError, OSError) as e:
+        raise RuntimeError(f"Failed to read data from {path}: {e}")
+
+
+async def load_data_async() -> Optional[Dict[str, Any]]:
+    """
+    Load production data from JSON file asynchronously (for FastAPI use).
+
+    Returns:
+        Dictionary containing production data, or None if file doesn't exist.
+    """
+    path = get_data_path()
+    if not path.exists():
+        return None
+    try:
+        async with aiofiles.open(path, "r") as f:
+            content = await f.read()
+            return json.loads(content)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse JSON from {path}: {e}")
     except (IOError, OSError) as e:
