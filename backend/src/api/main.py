@@ -2,25 +2,33 @@
 
 This module serves as the main entry point for the Factory Agent backend API.
 It initializes the FastAPI application, configures Cross-Origin Resource Sharing
-(CORS) middleware to allow frontend access, and provides a basic health check
-endpoint for monitoring service availability.
+(CORS) middleware to allow frontend access, adds rate limiting for security,
+and provides a basic health check endpoint for monitoring service availability.
 
 Code Flow:
-1. Import required dependencies (FastAPI, CORSMiddleware, type hints)
+1. Import required dependencies (FastAPI, CORSMiddleware, SlowAPI, type hints)
 2. Create FastAPI application instance with metadata for auto-generated docs
-3. Configure CORS middleware to allow React frontend to make API requests
-4. Define health check endpoint for service monitoring
+3. Configure rate limiting with SlowAPI (prevents DoS attacks)
+4. Configure CORS middleware with specific allowed origins from config
+5. Define health check endpoint for service monitoring
 
 This module provides:
+- Rate limiting to prevent abuse (configurable per endpoint)
 - Health check endpoint at GET /health
-- CORS configuration for React frontend (ports 3000 and 5173)
+- CORS configuration for React frontend (configurable origins)
 - Automatic API documentation at /docs and /redoc
 """
 
 from typing import Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+from shared.config import ALLOWED_ORIGINS
+
 from .routes import metrics, data, chat
 
 # =============================================================================
@@ -35,6 +43,25 @@ app = FastAPI(
     description="Backend API for factory operations monitoring and analysis",
     version="1.0.0",
 )
+
+# =============================================================================
+# RATE LIMITING CONFIGURATION
+# =============================================================================
+
+# Initialize rate limiter to prevent DoS attacks and API abuse
+# The limiter uses the client's IP address (from get_remote_address) to track
+# request counts. Each endpoint can specify its own rate limit using decorators.
+#
+# How rate limiting works:
+# 1. Client sends request to API endpoint
+# 2. SlowAPI extracts client IP address
+# 3. Checks request count for that IP in the current time window
+# 4. If under limit: processes request normally
+# 5. If over limit: returns 429 Too Many Requests error
+# 6. Rate limit counters reset after the time window expires
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # =============================================================================
 # MIDDLEWARE CONFIGURATION
@@ -52,28 +79,30 @@ app = FastAPI(
 # 3. Browser checks the response and allows/blocks the actual request
 # 4. If allowed, the browser sends the real request (GET, POST, etc.)
 #
-# Security note: In production, replace ["*"] wildcards with specific origins
+# Security improvements (PR7):
+# - Origins restricted to specific domains from ALLOWED_ORIGINS config
+# - Methods restricted to GET and POST only (no PUT, DELETE, PATCH)
+# - Headers restricted to common headers (no wildcard)
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins: List of origins that are permitted to make cross-origin requests
-    # We include both common React development server ports:
+    # allow_origins: List of origins permitted to make cross-origin requests
+    # Now loaded from config (ALLOWED_ORIGINS environment variable)
+    # Default includes common React development server ports:
     # - 3000: Create React App (CRA) default port
     # - 5173: Vite default port (modern React build tool)
-    allow_origins=[
-        "http://localhost:3000",  # Create React App default port
-        "http://localhost:5173",  # Vite default port
-    ],
+    # Production can override with specific domains via environment variable
+    allow_origins=ALLOWED_ORIGINS,
     # allow_credentials: Allow cookies/authorization headers in cross-origin requests
     # Set to True to support authentication tokens, session cookies, etc.
     allow_credentials=True,
     # allow_methods: HTTP methods permitted for cross-origin requests
-    # ["*"] allows all methods (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD)
-    # In production, restrict to only needed methods (e.g., ["GET", "POST"])
-    allow_methods=["*"],
+    # Restricted to GET and POST only for better security (was ["*"])
+    # This prevents CSRF attacks via PUT/DELETE from unauthorized origins
+    allow_methods=["GET", "POST"],
     # allow_headers: HTTP headers permitted in cross-origin requests
-    # ["*"] allows all headers including custom ones like "X-Custom-Header"
-    # In production, restrict to specific headers for better security
-    allow_headers=["*"],
+    # Restricted to common headers for better security (was ["*"])
+    # Includes standard headers plus common auth headers
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 # =============================================================================
@@ -90,6 +119,7 @@ app.include_router(data.router)
 
 # Include the chat router with all its endpoints
 # This adds all endpoints from chat.py to the main app
+# Note: Chat and setup endpoints have rate limiting applied via decorators
 app.include_router(chat.router)
 
 # =============================================================================

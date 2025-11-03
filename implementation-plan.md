@@ -10,9 +10,19 @@
 
 ## Current Status
 
-**PR6 (Async Chat API Endpoint)** COMPLETED (2025-11-02) - All critical and important issues resolved.
+**Phase**: Backend API Foundation (Phase 1 - Complete)
+**Last Completed**: PR6 (2025-11-02) - Async Chat API with Security Hardening
+**Next Priority**: PR7 - Authentication & Rate Limiting (Phase 1 continuation)
 
-All async/sync issues fixed, security vulnerabilities addressed, type hints added, input validation implemented, and comprehensive logging added. Ready to proceed with PR7 (Authentication & Rate Limiting).
+### Summary
+The core chat API endpoint is production-ready with proper async/sync patterns, type safety, input validation, and security measures. All critical vulnerabilities from pr-reviewer and security-scanner have been addressed.
+
+Next steps focus on production hardening (rate limiting, CORS) and conversation validation before proceeding to Phase 2 (Azure Blob Storage) and Phase 3 (React Frontend).
+
+**Progress**: 1/3 core PRs complete (33%)
+- PR6: Async Chat API ✅ COMPLETE
+- PR7: Authentication & Rate Limiting 📋 NEXT
+- PR8: Conversation History Validation 📋 PLANNED
 
 ---
 
@@ -117,50 +127,143 @@ PR6 successfully addressed all critical async/sync issues and important security
 
 ## 📋 Planned PRs (In Priority Order)
 
-### PR7: Authentication & Rate Limiting
-**Status**: Planned
-**Priority**: High (Production Hardening)
+### PR7: Production Hardening - Rate Limiting & CORS
+**Status**: 📋 Ready for Implementation
+**Phase**: Phase 1 (Backend API Foundation)
+**Priority**: High (Production-critical before public deployment)
 **Estimated Effort**: 6-8 hours
-**Related Findings**: CORS restrictions, rate limiting, authentication
+**Related Findings**: pr-reviewer & security-scanner deferred items
+**Dependencies**: Requires PR6 completion ✅
 
-Tasks:
-- [ ] Implement rate limiting with slowapi (10 req/min for chat, 5 req/min for setup)
+#### Tasks
+
+- [ ] Implement rate limiting with slowapi decorator
   - **Priority**: High
   - **Effort**: Medium (2-3 hours)
   - **Files**: backend/src/api/main.py, backend/src/api/routes/chat.py
-  - **Context**: Prevents DoS attacks, protection for public API
+  - **Context**: Prevents DoS attacks; 10 req/min for chat endpoint, 5 req/min for setup
+  - **Implementation Notes**:
+    - Install: `pip install slowapi`
+    - Create limiter in main.py: `limiter = Limiter(key_func=get_remote_address)`
+    - Apply @limiter.limit() decorator to routes
+    - Add rate limit headers to responses
 
-- [ ] Restrict CORS configuration (specific methods, origins from env)
+- [ ] Restrict CORS configuration to trusted origins
   - **Priority**: High
   - **Effort**: Quick (1 hour)
   - **Files**: backend/src/api/main.py, shared/config.py
-  - **Context**: Limit cross-origin requests to trusted domains
+  - **Context**: Limit cross-origin requests to specific domains from environment
+  - **Implementation Notes**:
+    - Update config.py: Add `ALLOWED_ORIGINS` from env variable
+    - Update main.py: Use `CORSMiddleware` with specific methods (GET, POST)
+    - Default: Allow localhost:3000 for dev, restrict in production
 
-- [ ] Add authentication placeholder comment (will implement with Phase 5)
+- [ ] Add authentication endpoint placeholder
   - **Priority**: Medium
   - **Effort**: Quick (30 minutes)
-  - **Files**: backend/src/api/routes/chat.py
-  - **Context**: Mark for future Azure AD implementation
+  - **Files**: backend/src/api/routes/chat.py, backend/src/api/auth.py
+  - **Context**: Document where Azure AD JWT validation will be added in Phase 5
+  - **Implementation Notes**:
+    - Add comment block in chat.py explaining auth integration point
+    - Reference backend/src/api/auth.py (created in Phase 5)
+
+#### Testing
+- Test rate limiting with rapid requests
+- Verify CORS headers for allowed/blocked origins
+- Verify error responses (429 Too Many Requests)
+
+#### Completion Criteria
+- All requests are rate-limited at specified thresholds
+- CORS only allows configured origins
+- Health check endpoint is not rate-limited (for monitoring)
 
 ---
 
 ### PR8: Conversation History Validation & Error Messages
-**Status**: Planned
-**Priority**: Medium
+**Status**: 📋 Planned after PR7
+**Phase**: Phase 1 (Backend API Foundation)
+**Priority**: Medium (Data integrity & better error messages)
 **Estimated Effort**: 3-4 hours
+**Dependencies**: Requires PR7 completion
 
-Tasks:
-- [ ] Sanitize conversation history with role validation
+#### Tasks
+
+- [ ] Validate conversation history with strict role enforcement
   - **Priority**: Medium
   - **Effort**: Medium (1-2 hours)
   - **Files**: shared/models.py, backend/src/api/routes/chat.py
-  - **Context**: Restrict history roles to ["user", "assistant"] only
+  - **Context**: Only allow ["user", "assistant"] roles; reject malformed history
+  - **Implementation Notes**:
+    - Update ChatMessage model with validation
+    - Add validator to ensure role in ["user", "assistant"]
+    - Add validator to ensure content is non-empty string
+    - Return 422 Unprocessable Entity for invalid history
 
-- [ ] Environment-based error messages
+- [ ] Implement environment-based error messages
   - **Priority**: Medium
   - **Effort**: Quick (30 minutes)
   - **Files**: backend/src/api/routes/chat.py
-  - **Context**: Hide internal details in production, verbose in development
+  - **Context**: Hide stack traces in production (DEBUG env var controls verbosity)
+  - **Implementation Notes**:
+    - Add DEBUG config variable (default: False in production)
+    - Update error response handlers to check DEBUG flag
+    - Return full traceback in development, concise message in production
+
+- [ ] Add input sanitization tests
+  - **Priority**: Medium
+  - **Effort**: Quick (30 minutes)
+  - **Files**: tests/test_chat_service.py
+  - **Context**: Verify invalid history is rejected
+  - **Implementation Notes**:
+    - Test invalid role in history
+    - Test empty content in history
+    - Test max history length enforcement (50 items)
+
+#### Testing
+- Test with malformed history (invalid roles)
+- Test with oversized history (>50 items)
+- Verify error messages differ between dev and production modes
+- Test with empty content messages
+
+#### Completion Criteria
+- Invalid history is rejected with clear error message
+- Production errors don't expose internal details
+- Development mode shows full diagnostics for debugging
+
+---
+
+## 🎯 Upcoming Work Items
+
+### Phase 2: Azure Blob Storage Integration (Post-PR8)
+**Target**: Week 2 implementation (after core API hardening)
+**Key Tasks**:
+- Update data.py to support Azure Blob Storage
+- Implement storage mode toggle (local dev vs. Azure)
+- Add blob storage tests
+
+### Phase 3: React Frontend Development (Post-Phase 2)
+**Target**: Week 2-3 implementation
+**Key Tasks**:
+- Set up Vite + React + TypeScript
+- Build split-pane layout with Material-UI
+- Implement dashboard components
+- Implement chat console
+
+### Phase 4: Voice Integration (Post-Phase 3)
+**Target**: Week 3-4 implementation
+**Key Tasks**:
+- Add transcribe endpoint (Azure Whisper)
+- Add synthesize endpoint (Azure TTS)
+- Build voice UI components
+
+### Phase 5: Containerization & Azure Deployment (Post-Phase 4)
+**Target**: Week 4-5 implementation
+**Key Tasks**:
+- Create Docker containers
+- Set up Azure Container Registry
+- Deploy to Azure Container Apps
+- Configure Azure AD authentication
+- Set up GitHub Actions CI/CD
 
 ---
 
@@ -1596,7 +1699,7 @@ By completing this migration, you will gain hands-on experience with:
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2025-01-01
+**Document Version**: 2.1
+**Last Updated**: 2025-11-02
 **Author**: Migration Planning Assistant
-**Status**: Ready for Implementation
+**Status**: PR6 Complete - PR7 Ready for Implementation

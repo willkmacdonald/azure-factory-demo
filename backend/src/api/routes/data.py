@@ -13,7 +13,7 @@ Code Flow:
 4. Response is serialized to JSON and returned to client
 
 This module provides:
-- POST /api/setup: Generate synthetic production data
+- POST /api/setup: Generate synthetic production data (rate-limited)
 - GET /api/stats: Get data statistics (record counts, date ranges)
 - GET /api/machines: List available machines
 - GET /api/date-range: Get available data date range
@@ -22,8 +22,10 @@ This module provides:
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from shared.data import (
     initialize_data,
@@ -31,6 +33,7 @@ from shared.data import (
     data_exists,
     MACHINES,
 )
+from shared.config import RATE_LIMIT_SETUP
 
 # =============================================================================
 # ROUTER CONFIGURATION
@@ -40,6 +43,10 @@ from shared.data import (
 # The prefix "/api" is added to all routes in this router
 # The "tags" parameter groups these endpoints in the auto-generated docs
 router = APIRouter(prefix="/api", tags=["Data"])
+
+# Create limiter instance for this router
+# Used to apply rate limits to the setup endpoint (prevents spam data generation)
+limiter = Limiter(key_func=get_remote_address)
 
 # =============================================================================
 # REQUEST/RESPONSE MODELS
@@ -125,7 +132,11 @@ class DateRangeResponse(BaseModel):
 
 
 @router.post("/setup", response_model=SetupResponse)
-async def setup_data(request: SetupRequest = SetupRequest()) -> SetupResponse:
+@limiter.limit(RATE_LIMIT_SETUP)
+async def setup_data(
+    request: Request,
+    setup_request: SetupRequest = SetupRequest()
+) -> SetupResponse:
     """Generate synthetic production data.
 
     This endpoint generates synthetic factory production data for testing
@@ -136,6 +147,11 @@ async def setup_data(request: SetupRequest = SetupRequest()) -> SetupResponse:
     - Shift-level metrics
     - Planted scenarios for interesting analysis
 
+    Rate limiting (PR7): This endpoint is rate-limited to prevent abuse.
+    Default limit is 5 requests per minute per IP address (configurable via
+    RATE_LIMIT_SETUP environment variable). Data generation is computationally
+    expensive, so this prevents spam.
+
     Flow:
     1. Receive request with optional 'days' parameter
     2. Call initialize_data() to generate synthetic data
@@ -143,13 +159,15 @@ async def setup_data(request: SetupRequest = SetupRequest()) -> SetupResponse:
     4. Return summary statistics
 
     Args:
-        request: SetupRequest with optional days parameter (default: 30)
+        request: FastAPI Request object (required for rate limiting - slowapi)
+        setup_request: SetupRequest with optional days parameter (default: 30)
 
     Returns:
         SetupResponse: Summary of generated data
 
     Raises:
         HTTPException: 500 if data generation fails
+        RateLimitExceeded: If rate limit is exceeded (returns 429 status)
 
     Example:
         POST /api/setup
@@ -166,7 +184,7 @@ async def setup_data(request: SetupRequest = SetupRequest()) -> SetupResponse:
     """
     try:
         # Generate and save data, get metadata directly from return value
-        result = initialize_data(days=request.days)
+        result = initialize_data(days=setup_request.days)
 
         return SetupResponse(
             message="Data generated successfully",
