@@ -30,3 +30,12 @@ ALLOWED_ORIGINS: List[str] = [
 ]
 RATE_LIMIT_CHAT: str = os.getenv("RATE_LIMIT_CHAT", "10/minute")
 RATE_LIMIT_SETUP: str = os.getenv("RATE_LIMIT_SETUP", "5/minute")
+
+# Environment settings
+DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+
+# Storage settings
+STORAGE_MODE: str = os.getenv("STORAGE_MODE", "local")  # "local" or "azure"
+AZURE_STORAGE_CONNECTION_STRING: Optional[str] = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+AZURE_BLOB_CONTAINER: str = os.getenv("AZURE_BLOB_CONTAINER", "factory-data")
+AZURE_BLOB_NAME: str = os.getenv("AZURE_BLOB_NAME", "production.json")

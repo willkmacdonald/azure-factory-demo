@@ -11,7 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from shared.chat_service import get_chat_response, build_system_prompt
-from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT
+from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +24,57 @@ limiter = Limiter(key_func=get_remote_address)
 
 # Request/Response models
 class ChatMessage(BaseModel):
-    """Individual chat message model."""
+    """Individual chat message model with strict role enforcement."""
 
-    role: str = Field(description="Message role: user, assistant, system, or tool")
+    role: str = Field(description="Message role: user or assistant only")
     content: str = Field(
         description="Message content",
-        max_length=2000
+        max_length=2000,
+        min_length=1
     )
+
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        """Ensure role is either 'user' or 'assistant'.
+
+        This prevents malformed history with invalid roles that could
+        cause issues with the Azure OpenAI API.
+
+        Args:
+            v: Role value to validate
+
+        Returns:
+            str: Validated role value
+
+        Raises:
+            ValueError: If role is not 'user' or 'assistant'
+        """
+        allowed_roles = {"user", "assistant"}
+        if v not in allowed_roles:
+            raise ValueError(
+                f"Invalid role '{v}'. Only 'user' and 'assistant' are allowed "
+                f"in conversation history."
+            )
+        return v
+
+    @field_validator('content')
+    @classmethod
+    def validate_content(cls, v: str) -> str:
+        """Ensure content is non-empty after stripping whitespace.
+
+        Args:
+            v: Content value to validate
+
+        Returns:
+            str: Validated content value
+
+        Raises:
+            ValueError: If content is empty or whitespace-only
+        """
+        if not v or not v.strip():
+            raise ValueError("Message content cannot be empty or whitespace-only")
+        return v
 
 
 class ChatRequest(BaseModel):
@@ -208,4 +252,13 @@ async def chat(
             exc_info=True,
             extra={"request_id": request_id, "elapsed_time": elapsed_time},
         )
-        raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
+        # Environment-based error messages (PR8)
+        # In production (DEBUG=False), hide internal details
+        # In development (DEBUG=True), show full error for debugging
+        if DEBUG:
+            # Development mode: provide detailed error information
+            error_detail = f"Chat processing failed: {str(e)}"
+        else:
+            # Production mode: hide internal details to prevent information disclosure
+            error_detail = "An error occurred while processing your request. Please try again later."
+        raise HTTPException(status_code=500, detail=error_detail)

@@ -11,24 +11,29 @@ A cloud-native AI demonstration system for factory operations analysis, featurin
 - **Migration Plan**: See [implementation-plan-prs.md](implementation-plan-prs.md) for the 15-PR phased approach
 
 **Current Progress:**
-- ✅ **PR1**: FastAPI Project Setup & Health Check (Complete)
-- ✅ **PR2**: Metrics API Endpoints (Complete) - 4 REST endpoints for OEE, scrap, quality, downtime
-- ✅ **PR3**: Data Management Endpoints (Complete) - Setup, stats, machines, date-range endpoints
-- ✅ **PR4**: Extract Chat Service (Complete) - Refactored to shared package
-- ✅ **PR5**: Chat API Endpoint (Complete) - Async AI chat with tool calling
-- ⏳ **PR6**: React Project Setup (Next)
+- ✅ **Phase 1: Backend API Foundation** (Complete - PR6, PR7, PR8)
+  - PR6: Production hardening (async/sync fixes, error handling)
+  - PR7: Security (rate limiting, CORS, input validation)
+  - PR8: Environment configuration (DEBUG mode, error verbosity)
+- ✅ **Phase 2: Setup** (Complete - 2025-11-03)
+  - Azure Storage Account created (`factoryagentdata`)
+  - Blob container ready (`factory-data`)
+  - Dual storage mode configured (local/azure)
+- ⏳ **Phase 2: PR9** - Azure Blob Storage Integration (Next)
 
 Both systems currently coexist and share the same metrics engine and data layer.
 
 ## Features
 
 - **AI-Powered Chatbot** using Azure AI Foundry (GPT-4 or other deployed models)
+- **Production-Ready FastAPI Backend** with rate limiting, CORS security, and input validation
+- **Azure Blob Storage Support** for cloud data persistence (Phase 2)
+- **Dual Storage Mode**: Local JSON (development) or Azure Blob Storage (production)
 - **Voice Interface** with OpenAI Whisper (speech-to-text) and TTS (text-to-speech)
 - **Interactive Web Dashboard** with Streamlit for visual analytics
 - **Manufacturing Metrics**: OEE, scrap, quality, downtime analysis
 - **30 days of synthetic factory data** with interesting planted scenarios
 - **Beautiful CLI** built with Typer and Rich
-- **Simple JSON data storage** (no database required)
 - **Interactive natural language queries** with tool-calling
 - **4 analysis tools** for accurate data retrieval
 - **Visual dashboards** with Plotly charts for OEE, availability, and quality metrics
@@ -124,10 +129,19 @@ cp .env.example .env
 ### Azure Configuration (Both Systems)
 
 **Edit `.env` and add**:
+
+#### Required for AI Chat:
 - `AZURE_ENDPOINT`: Your Azure OpenAI endpoint (e.g., https://your-resource.openai.azure.com/)
 - `AZURE_API_KEY`: Your Azure API key from Azure Portal → Keys and Endpoint
 - `AZURE_DEPLOYMENT_NAME`: Your model deployment name (e.g., gpt-4)
 - `OPENAI_API_KEY`: From https://platform.openai.com/api-keys (optional, for voice interface)
+
+#### Optional for Cloud Storage (Phase 2):
+- `AZURE_STORAGE_CONNECTION_STRING`: Connection string for Azure Blob Storage (leave empty for local development)
+- `STORAGE_MODE`: `local` (default, uses JSON files) or `azure` (uses Blob Storage)
+- `AZURE_BLOB_CONTAINER`: Container name (default: `factory-data`)
+
+**Note**: Local storage mode is the default. No Azure Storage setup is required for development. See [AZURE_STORAGE_SETUP.md](AZURE_STORAGE_SETUP.md) for cloud storage configuration.
 
 **Getting Azure credentials**:
 1. Go to [Azure Portal](https://portal.azure.com)
@@ -362,9 +376,11 @@ This starts:
 The production deployment will include:
 - Azure Container Registry for Docker images
 - Azure Container Apps for serverless hosting
-- Azure Blob Storage for data persistence
+- Azure Blob Storage for data persistence (infrastructure ready, PR9 in progress)
 - Azure AD for authentication
 - GitHub Actions for CI/CD
+
+**Phase 2 Progress**: Azure Storage Account (`factoryagentdata`) and blob container (`factory-data`) have been created and configured. The application currently supports dual storage modes, with local JSON as the default for development.
 
 ---
 
@@ -431,11 +447,8 @@ factory-agent/
 ├── data/
 │   └── production.json             # Generated synthetic data
 │
-├── docs/                           # NEW: Deployment documentation
-│   ├── azure-blob-setup.md
-│   ├── azure-voice-setup.md
-│   ├── azure-ad-setup.md
-│   └── azure-deployment.md
+├── docs/                           # Deployment documentation
+│   └── AZURE_STORAGE_SETUP.md      # Azure Blob Storage setup guide (Phase 2)
 │
 ├── .github/
 │   └── workflows/
@@ -485,9 +498,11 @@ factory-agent/
    - Configuration via environment variables
 
 5. **Data Layer** (`backend/src/data.py`):
-   - Supports local JSON files (default)
-   - Azure Blob Storage support (optional)
-   - Generates synthetic factory data
+   - Dual storage mode: local JSON files (default) or Azure Blob Storage
+   - Configurable via `STORAGE_MODE` environment variable
+   - Local mode: Fast, no network latency, works offline (development)
+   - Azure mode: Cloud persistence, durable, multi-instance compatible (production)
+   - Generates synthetic factory data (30 days with planted scenarios)
 
 ### Legacy Architecture (Streamlit + CLI)
 
@@ -561,8 +576,11 @@ Built following simplicity-first principles for rapid prototyping:
 
 Production-ready architecture with modern best practices:
 - **Async FastAPI backend** (scalable, high performance)
+- **Production hardening** (rate limiting, CORS, input validation - PR7)
+- **Environment configuration** (DEBUG mode, error verbosity - PR8)
 - **React + TypeScript frontend** (type-safe, component-based)
-- **Azure Blob Storage** (cloud-native data persistence)
+- **Azure Blob Storage** (cloud-native data persistence - Phase 2 setup complete, PR9 in progress)
+- **Dual storage mode** (local JSON for dev, Azure Blob for production)
 - **Docker containerization** (portable, reproducible deployments)
 - **Azure Container Apps** (serverless, auto-scaling)
 - **Azure AD authentication** (enterprise-grade security)

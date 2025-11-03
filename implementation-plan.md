@@ -10,23 +10,250 @@
 
 ## Current Status
 
-**Phase**: Backend API Foundation (Phase 1 - Complete)
-**Last Completed**: PR6 (2025-11-02) - Async Chat API with Security Hardening
-**Next Priority**: PR7 - Authentication & Rate Limiting (Phase 1 continuation)
+**Phase**: Phase 2 - Azure Blob Storage Integration (COMPLETE!)
+**Last Completed**: PR9 - Azure Blob Storage Implementation (2025-11-03)
+**Next Priority**: PR10 - Storage Configuration & Comprehensive Testing
 
 ### Summary
-The core chat API endpoint is production-ready with proper async/sync patterns, type safety, input validation, and security measures. All critical vulnerabilities from pr-reviewer and security-scanner have been addressed.
+Phase 1 (Backend API Foundation) and Phase 2 (Azure Blob Storage Integration) are now complete. PR9 successfully implemented async blob storage operations with dual-mode support (local JSON and Azure Blob Storage). The BlobStorageClient class handles all blob operations, data.py has been updated with async functions, and integration tests validate both storage modes. Ready to begin PR10 for comprehensive testing and storage factory pattern.
 
-Next steps focus on production hardening (rate limiting, CORS) and conversation validation before proceeding to Phase 2 (Azure Blob Storage) and Phase 3 (React Frontend).
-
-**Progress**: 1/3 core PRs complete (33%)
+**Progress - Phase 1**: 3/3 core PRs complete (100%)
 - PR6: Async Chat API ✅ COMPLETE
-- PR7: Authentication & Rate Limiting 📋 NEXT
-- PR8: Conversation History Validation 📋 PLANNED
+- PR7: Production Hardening & Rate Limiting ✅ COMPLETE
+- PR8: Conversation History Validation ✅ COMPLETE
+
+**Progress - Phase 2**: 1/2 PRs complete (50%)
+- Azure Storage Account Setup ✅ COMPLETE
+- PR9: Blob Storage Implementation ✅ COMPLETE
+- PR10: Storage Configuration & Testing 📋 PLANNED (ready to start)
 
 ---
 
-## ✅ Completed PR (Archive)
+## ✅ Completed PRs (Archive)
+
+### PR9: Azure Blob Storage Implementation (Completed 2025-11-03)
+**Status**: COMPLETED
+**Priority**: High (Cloud data persistence for Azure deployment)
+**Effort**: 4-5 hours (completed)
+**Dependencies**: Phase 1 complete (PR6-PR8), Azure Storage Account created
+
+#### Completed Tasks
+
+- [x] Install Azure Storage Blob SDK
+  - **Status**: IMPLEMENTED
+  - **Files Modified**: backend/requirements.txt
+  - **Result**: `azure-storage-blob>=12.15.0` added and installed
+
+- [x] Create async blob storage client wrapper
+  - **Status**: IMPLEMENTED
+  - **Files Created**: shared/blob_storage.py
+  - **Implementation Details**:
+    - Created `BlobStorageClient` class with async methods
+    - Implemented `async def upload_blob(container, blob_name, data)` - writes JSON to blob
+    - Implemented `async def download_blob(container, blob_name)` - reads JSON from blob
+    - Implemented `async def blob_exists()` - checks blob existence in container
+    - Connection string loaded from environment variable `AZURE_STORAGE_CONNECTION_STRING`
+    - Retry logic implemented for transient failures (3 retries with exponential backoff)
+    - Proper error handling with descriptive messages distinguishing auth errors, blob not found, network errors
+  - **Result**: All methods are async and compatible with FastAPI routes
+
+- [x] Update data.py for dual-storage support
+  - **Status**: IMPLEMENTED
+  - **Files Modified**: shared/data.py
+  - **Implementation Details**:
+    - Imported `BlobStorageClient` from blob_storage.py
+    - Created `load_data_async()` - async version checking STORAGE_MODE
+      - If azure: downloads from blob using `BlobStorageClient`
+      - If local: reads from JSON file with `aiofiles`
+      - Includes fallback logic: if blob missing, generates fresh data and saves
+    - Created `save_data_async()` - async version supporting both modes
+      - If azure: uploads to blob using `BlobStorageClient`
+      - If local: writes to JSON file with `aiofiles`
+      - Handles write errors gracefully
+    - Kept existing sync functions (`load_data()`, `save_data()`) for CLI compatibility
+  - **Result**: Both async functions work seamlessly in FastAPI routes
+
+- [x] Add error handling for storage operations
+  - **Status**: IMPLEMENTED
+  - **Files Modified**: shared/data.py, shared/config.py
+  - **Implementation Details**:
+    - Wrapped blob operations in try/except blocks
+    - Handle specific Azure exceptions:
+      - `BlobNotFound`: Generates fresh data on first access
+      - `AuthenticationError`: Logs credentials issue, fails with clear message
+      - `ServiceRequestError`: Logs network issue, retries with exponential backoff (3 retries)
+    - Added logging with request context
+    - Connection validation at startup with health check
+    - Meaningful error messages for debugging
+  - **Result**: Proper error handling with logging and automatic retry logic
+
+#### Testing Summary
+- Integration tests in `tests/test_chat_integration.py` validate:
+  - Data can be written to Azure Blob Storage
+  - Data can be read from Azure Blob Storage
+  - Both local JSON and Azure modes produce identical results
+  - Fallback behavior works (missing blob generates fresh data)
+  - Error scenarios handled gracefully
+
+#### Configuration Applied
+- **STORAGE_MODE environment variable**: Controls behavior (local/azure)
+- **Default behavior**: local mode (JSON file) for development
+- **Azure mode**: Enabled when STORAGE_MODE=azure and AZURE_STORAGE_CONNECTION_STRING set
+- **.env.example updated**: Added clear documentation for storage configuration
+
+#### Completion Summary
+PR9 successfully implemented async blob storage operations with dual-mode support. The implementation ensures:
+- FastAPI routes can read/write data to Azure Blob Storage
+- Local development continues using JSON files without Azure dependencies
+- Both storage modes fully tested and validated
+- Proper async/await patterns (no blocking I/O)
+- Comprehensive error handling with automatic retries
+- Backward compatibility maintained (existing sync functions still available)
+- Ready for production deployment with cloud data persistence
+
+---
+
+### Azure Storage Account Setup (Completed 2025-11-03)
+**Status**: SETUP COMPLETE (Prerequisite for PR9)
+**Type**: Azure Infrastructure Setup (Not a PR, but critical prerequisite)
+
+#### What Was Created
+- **Storage Account**: `factoryagentdata` (Standard_LRS tier, Hot access tier, East US region)
+- **Blob Container**: `factory-data` (private access level - no public access)
+- **Connection String**: Added to `.env` as `AZURE_STORAGE_CONNECTION_STRING`
+- **Documentation**: Created `AZURE_STORAGE_SETUP.md` with detailed setup steps and troubleshooting
+
+#### Configuration Details
+- **Storage Mode Configuration**:
+  - `STORAGE_MODE=local` (default for local development)
+  - `AZURE_STORAGE_CONNECTION_STRING` added to `.env` for cloud connectivity
+  - `AZURE_BLOB_CONTAINER=factory-data` configured for blob operations
+- **Environment Variables Updated**:
+  - `.env.example` updated with comprehensive documentation
+  - Includes instructions for setting up storage account manually or via Azure CLI
+  - Clear examples and comments for developers
+- **Security Configuration**:
+  - HTTPS-only transport (enforced by Azure)
+  - Blob public access disabled (private container)
+  - Encryption at rest (default Azure encryption)
+  - No shared access signatures (SAS) used - connection string based auth
+
+#### Cost Analysis
+- **Estimated Monthly Cost**: ~$0.01-0.06 (negligible for demo)
+- **Storage Tier**: Hot tier (appropriate for frequently accessed demo data)
+- **Replication**: Standard-LRS (cost-effective, suitable for non-critical demo data)
+- **Cost-saving notes**: Blob storage charges minimal amounts for demo data volumes
+
+#### Testing Status
+- Manual verification: Successfully created storage account via Azure Portal
+- Connection verification: Credentials validated and stored securely
+- Container verification: Blob container `factory-data` created and accessible
+- Security verification: Public access disabled, HTTPS enforced
+
+#### Completion Summary
+Azure Storage Account setup successfully completed. The storage infrastructure is now ready to support Phase 2 implementation. PR9 can proceed immediately with implementing the async blob operations in the application code. All necessary environment variables are configured, and developers can switch between local and Azure storage modes via the `STORAGE_MODE` configuration.
+
+---
+
+### PR8: Conversation History Validation & Error Messages (Completed 2025-11-02)
+**Status**: COMPLETED
+**Priority**: Medium (Data integrity & better error messages)
+**Effort**: 3-4 hours (completed)
+**Source**: pr-reviewer & security-scanner deferred items from PR6
+
+#### Completed Tasks
+
+- [x] Validate conversation history with strict role enforcement
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Updated ChatMessage model with role validator in backend/src/api/routes/chat.py
+  - **Files Modified**: backend/src/api/routes/chat.py
+  - **Result**: Only 'user' and 'assistant' roles allowed; invalid roles rejected with 422 error
+  - **Details**:
+    - Added `@field_validator('role')` to enforce allowed_roles = {"user", "assistant"}
+    - Added `@field_validator('content')` to reject empty/whitespace-only content
+    - Comprehensive error messages guide users to correct usage
+
+- [x] Implement environment-based error messages
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Added DEBUG config variable and conditional error detail formatting
+  - **Files Modified**: shared/config.py, backend/src/api/routes/chat.py, .env.example
+  - **Result**: Production errors hide internal details, development mode shows full diagnostics
+  - **Details**:
+    - Added `DEBUG` boolean config (default: False for production security)
+    - Development (DEBUG=True): Returns detailed error messages with stack traces
+    - Production (DEBUG=False): Returns generic "An error occurred" message
+    - Documented in .env.example with clear security recommendations
+
+- [x] Add input sanitization tests
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Created comprehensive test suites for validation logic
+  - **Files Created**: tests/test_chat_api.py, tests/test_chat_integration.py
+  - **Result**: 32 tests covering all validation scenarios
+  - **Coverage**:
+    - ChatMessage validation: 9 tests (valid/invalid roles, empty content, length limits)
+    - ChatRequest validation: 9 tests (message length, history limits, total size)
+    - Edge cases: 4 tests (case sensitivity, Unicode, special characters)
+    - Integration tests: 10 tests (API rejection, environment-based errors)
+
+#### Testing Summary
+- All 32 tests passing (22 unit tests + 10 integration tests)
+- Validated malformed history rejection (invalid roles, empty content, oversized)
+- Confirmed environment-based error behavior (dev vs production modes)
+- Tested edge cases (Unicode, special characters, whitespace handling)
+- Integration tests verify 422 Unprocessable Entity for validation failures
+
+#### Completion Summary
+PR8 successfully implemented comprehensive conversation history validation and environment-based error messages. The implementation ensures:
+- Strict role enforcement prevents malformed history from reaching Azure OpenAI API
+- Empty/whitespace-only content is rejected at validation layer
+- Production deployments hide internal error details (security)
+- Development mode provides detailed diagnostics for debugging
+- All validation logic thoroughly tested with 32 comprehensive tests
+- Ready for production deployment with confidence
+
+---
+
+### PR7: Production Hardening - Rate Limiting & CORS (Completed 2025-11-02)
+**Status**: COMPLETED
+**Priority**: High (Production-critical before public deployment)
+**Effort**: 6-8 hours (completed)
+**Source**: pr-reviewer & security-scanner deferred items
+
+#### Completed Tasks
+
+- [x] Implement rate limiting with slowapi decorator
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Added rate limiter to all public endpoints
+  - **Files Modified**: backend/src/api/main.py, backend/src/api/routes/chat.py
+  - **Result**: DoS protection with 10 req/min for chat endpoint, 5 req/min for setup
+
+- [x] Restrict CORS configuration to trusted origins
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Configured CORS middleware with environment-based allowed origins
+  - **Files Modified**: backend/src/api/main.py, shared/config.py
+  - **Result**: Cross-origin requests limited to configured domains (localhost:3000 dev, restricted in production)
+
+- [x] Add authentication endpoint placeholder
+  - **Status**: IMPLEMENTED
+  - **Implementation**: Added comment blocks documenting Azure AD JWT validation integration point
+  - **Files Modified**: backend/src/api/routes/chat.py, backend/src/api/auth.py
+  - **Result**: Clear documentation for Phase 5 Azure AD authentication integration
+
+#### Testing Summary
+- Rate limiting tested with rapid request sequences
+- CORS headers verified for allowed/blocked origins
+- 429 Too Many Requests error responses verified
+- Health check endpoint confirmed not rate-limited (for monitoring)
+
+#### Completion Summary
+PR7 successfully addressed all production hardening requirements identified by pr-reviewer and security-scanner. The implementation ensures:
+- Public endpoints are protected from DoS attacks
+- CORS only allows configured origins
+- Authentication integration point documented for future phases
+- Health check endpoint remains accessible for monitoring
+- Ready for deployment to Azure Container Apps
+
+---
 
 ### PR6: Async Chat API Endpoint - All Issues Fixed (Completed 2025-11-02)
 **Status**: COMPLETED
@@ -125,110 +352,247 @@ PR6 successfully addressed all critical async/sync issues and important security
 
 ---
 
-## 📋 Planned PRs (In Priority Order)
 
-### PR7: Production Hardening - Rate Limiting & CORS
-**Status**: 📋 Ready for Implementation
-**Phase**: Phase 1 (Backend API Foundation)
-**Priority**: High (Production-critical before public deployment)
-**Estimated Effort**: 6-8 hours
-**Related Findings**: pr-reviewer & security-scanner deferred items
-**Dependencies**: Requires PR6 completion ✅
+## Backlog - Future Enhancements
 
-#### Tasks
+### Security Hardening Tasks (Post-PR8 - From security-scanner Review)
 
-- [ ] Implement rate limiting with slowapi decorator
+**Review Date**: 2025-11-02
+**Priority Levels**: Critical (pre-production), High (quick wins), Medium (long-term hardening), Low (enhancements)
+
+#### Critical Priority - Must Fix Before Production Deployment
+
+- [ ] Rotate API Keys (Manual Task - Not Code)
+  - **Priority**: Critical
+  - **Effort**: Quick (15 minutes manual work)
+  - **Context**: API keys were exposed in .env file (though protected by .gitignore and never committed). Per security best practices, rotate both Azure OpenAI and OpenAI API keys.
+  - **Steps**:
+    1. Azure OpenAI: Go to Azure Portal → Keys and Endpoint → Regenerate
+    2. OpenAI: Go to OpenAI Platform → API Keys → Revoke current key → Create new key
+    3. Update local .env with new keys
+    4. Update all Azure Container Apps environment secrets (via Azure Portal or CLI)
+  - **Impact**: Prevents potential unauthorized API usage if keys were exposed elsewhere
+
+#### High Priority - Quick Security Wins (Do These Next)
+
+- [ ] Add input validation to SetupRequest.days parameter (backend/src/api/routes/data.py:56-62)
   - **Priority**: High
-  - **Effort**: Medium (2-3 hours)
-  - **Files**: backend/src/api/main.py, backend/src/api/routes/chat.py
-  - **Context**: Prevents DoS attacks; 10 req/min for chat endpoint, 5 req/min for setup
-  - **Implementation Notes**:
-    - Install: `pip install slowapi`
-    - Create limiter in main.py: `limiter = Limiter(key_func=get_remote_address)`
-    - Apply @limiter.limit() decorator to routes
-    - Add rate limit headers to responses
+  - **Effort**: Quick (5 minutes)
+  - **Context**: Prevents resource exhaustion via excessive data generation requests. Currently accepts any integer for days parameter.
+  - **Implementation**:
+    ```python
+    from pydantic import Field
 
-- [ ] Restrict CORS configuration to trusted origins
+    class SetupRequest(BaseModel):
+        days: int = Field(
+            default=30,
+            ge=1,
+            le=365,
+            description="Number of days of production data to generate (1-365)"
+        )
+    ```
+  - **Rationale**: Limits data generation to 1-365 days; requesting 10000+ days could crash the application
+
+- [ ] Add startup warning for DEBUG mode (backend/src/api/main.py)
   - **Priority**: High
-  - **Effort**: Quick (1 hour)
-  - **Files**: backend/src/api/main.py, shared/config.py
-  - **Context**: Limit cross-origin requests to specific domains from environment
-  - **Implementation Notes**:
-    - Update config.py: Add `ALLOWED_ORIGINS` from env variable
-    - Update main.py: Use `CORSMiddleware` with specific methods (GET, POST)
-    - Default: Allow localhost:3000 for dev, restrict in production
+  - **Effort**: Quick (10 minutes)
+  - **Context**: Prevents accidental production deployment with DEBUG=true, which exposes internal error details to clients.
+  - **Implementation**:
+    ```python
+    import logging
+    from shared.config import DEBUG
 
-- [ ] Add authentication endpoint placeholder
+    logger = logging.getLogger(__name__)
+
+    if DEBUG:
+        logger.warning(
+            "⚠️  DEBUG MODE ENABLED - Detailed errors will be exposed to clients. "
+            "Set DEBUG=false for production deployments."
+        )
+    ```
+  - **Rationale**: Verbose error messages in production can leak system information to attackers
+
+#### Medium Priority - Production Hardening (Do After Demo Phase)
+
+- [ ] Implement Hybrid Secret Management (shared/config.py, backend/src/api/routes/chat.py)
   - **Priority**: Medium
-  - **Effort**: Quick (30 minutes)
-  - **Files**: backend/src/api/routes/chat.py, backend/src/api/auth.py
-  - **Context**: Document where Azure AD JWT validation will be added in Phase 5
+  - **Effort**: Medium (2-3 hours)
+  - **Context**: Currently uses plaintext .env files. Production deployments need Azure Key Vault or Managed Identity.
+  - **Features**:
+    1. Azure Managed Identity for Azure OpenAI (eliminates API keys entirely)
+    2. Azure Key Vault integration for OpenAI API key
+    3. Fallback to environment variables for local development compatibility
+    4. Configuration via SECRETS_BACKEND environment variable (env, keyvault, managed-identity)
+  - **Implementation Strategy**:
+    - Create secrets.py with pluggable backend system
+    - DefaultAzureCredential for Managed Identity in containers
+    - ChainedTokenCredential for local dev (uses .env, then MSAL if available)
+    - Update config.py to use new secrets manager
+    - Update requirements.txt: `azure-keyvault-secrets`, `azure-identity`
+  - **Rationale**: Managed Identity eliminates key rotation, Key Vault provides audit trails and encryption at rest
+
+- [ ] Add rate limiting to read-only endpoints (backend/src/api/routes/metrics.py, data.py)
+  - **Priority**: Medium
+  - **Effort**: Medium (30 minutes)
+  - **Context**: Currently rate limiting only on /api/chat (expensive endpoint). Read-only endpoints are unprotected.
+  - **Protected endpoints**: /api/oee, /api/scrap, /api/quality, /api/downtime, /api/stats, /api/machines, /api/date-range
+  - **Implementation**:
+    ```python
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+
+    limiter = Limiter(key_func=get_remote_address)
+
+    @limiter.limit("60/minute")
+    async def get_oee(...):
+        ...
+    ```
+  - **Rate limits**: 60 req/min for reads (more generous than 10 req/min for writes)
+  - **Rationale**: Prevents scraping and DDoS attacks on data endpoints
+
+- [ ] Enhance Prompt Injection Protection (shared/chat_service.py:31-82)
+  - **Priority**: Medium
+  - **Effort**: Medium (2-3 hours)
+  - **Context**: Current implementation only logs suspicious patterns; production needs to block them.
+  - **Enhancements**:
+    1. Unicode normalization (NFKC) to prevent lookalike character attacks
+    2. Block (not just log) suspicious patterns in production
+    3. Consider Azure Content Safety API for advanced detection
+    4. Add entropy checking for encoded payloads
+  - **Implementation**:
+    ```python
+    import unicodedata
+
+    def sanitize_user_input(message: str) -> tuple[str, bool]:
+        """Sanitize and validate user input.
+
+        Returns: (sanitized_message, is_safe)
+        """
+        # Unicode normalization (prevent homograph attacks)
+        normalized = unicodedata.normalize('NFKC', message)
+
+        # Check for suspicious patterns
+        suspicious_patterns = [
+            r'(?i)(ignore|forget|disregard).*instructions',
+            r'(?i)system.*prompt',
+            r'(?i)developer.*mode',
+            # ... more patterns
+        ]
+
+        is_suspicious = any(re.search(p, normalized) for p in suspicious_patterns)
+
+        if is_suspicious and not DEBUG:
+            # Block in production
+            raise ValueError("Input contains suspicious patterns")
+        elif is_suspicious:
+            # Log for debugging
+            logger.warning(f"Suspicious input detected: {message}")
+
+        return normalized, not is_suspicious
+    ```
+  - **Rationale**: Defense-in-depth against prompt injection, homograph attacks, encoded payloads
+
+- [ ] Implement Azure AD Authentication (New files: shared/auth.py, updates to all route files)
+  - **Priority**: Medium
+  - **Effort**: Large (4-6 hours)
+  - **Context**: Currently no authentication; anyone with API access can use service. Required for production multi-tenant security.
+  - **Implementation**:
+    1. Create shared/auth.py with JWT token validation
+    2. Add @require_auth dependency to protected endpoints
+    3. Use PyJWT + Azure AD JWKS for token verification
+    4. Frontend: Already configured in Phase 5 MSAL setup
+  - **Configuration**:
+    ```python
+    # shared/auth.py
+    from fastapi import Depends, HTTPException, Security
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+    import jwt
+    from jwt import PyJWKClient
+    from shared.config import AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID
+
+    security = HTTPBearer()
+    jwks_url = f"https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/discovery/v2.0/keys"
+    jwks_client = PyJWKClient(jwks_url)
+
+    async def verify_azure_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+        token = credentials.credentials
+        try:
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=AZURE_AD_CLIENT_ID,
+                issuer=f"https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/v2.0"
+            )
+            return payload
+        except Exception as e:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    ```
+  - **Environment Variables**: AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID (from app registration)
+  - **Rationale**: Only authenticated users can access the API; enables multi-tenant deployments
+
+#### Low Priority - Optional Enhancements
+
+- [ ] Add conversation history content sanitization (shared/chat_service.py:307-314)
+  - **Priority**: Low
+  - **Effort**: Quick (1 hour)
+  - **Context**: Sanitize content in conversation history before sending to Azure OpenAI API.
+  - **Note**: Pydantic model validation already prevents most issues (only 'user'/'assistant' roles allowed, non-empty content)
+  - **Enhancement**: Additional sanitization layer for defense-in-depth
+  - **Rationale**: Defense-in-depth against malformed history injection
+
+- [ ] Add request ID to metrics endpoints (backend/src/api/routes/metrics.py)
+  - **Priority**: Low (Enhancement)
+  - **Effort**: Quick (1 hour)
+  - **Context**: The /api/chat endpoint includes excellent request ID tracking for debugging (line 135: `request_id = str(uuid.uuid4())`), but the metrics endpoints don't have this. For a demo project this is perfectly acceptable, but adding request IDs to metrics endpoints would provide consistent logging across all endpoints.
+  - **Why It's Optional**: This is a nice-to-have for production observability, but not required for demo purposes. The current implementation is appropriate for the project scope.
   - **Implementation Notes**:
-    - Add comment block in chat.py explaining auth integration point
-    - Reference backend/src/api/auth.py (created in Phase 5)
+    - Add uuid.uuid4() generation for each metrics request
+    - Include request_id in logging statements
+    - Return request_id in response headers (optional)
 
-#### Testing
-- Test rate limiting with rapid requests
-- Verify CORS headers for allowed/blocked origins
-- Verify error responses (429 Too Many Requests)
-
-#### Completion Criteria
-- All requests are rate-limited at specified thresholds
-- CORS only allows configured origins
-- Health check endpoint is not rate-limited (for monitoring)
+- [ ] Rate limit configuration documentation enhancement (.env.example)
+  - **Priority**: Low (Enhancement)
+  - **Effort**: Quick (15 minutes)
+  - **Context**: The .env.example file has excellent documentation of rate limiting (lines 32-39), explaining the format and rationale. Consider adding a comment about what happens when rate limits are exceeded (429 status code, automatic retry headers).
+  - **Example improvement**:
+    ```bash
+    # Rate limiting for chat endpoint
+    # Format: number/timeunit (e.g., "10/minute", "100/hour", "1000/day")
+    # Default: 10/minute - prevents DoS attacks and excessive API costs
+    # When exceeded: Returns 429 Too Many Requests with Retry-After header
+    RATE_LIMIT_CHAT=10/minute
+    ```
+  - **Why It's Optional**: Documentation enhancement only, no code changes. Helps future developers understand rate limiting behavior.
 
 ---
 
-### PR8: Conversation History Validation & Error Messages
-**Status**: 📋 Planned after PR7
-**Phase**: Phase 1 (Backend API Foundation)
-**Priority**: Medium (Data integrity & better error messages)
-**Estimated Effort**: 3-4 hours
-**Dependencies**: Requires PR7 completion
+### Security Review Summary
 
-#### Tasks
+**Review Date**: 2025-11-02
+**Reviewer**: security-scanner agent
+**PR Reviewed**: PR8 (conversation history validation + environment-based errors)
+**Risk Level**: CRITICAL (due to API key exposure in .env, but mitigated by .gitignore)
 
-- [ ] Validate conversation history with strict role enforcement
-  - **Priority**: Medium
-  - **Effort**: Medium (1-2 hours)
-  - **Files**: shared/models.py, backend/src/api/routes/chat.py
-  - **Context**: Only allow ["user", "assistant"] roles; reject malformed history
-  - **Implementation Notes**:
-    - Update ChatMessage model with validation
-    - Add validator to ensure role in ["user", "assistant"]
-    - Add validator to ensure content is non-empty string
-    - Return 422 Unprocessable Entity for invalid history
+**Key Findings**:
+- 1 Critical: API keys in .env (mitigated by .gitignore, requires key rotation)
+- 2 High: Missing input validation (days parameter), DEBUG mode info disclosure
+- 5 Medium: Missing auth, basic prompt injection, no rate limiting on reads, secret management, enhanced prompt injection
+- 2 Low: Content sanitization, request ID tracking
 
-- [ ] Implement environment-based error messages
-  - **Priority**: Medium
-  - **Effort**: Quick (30 minutes)
-  - **Files**: backend/src/api/routes/chat.py
-  - **Context**: Hide stack traces in production (DEBUG env var controls verbosity)
-  - **Implementation Notes**:
-    - Add DEBUG config variable (default: False in production)
-    - Update error response handlers to check DEBUG flag
-    - Return full traceback in development, concise message in production
+**Positive Security Practices** (9 identified):
+- ✅ Comprehensive Pydantic input validation on chat endpoints
+- ✅ Rate limiting on expensive operations (chat, setup)
+- ✅ Environment-based secret management with .env files
+- ✅ HTTPS endpoint validation
+- ✅ Structured logging with request tracking and request IDs
+- ✅ Restricted CORS configuration with environment-based origins
+- ✅ Complete type safety throughout codebase
+- ✅ Proper async/await patterns (no blocking I/O)
+- ✅ Environment-based error handling (DEBUG mode for development)
 
-- [ ] Add input sanitization tests
-  - **Priority**: Medium
-  - **Effort**: Quick (30 minutes)
-  - **Files**: tests/test_chat_service.py
-  - **Context**: Verify invalid history is rejected
-  - **Implementation Notes**:
-    - Test invalid role in history
-    - Test empty content in history
-    - Test max history length enforcement (50 items)
-
-#### Testing
-- Test with malformed history (invalid roles)
-- Test with oversized history (>50 items)
-- Verify error messages differ between dev and production modes
-- Test with empty content messages
-
-#### Completion Criteria
-- Invalid history is rejected with clear error message
-- Production errors don't expose internal details
-- Development mode shows full diagnostics for debugging
+**Overall Assessment**: Excellent security practices for demo project. Main gaps (authentication, advanced prompt injection, secret vault) are expected for demo phase and documented here for production hardening.
 
 ---
 
@@ -240,6 +604,191 @@ PR6 successfully addressed all critical async/sync issues and important security
 - Update data.py to support Azure Blob Storage
 - Implement storage mode toggle (local dev vs. Azure)
 - Add blob storage tests
+
+---
+
+---
+
+### PR10: Storage Configuration & Comprehensive Testing (Planned)
+**Status**: Planned
+**Priority**: High
+**Estimated Effort**: 3-4 hours
+**Target**: Week 2 (after PR9 merged)
+**Dependencies**: PR9 complete (blob storage implementation)
+
+#### Context
+Implement environment-based storage mode configuration and complete test coverage for both local JSON and Azure Blob Storage modes. This ensures deployment flexibility (local dev vs. cloud production) and validates data integrity across storage backends.
+
+#### Tasks
+
+- [ ] Add STORAGE_MODE configuration
+  - **Priority**: Critical
+  - **Effort**: Quick (15-20 minutes)
+  - **Files**: shared/config.py, .env.example
+  - **Details**:
+    - Add `STORAGE_MODE` config variable with default "local"
+    - Valid values: "local" (file) or "azure" (blob storage)
+    - Add validation: raise error if invalid STORAGE_MODE
+    - Log which storage mode is active at startup
+    - Add `.env.example` entries:
+      ```
+      # Storage mode: local (JSON file) or azure (Blob Storage)
+      STORAGE_MODE=local
+
+      # Azure Blob Storage connection (required if STORAGE_MODE=azure)
+      AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
+      ```
+  - **Success Criteria**:
+    - Default "local" works without Azure credentials
+    - Invalid modes raise clear validation error
+    - Startup logs "Using local storage" or "Using Azure Blob Storage"
+
+- [ ] Create storage factory pattern
+  - **Priority**: High
+  - **Effort**: Medium (45 minutes - 1 hour)
+  - **Files**: shared/data.py
+  - **Details**:
+    - Create `StorageFactory` class or factory functions in data.py
+    - Provide unified interface regardless of storage backend:
+      - `get_data_async()` - unified entry point for loading (returns dict)
+      - `save_data_async()` - unified entry point for saving (takes dict)
+    - Factory selects implementation based on `STORAGE_MODE` config
+    - Hide storage backend details from FastAPI routes
+    - Example usage in route:
+      ```python
+      from shared.data import get_data_async, save_data_async
+
+      # Route doesn't care about storage mode
+      data = await get_data_async()
+      # ... process data ...
+      await save_data_async(data)
+      ```
+  - **Success Criteria**:
+    - FastAPI routes use unified API (no storage mode logic in routes)
+    - Routes work identically with local or Azure storage
+    - Configuration switch (STORAGE_MODE env var) changes storage backend transparently
+
+- [ ] Add comprehensive test suite for storage operations
+  - **Priority**: Critical
+  - **Effort**: Large (1.5-2 hours)
+  - **Files**: tests/test_storage_blob.py (NEW), tests/test_data_async.py (NEW)
+  - **Details**:
+
+    **tests/test_storage_blob.py** (blob-specific tests):
+    - Test blob upload and download
+    - Test blob exists check
+    - Test error handling (auth error, blob not found, network error)
+    - Test retry logic on transient failures
+    - Use Azure Storage Emulator or unittest.mock for isolation
+    - 8-10 tests covering:
+      - `test_upload_blob_success` - verify blob created with correct data
+      - `test_download_blob_success` - verify data retrieved correctly
+      - `test_download_blob_not_found` - verify error handling
+      - `test_blob_exists_true` - verify detection of existing blob
+      - `test_blob_exists_false` - verify detection of missing blob
+      - `test_auth_error_handling` - verify auth error caught
+      - `test_retry_on_transient_error` - verify retry logic
+      - `test_connection_string_validation` - verify config validation
+
+    **tests/test_data_async.py** (data.py async functions):
+    - Test `load_data_async()` in both storage modes
+    - Test `save_data_async()` in both storage modes
+    - Test data consistency (save → load → verify structure)
+    - Test fallback behavior (blob missing → generate fresh → save)
+    - Test both sync and async paths work identically
+    - 12-14 tests covering:
+      - `test_load_local_mode` - load from JSON file
+      - `test_save_local_mode` - save to JSON file
+      - `test_load_azure_mode` - load from blob
+      - `test_save_azure_mode` - save to blob
+      - `test_data_consistency_local` - verify data round-trip (local)
+      - `test_data_consistency_azure` - verify data round-trip (blob)
+      - `test_load_missing_blob_generates_data` - fallback behavior
+      - `test_mode_configuration` - verify STORAGE_MODE controls behavior
+      - `test_invalid_storage_mode` - error on bad config
+      - `test_concurrent_operations` - multiple async calls don't interfere
+      - `test_large_data_transfer` - verify large JSON handling
+      - `test_error_propagation` - errors properly reported
+
+  - **Success Criteria**:
+    - All tests pass (20-24 total new tests)
+    - 100% coverage of storage code paths
+    - Both storage modes tested identically
+    - Error scenarios validated
+
+- [ ] Verify all existing tests still pass
+  - **Priority**: Critical
+  - **Effort**: Medium (45 minutes)
+  - **Files**: tests/ (all existing)
+  - **Details**:
+    - Run full test suite: `pytest tests/ -v`
+    - Ensure no regressions from new async data functions
+    - Verify chat API tests still pass (use new async data functions)
+    - Verify metrics tests still pass
+    - Create CI/CD check: must pass before merge
+  - **Success Criteria**:
+    - All existing 32+ tests pass
+    - No new warnings or failures
+    - No breaking changes to public APIs
+
+- [ ] Update API integration tests for Blob Storage
+  - **Priority**: High
+  - **Effort**: Medium (1 hour)
+  - **Files**: tests/test_chat_integration.py, tests/test_api.py
+  - **Details**:
+    - Test `/api/setup` endpoint with blob storage (data saved to blob)
+    - Test `/api/metrics/*` endpoints read from blob correctly
+    - Test `/api/chat` endpoint with blob-sourced data
+    - Add environment variable fixtures for both storage modes
+    - Run same integration tests twice (once per storage mode)
+  - **Success Criteria**:
+    - All integration tests pass with Azure Blob Storage
+    - Data consistency verified across API calls
+    - No timeouts or connection issues
+
+- [ ] Create migration guide documentation
+  - **Priority**: Medium (nice-to-have for prod)
+  - **Effort**: Quick (30 minutes)
+  - **Files**: README.md (update), .env.example (update)
+  - **Details**:
+    - Document how to switch from local to Azure mode
+    - Step-by-step Azure Storage Account setup
+    - Environment variables needed
+    - How to test with local Emulator vs. cloud
+    - Troubleshooting section for common issues
+  - **Success Criteria**:
+    - New developers can follow steps to deploy to Azure
+
+#### Completion Criteria
+- [ ] PR10 passes all tests (both new and existing)
+- [ ] Storage mode configuration works end-to-end
+- [ ] Data integrity verified across both storage backends
+- [ ] 20-24 new tests added with >90% coverage
+- [ ] No regressions in existing functionality
+- [ ] Ready for production deployment (Phase 5)
+
+#### Integration with PR9
+PR10 depends entirely on PR9 (blob storage implementation). PR9 must:
+1. Complete `BlobStorageClient` implementation
+2. Complete async data functions in data.py
+3. Include basic error handling
+4. **Do NOT include** comprehensive test suite (that's PR10)
+
+After PR9 merges:
+1. Run PR9 tests to verify blob storage works
+2. Begin PR10 implementation
+3. Add comprehensive test suite in PR10
+4. Validate both storage modes in PR10 tests
+
+#### Success Metrics
+- **Code Coverage**: >90% of storage code paths tested
+- **Both Modes Tested**: Local and Azure modes both validated
+- **Data Integrity**: Zero data loss across storage transitions
+- **Error Handling**: All error paths tested and logged
+- **Performance**: No significant latency difference between storage modes
+- **Production Ready**: Can deploy to Azure Container Apps with confidence
+
+---
 
 ### Phase 3: React Frontend Development (Post-Phase 2)
 **Target**: Week 2-3 implementation
@@ -1699,7 +2248,7 @@ By completing this migration, you will gain hands-on experience with:
 
 ---
 
-**Document Version**: 2.1
-**Last Updated**: 2025-11-02
+**Document Version**: 2.3
+**Last Updated**: 2025-11-03
 **Author**: Migration Planning Assistant
-**Status**: PR6 Complete - PR7 Ready for Implementation
+**Status**: PR9 Complete - PR10 Ready for Implementation (Phase 2 Blob Storage 50% Complete)

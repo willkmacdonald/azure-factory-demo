@@ -1,4 +1,11 @@
-"""Data storage and management for factory production metrics."""
+"""Data storage and management for factory production metrics.
+
+This module supports two storage modes:
+1. Local mode (default): Stores data in local JSON file (data/production.json)
+2. Azure mode: Stores data in Azure Blob Storage (requires AZURE_STORAGE_CONNECTION_STRING)
+
+Storage mode is controlled by the STORAGE_MODE environment variable.
+"""
 
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -7,7 +14,8 @@ import random
 from pathlib import Path
 import logging
 import aiofiles
-from .config import DATA_FILE
+from .config import DATA_FILE, STORAGE_MODE
+from .blob_storage import BlobStorageClient
 
 logger = logging.getLogger(__name__)
 
@@ -98,22 +106,106 @@ def load_data() -> Optional[Dict[str, Any]]:
 
 async def load_data_async() -> Optional[Dict[str, Any]]:
     """
-    Load production data from JSON file asynchronously (for FastAPI use).
+    Load production data asynchronously (for FastAPI use).
+
+    Supports two storage modes:
+    - Local mode: Reads from JSON file (data/production.json)
+    - Azure mode: Reads from Azure Blob Storage
 
     Returns:
-        Dictionary containing production data, or None if file doesn't exist.
+        Dictionary containing production data, or None if file/blob doesn't exist.
+
+    Raises:
+        RuntimeError: If data loading fails
     """
-    path = get_data_path()
-    if not path.exists():
-        return None
-    try:
-        async with aiofiles.open(path, "r") as f:
-            content = await f.read()
-            return json.loads(content)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse JSON from {path}: {e}")
-    except (IOError, OSError) as e:
-        raise RuntimeError(f"Failed to read data from {path}: {e}")
+    storage_mode = STORAGE_MODE.lower()
+    logger.info(f"Loading data in {storage_mode} storage mode")
+
+    if storage_mode == "azure":
+        # Azure Blob Storage mode
+        blob_client = BlobStorageClient()
+        try:
+            exists = await blob_client.blob_exists()
+
+            if not exists:
+                logger.warning(
+                    "Production data blob not found in Azure Storage. "
+                    "Generating fresh data and uploading to blob."
+                )
+                # Generate fresh data and save to blob
+                data = generate_production_data()
+                await blob_client.upload_blob(data)
+                return data
+
+            # Download from blob
+            data = await blob_client.download_blob()
+            return data
+        except RuntimeError:
+            # Re-raise RuntimeErrors from blob_storage (already have context)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error loading data from Azure Blob Storage: {e}")
+            raise RuntimeError(f"Failed to load data from Azure Blob Storage: {e}") from e
+        finally:
+            # Always close client, even on error
+            await blob_client.close()
+    else:
+        # Local file mode (default)
+        path = get_data_path()
+        if not path.exists():
+            return None
+        try:
+            async with aiofiles.open(path, "r") as f:
+                content = await f.read()
+                return json.loads(content)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse JSON from {path}: {e}") from e
+        except (IOError, OSError) as e:
+            raise RuntimeError(f"Failed to read data from {path}: {e}") from e
+
+
+async def save_data_async(data: Dict[str, Any]) -> None:
+    """
+    Save production data asynchronously (for FastAPI use).
+
+    Supports two storage modes:
+    - Local mode: Writes to JSON file (data/production.json)
+    - Azure mode: Writes to Azure Blob Storage
+
+    Args:
+        data: Dictionary containing production data
+
+    Raises:
+        RuntimeError: If data saving fails
+    """
+    storage_mode = STORAGE_MODE.lower()
+    logger.info(f"Saving data in {storage_mode} storage mode")
+
+    if storage_mode == "azure":
+        # Azure Blob Storage mode
+        blob_client = BlobStorageClient()
+        try:
+            await blob_client.upload_blob(data)
+            logger.info("Successfully saved data to Azure Blob Storage")
+        except RuntimeError:
+            # Re-raise RuntimeErrors from blob_storage (already have context)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error saving data to Azure Blob Storage: {e}")
+            raise RuntimeError(f"Failed to save data to Azure Blob Storage: {e}") from e
+        finally:
+            # Always close client, even on error
+            await blob_client.close()
+    else:
+        # Local file mode (default)
+        path = get_data_path()
+        try:
+            json_data = json.dumps(data, indent=2, default=str)
+            async with aiofiles.open(path, "w") as f:
+                await f.write(json_data)
+            logger.info(f"Successfully saved data to {path}")
+        except (IOError, OSError) as e:
+            raise RuntimeError(f"Failed to save data to {path}: {e}") from e
 
 
 def data_exists() -> bool:
@@ -252,7 +344,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
 
 def initialize_data(days: int = 30) -> Dict[str, Any]:
     """
-    Generate and save production data.
+    Generate and save production data (synchronous for CLI use).
 
     Args:
         days: Number of days of data to generate (default: 30)
@@ -279,4 +371,40 @@ def initialize_data(days: int = 30) -> Dict[str, Any]:
         "end_date": data["end_date"],
         "machines": len(MACHINES),
         "file_path": str(DATA_FILE),
+    }
+
+
+async def initialize_data_async(days: int = 30) -> Dict[str, Any]:
+    """
+    Generate and save production data asynchronously (for FastAPI use).
+
+    Supports two storage modes:
+    - Local mode: Saves to JSON file (data/production.json)
+    - Azure mode: Saves to Azure Blob Storage
+
+    Args:
+        days: Number of days of data to generate (default: 30)
+
+    Returns:
+        Dictionary containing metadata about the generated data:
+        - days: Number of days generated
+        - start_date: Start date (YYYY-MM-DD)
+        - end_date: End date (YYYY-MM-DD)
+        - machines: Number of machines
+        - storage_mode: Storage mode used ("local" or "azure")
+    """
+    logger.info(f"Generating {days} days of production data...")
+    data = generate_production_data(days)
+    await save_data_async(data)
+
+    total_days = len(data["production"])
+    logger.info(f"Generated {total_days} days from {data['start_date']} to {data['end_date']}")
+    logger.info(f"Data saved using {STORAGE_MODE} storage mode")
+
+    return {
+        "days": total_days,
+        "start_date": data["start_date"],
+        "end_date": data["end_date"],
+        "machines": len(MACHINES),
+        "storage_mode": STORAGE_MODE,
     }

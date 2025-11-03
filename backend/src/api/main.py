@@ -19,6 +19,7 @@ This module provides:
 - Automatic API documentation at /docs and /redoc
 """
 
+import logging
 from typing import Dict
 
 from fastapi import FastAPI, Request
@@ -27,7 +28,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from shared.config import ALLOWED_ORIGINS
+from shared.config import ALLOWED_ORIGINS, DEBUG
 
 from .routes import metrics, data, chat
 
@@ -43,6 +44,21 @@ app = FastAPI(
     description="Backend API for factory operations monitoring and analysis",
     version="1.0.0",
 )
+
+# =============================================================================
+# SECURITY WARNINGS
+# =============================================================================
+
+# Warn if DEBUG mode is enabled (security risk in production)
+# DEBUG mode exposes detailed error messages to clients, which can leak
+# internal implementation details, file paths, and stack traces.
+# This is acceptable for local development but should NEVER be enabled
+# in production deployments.
+if DEBUG:
+    logging.warning(
+        "⚠️  DEBUG MODE ENABLED - Detailed errors will be exposed to clients. "
+        "Set DEBUG=false for production deployments."
+    )
 
 # =============================================================================
 # RATE LIMITING CONFIGURATION

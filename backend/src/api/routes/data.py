@@ -23,13 +23,15 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from shared.data import (
     initialize_data,
+    initialize_data_async,
     load_data,
+    load_data_async,
     data_exists,
     MACHINES,
 )
@@ -57,9 +59,14 @@ class SetupRequest(BaseModel):
     """Request model for data generation endpoint.
 
     Attributes:
-        days: Number of days of production data to generate (default: 30)
+        days: Number of days of production data to generate (1-365, default: 30)
     """
-    days: int = 30
+    days: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        description="Number of days of production data to generate (1-365)"
+    )
 
 
 class SetupResponse(BaseModel):
@@ -183,8 +190,8 @@ async def setup_data(
         }
     """
     try:
-        # Generate and save data, get metadata directly from return value
-        result = initialize_data(days=setup_request.days)
+        # Generate and save data asynchronously, get metadata directly from return value
+        result = await initialize_data_async(days=setup_request.days)
 
         return SetupResponse(
             message="Data generated successfully",
@@ -238,11 +245,8 @@ async def get_stats() -> StatsResponse:
             "total_records": null
         }
     """
-    if not data_exists():
-        return StatsResponse(exists=False)
-
     try:
-        data = load_data()
+        data = await load_data_async()
         if data is None:
             return StatsResponse(exists=False)
 
@@ -338,18 +342,12 @@ async def get_date_range() -> DateRangeResponse:
             "total_days": 60
         }
     """
-    if not data_exists():
-        raise HTTPException(
-            status_code=404,
-            detail="No data available. Generate data using POST /api/setup"
-        )
-
     try:
-        data = load_data()
+        data = await load_data_async()
         if data is None:
             raise HTTPException(
                 status_code=404,
-                detail="No data available"
+                detail="No data available. Generate data using POST /api/setup"
             )
 
         start_date = data.get("start_date")
