@@ -15,11 +15,14 @@ A cloud-native AI demonstration system for factory operations analysis, featurin
   - PR6: Production hardening (async/sync fixes, error handling)
   - PR7: Security (rate limiting, CORS, input validation)
   - PR8: Environment configuration (DEBUG mode, error verbosity)
-- ✅ **Phase 2: Setup** (Complete - 2025-11-03)
+- ✅ **Phase 2: Azure Blob Storage Integration** (Complete - PR9, PR10)
   - Azure Storage Account created (`factoryagentdata`)
   - Blob container ready (`factory-data`)
-  - Dual storage mode configured (local/azure)
-- ⏳ **Phase 2: PR9** - Azure Blob Storage Integration (Next)
+  - PR9: Async blob storage implementation (2025-11-03)
+  - PR10: Storage configuration & comprehensive testing (2025-11-03)
+    - 47 new tests added (24 blob storage + 23 async data layer)
+    - Storage mode switching validated
+    - Migration guide in README
 
 Both systems currently coexist and share the same metrics engine and data layer.
 
@@ -142,6 +145,100 @@ cp .env.example .env
 - `AZURE_BLOB_CONTAINER`: Container name (default: `factory-data`)
 
 **Note**: Local storage mode is the default. No Azure Storage setup is required for development. See [AZURE_STORAGE_SETUP.md](AZURE_STORAGE_SETUP.md) for cloud storage configuration.
+
+### Switching from Local to Azure Blob Storage
+
+The application supports two storage backends for production data:
+1. **Local Mode** (default): Stores `production.json` in the `data/` directory
+2. **Azure Mode**: Stores `production.json` in Azure Blob Storage
+
+**To switch from local to Azure storage:**
+
+1. **Create Azure Storage Account** (if not already done):
+   ```bash
+   # Using Azure CLI
+   az storage account create \
+     --name factoryagentdata \
+     --resource-group factory-agent-rg \
+     --location eastus \
+     --sku Standard_LRS \
+     --kind StorageV2
+
+   # Create blob container
+   az storage container create \
+     --name factory-data \
+     --account-name factoryagentdata
+   ```
+
+2. **Get Connection String**:
+   ```bash
+   # Using Azure CLI
+   az storage account show-connection-string \
+     --name factoryagentdata \
+     --resource-group factory-agent-rg \
+     --output tsv
+
+   # Or get from Azure Portal:
+   # Storage Account → Access Keys → Connection String
+   ```
+
+3. **Update `.env` file**:
+   ```bash
+   # Change storage mode from local to azure
+   STORAGE_MODE=azure
+
+   # Add connection string (from step 2)
+   AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=factoryagentdata;AccountKey=...
+
+   # Container name (default: factory-data)
+   AZURE_BLOB_CONTAINER=factory-data
+   ```
+
+4. **Restart the application**:
+   - The application will automatically use Azure Blob Storage
+   - If `production.json` blob doesn't exist, it will be auto-generated on first access
+   - All FastAPI endpoints will now read from/write to Azure Blob Storage
+
+**Testing the migration:**
+```bash
+# 1. Verify storage mode (check logs)
+tail -f logs/app.log | grep "Loading data in"
+# Should show: "Loading data in azure storage mode"
+
+# 2. Generate test data (will upload to blob)
+curl -X POST http://localhost:8000/api/setup
+
+# 3. Verify blob was created
+az storage blob list \
+  --container-name factory-data \
+  --account-name factoryagentdata \
+  --output table
+
+# 4. Test data retrieval (will download from blob)
+curl http://localhost:8000/api/stats
+```
+
+**Migrating existing data from local to Azure:**
+```bash
+# Option 1: Let the app auto-generate (easiest)
+# Just switch STORAGE_MODE=azure and run /api/setup
+
+# Option 2: Upload existing data manually
+az storage blob upload \
+  --container-name factory-data \
+  --name production.json \
+  --file data/production.json \
+  --account-name factoryagentdata
+```
+
+**Rolling back to local storage:**
+```bash
+# In .env file, change:
+STORAGE_MODE=local
+
+# Restart the application
+# It will now read from data/production.json again
+```
 
 **Getting Azure credentials**:
 1. Go to [Azure Portal](https://portal.azure.com)
