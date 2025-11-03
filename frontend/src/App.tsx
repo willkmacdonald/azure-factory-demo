@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Box, Container, Paper, Typography } from '@mui/material';
+import { Box, Container, Paper, Typography, Divider } from '@mui/material';
+import ApiHealthCheck from './components/ApiHealthCheck';
 import './App.css';
 
 /**
@@ -7,20 +7,12 @@ import './App.css';
  *
  * This is the initial PR11 setup with a basic layout structure.
  * Future PRs will add:
- * - PR12: Split-pane layout with Dashboard and Console panels
+ * - PR12: Machine filters and date range selectors
  * - PR13: Dashboard visualizations (OEE, charts, tables)
  * - PR14: Chat console with AI integration
  */
 function App() {
-  const [selectedMachine] = useState<string | undefined>();
-  const [dateRange] = useState({
-    startDate: '2024-10-01',
-    endDate: '2024-10-31',
-  });
-
-  // Suppress unused variable warnings for future PRs
-  // These will be used when filters are added in PR12
-  void selectedMachine;
+  // State variables will be added in PR12 when filters are implemented
 
   return (
     <Container maxWidth="xl" sx={{ height: '100vh', py: 2 }}>
@@ -39,16 +31,17 @@ function App() {
           </Typography>
           <Typography color="text.secondary">
             Dashboard components will be added in PR12 and PR13.
-            This will include OEE gauges, trend charts, downtime tables, and quality metrics.
+            This will include machine filters, date range selectors, OEE gauges,
+            trend charts, downtime tables, and quality metrics.
           </Typography>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2">
-              Selected Machine: {selectedMachine || 'All Machines'}
-            </Typography>
-            <Typography variant="body2">
-              Date Range: {dateRange.startDate} to {dateRange.endDate}
-            </Typography>
-          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* PR11: API Health Check */}
+          <Typography variant="h6" gutterBottom>
+            PR11: API Connectivity Test
+          </Typography>
+          <ApiHealthCheck />
         </Paper>
 
         {/* Console Panel (right) - Placeholder for PR14 */}

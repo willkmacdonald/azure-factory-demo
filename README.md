@@ -23,6 +23,13 @@ A cloud-native AI demonstration system for factory operations analysis, featurin
     - 47 new tests added (24 blob storage + 23 async data layer)
     - Storage mode switching validated
     - Migration guide in README
+- 🚧 **Phase 3: React Frontend Development** (In Progress - 1/7 PRs)
+  - ✅ PR11: Core API Client & Data Models (2025-11-03)
+    - TypeScript API types matching all backend Pydantic models
+    - Enterprise-grade Axios API client with interceptors and error handling
+    - Reusable React hooks for async operations (useAsyncData, useAsyncCallback)
+    - API health check component demonstrating integration
+    - Full type safety for frontend-backend communication
 
 Both systems currently coexist and share the same metrics engine and data layer.
 
@@ -315,6 +322,39 @@ npm run lint       # Run ESLint
 - Machine filtering
 - Date range selection
 
+**API Integration (PR11):**
+The frontend now includes a complete API client foundation:
+
+```typescript
+import apiService from './services/api';
+
+// Type-safe API calls with automatic error handling
+const machines = await apiService.getMachines();
+const oee = await apiService.getOEE({
+  start_date: '2024-10-01',
+  end_date: '2024-10-31'
+});
+
+// React hooks for async operations
+const { data, loading, error, refetch } = useAsyncData(
+  async () => await apiService.getMachines()
+);
+```
+
+**Available API Methods:**
+- `checkHealth()` - API health check
+- `generateData()` - Generate test data
+- `getStats()` - Data statistics
+- `getMachines()` - List available machines
+- `getDateRange()` - Get available data date range
+- `getOEE(params?)` - OEE metrics
+- `getScrap(params?)` - Scrap analysis
+- `getQuality(params?)` - Quality issues
+- `getDowntime(params?)` - Downtime analysis
+- `sendChatMessage(request)` - AI chat
+
+All methods are fully typed with TypeScript interfaces matching backend Pydantic models.
+
 ---
 
 ### Legacy System (CLI + Streamlit)
@@ -473,11 +513,11 @@ This starts:
 The production deployment will include:
 - Azure Container Registry for Docker images
 - Azure Container Apps for serverless hosting
-- Azure Blob Storage for data persistence (infrastructure ready, PR9 in progress)
+- Azure Blob Storage for data persistence (Phase 2 complete - PR9, PR10)
 - Azure AD for authentication
 - GitHub Actions for CI/CD
 
-**Phase 2 Progress**: Azure Storage Account (`factoryagentdata`) and blob container (`factory-data`) have been created and configured. The application currently supports dual storage modes, with local JSON as the default for development.
+**Phase 2 Status**: Azure Storage Account (`factoryagentdata`) and blob container (`factory-data`) have been created and configured. The application supports dual storage modes (local JSON and Azure Blob Storage), with 47 comprehensive tests validating both backends. Local JSON is the default for development.
 
 ---
 
@@ -517,10 +557,15 @@ factory-agent/
 │   │   │   │   ├── MessageList.tsx
 │   │   │   │   ├── MessageItem.tsx
 │   │   │   │   └── ChatInput.tsx
+│   │   │   ├── ApiHealthCheck.tsx  # PR11: Health check component
 │   │   │   ├── DashboardPanel.tsx
 │   │   │   └── ConsolePanel.tsx
 │   │   ├── services/
-│   │   │   └── api.ts              # Axios API client
+│   │   │   └── api.ts              # PR11: Axios API client with interceptors
+│   │   ├── types/
+│   │   │   └── api.ts              # PR11: TypeScript API interfaces
+│   │   ├── utils/
+│   │   │   └── async.ts            # PR11: React hooks & async utilities
 │   │   ├── App.tsx                 # Main app with split-pane
 │   │   └── main.tsx                # Entry point
 │   ├── package.json
@@ -571,7 +616,8 @@ factory-agent/
    - Split-pane layout with Dashboard and Console panels
    - Material-UI components for consistent design
    - Recharts for data visualization
-   - Axios for API communication
+   - Type-safe API client with full error handling (PR11)
+   - Reusable React hooks for async operations (useAsyncData, useAsyncCallback)
    - Real-time chat interface
 
 2. **Backend (FastAPI)**:
@@ -626,6 +672,10 @@ These functions enable both text and voice interfaces to share the same chat log
 ```
 React Frontend → Axios HTTP Client → FastAPI Backend → Metrics Functions → JSON/Azure Blob → Response
 
+API Client Layer (PR11):
+TypeScript Component → useAsyncData/useAsyncCallback Hook → apiService Method →
+Axios Request Interceptor → Backend Endpoint → Response Interceptor → Error Handler → Component State
+
 Chat Flow:
 User Message → POST /api/chat → Chat Service → Azure AI (tool-calling) →
 Metrics Functions → JSON Data → AI Response → Frontend
@@ -676,7 +726,12 @@ Production-ready architecture with modern best practices:
 - **Production hardening** (rate limiting, CORS, input validation - PR7)
 - **Environment configuration** (DEBUG mode, error verbosity - PR8)
 - **React + TypeScript frontend** (type-safe, component-based)
-- **Azure Blob Storage** (cloud-native data persistence - Phase 2 setup complete, PR9 in progress)
+- **Type-safe API client** (PR11 - Complete type coverage, error handling, React hooks)
+  - TypeScript interfaces matching backend Pydantic models
+  - Axios client with request/response interceptors
+  - Reusable React hooks (useAsyncData, useAsyncCallback)
+  - Centralized error handling and user-friendly messages
+- **Azure Blob Storage** (cloud-native data persistence - Phase 2 complete)
 - **Dual storage mode** (local JSON for dev, Azure Blob for production)
 - **Docker containerization** (portable, reproducible deployments)
 - **Azure Container Apps** (serverless, auto-scaling)

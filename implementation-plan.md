@@ -10,22 +10,31 @@
 
 ## Current Status
 
-**Phase**: Phase 2 - Azure Blob Storage Integration (COMPLETE!)
-**Last Completed**: PR10 - Comprehensive Testing for Azure Blob Storage Integration (2025-11-03)
-**Next Priority**: Phase 3 - React Frontend Development (Post-Phase 2)
+**Phase**: Phase 3 - React Frontend Development (IN PROGRESS)
+**Last Completed**: PR11 - Core API Client & Data Models (2025-11-03)
+**Next Priority**: PR12 - Dashboard Layout & Navigation
 
 ### Summary
-Phase 1 (Backend API Foundation) and Phase 2 (Azure Blob Storage Integration) are now complete! PR9 successfully implemented async blob storage operations with dual-mode support (local JSON and Azure Blob Storage). PR10 delivered comprehensive test coverage with 47 tests across both storage backends, plus critical dependency fixes. Both local development and Azure cloud deployment are fully validated and production-ready. Ready to begin Phase 3 for React Frontend Development.
+Phase 1 (Backend API Foundation), Phase 2 (Azure Blob Storage Integration), and foundational setup for Phase 3 (React Frontend) are now complete! PR9 successfully implemented async blob storage operations with dual-mode support (local JSON and Azure Blob Storage). PR10 delivered comprehensive test coverage with 47 tests across both storage backends, plus critical dependency fixes. React project structure is now in place at `frontend/` with Vite + React + TypeScript, Material-UI, Recharts, and Axios dependencies. Ready to begin Phase 3 frontend implementation with 7 planned PRs (PR11-PR17).
 
 **Progress - Phase 1**: 3/3 core PRs complete (100%)
 - PR6: Async Chat API ✅ COMPLETE
 - PR7: Production Hardening & Rate Limiting ✅ COMPLETE
 - PR8: Conversation History Validation ✅ COMPLETE
 
-**Progress - Phase 2**: 2/2 PRs complete (100%)
+**Progress - Phase 2**: 3/3 PRs complete (100%)
 - Azure Storage Account Setup ✅ COMPLETE
 - PR9: Blob Storage Implementation ✅ COMPLETE
 - PR10: Comprehensive Testing & Dependency Fixes ✅ COMPLETE
+
+**Progress - Phase 3**: 1/7 PRs complete (14%)
+- PR11: Core API Client & Data Models ✅ COMPLETE
+- PR12: Dashboard Layout & Navigation (PLANNED)
+- PR13: Metrics Dashboard & Charts (PLANNED)
+- PR14: Machine Status & Alerts View (PLANNED)
+- PR15: AI Chat Interface (PLANNED)
+- PR16: Authentication & Azure AD Integration (PLANNED)
+- PR17: Deployment & CI/CD (PLANNED)
 
 ---
 
@@ -699,22 +708,529 @@ PR6 successfully addressed all critical async/sync issues and important security
 
 ---
 
-## 🎯 Upcoming Work Items
+## 🎯 Phase 3: React Frontend Development (NOW IN PROGRESS)
 
-### Phase 3: React Frontend Development (Post-Phase 2) - NEXT PRIORITY
-**Target**: Week 2-3 implementation
-**Key Tasks**:
-- Set up Vite + React + TypeScript project
-- Build split-pane layout with Material-UI
-- Implement dashboard components (OEE, charts, tables)
-- Implement chat console components
-- Test full integration with FastAPI backend
+### Structure Overview
+Phase 3 focuses on building out the React frontend with 7 focused PRs. The frontend project structure is now in place at `frontend/` with:
+- Vite + React + TypeScript (fully configured)
+- Material-UI (MUI) components
+- Recharts for data visualization
+- Axios for API calls
+- Basic project structure (components, pages, api, utils)
+
+Each PR builds incrementally, allowing for testing at each stage before moving to the next.
+
+---
+
+### PR11: Core API Client & Data Models (Completed 2025-11-03)
+**Status**: COMPLETED
+**Priority**: HIGH
+**Estimated Effort**: 3-4 hours (completed in ~3 hours)
+
+#### Overview
+Create TypeScript interfaces and Axios-based API client layer that matches backend Pydantic models. This foundation enables all other frontend PRs to communicate with the backend.
+
+#### Completed Tasks
+
+- [x] Create TypeScript interfaces matching backend models (frontend/src/types/api.ts)
+  - **Status**: IMPLEMENTED
+  - **Files Created**: frontend/src/types/api.ts
+  - **Implementation Details**:
+    - Complete TypeScript interfaces for all backend Pydantic models
+    - OEEMetrics, ScrapMetrics, QualityIssue, QualityIssues types
+    - DowntimeAnalysis, MajorDowntimeEvent types
+    - ChatMessage, ChatRequest, ChatResponse types
+    - SetupRequest, SetupResponse, StatsResponse types
+    - MachineInfo, DateRangeResponse types
+    - HealthResponse, ApiError types
+    - MetricsQueryParams interface for filtering
+    - isApiError() type guard utility
+
+- [x] Build Axios-based API client with error handling (frontend/src/services/api.ts)
+  - **Status**: IMPLEMENTED
+  - **Files Updated**: frontend/src/services/api.ts
+  - **Implementation Details**:
+    - Axios instance with 30-second timeout and base URL configuration
+    - Request interceptor with development logging
+    - Response interceptor with error formatting
+    - FormattedApiError interface for consistent error handling
+    - formatApiError() utility for Axios error conversion
+    - getErrorMessage() utility for user-friendly error messages
+    - All API methods: checkHealth, generateData, getStats, getMachines, getDateRange
+    - Metrics methods: getOEE, getScrap, getQuality, getDowntime
+    - Chat method: sendChatMessage
+    - All methods fully typed with TypeScript
+    - Proper handling of network, timeout, server, and client errors
+
+- [x] Add loading states and error handling utilities (frontend/src/utils/async.ts)
+  - **Status**: IMPLEMENTED
+  - **Files Created**: frontend/src/utils/async.ts
+  - **Implementation Details**:
+    - useAsyncData<T> hook for auto-fetching data with loading/error states
+    - useAsyncCallback<T> hook for user-triggered async actions
+    - Error checking utilities: isNetworkError, isTimeoutError, isServerError, isClientError
+    - Authentication and rate limit error checkers: isAuthError, isRateLimitError
+    - withRetry() utility with exponential backoff
+    - createSkeletonArray() for loading placeholders
+    - debounce() utility for input throttling
+
+- [x] Test API connectivity with health check endpoint
+  - **Status**: IMPLEMENTED
+  - **Files Created**: frontend/src/components/ApiHealthCheck.tsx
+  - **Implementation Details**:
+    - Interactive health check component with Material-UI
+    - Real-time API connectivity testing
+    - Loading, error, and success states
+    - Manual refresh functionality
+    - API endpoint documentation display
+    - Integration into App.tsx for immediate testing
+    - Demonstrates useAsyncData hook usage
+    - Build verification: npm run build succeeds with no TypeScript errors
+
+#### Deliverables
+- ✅ Complete TypeScript API types (matches backend)
+- ✅ Axios client with full error handling
+- ✅ Reusable async utilities and hooks
+- ✅ API connectivity verified with interactive component
+
+#### Files Created/Modified
+**Created**:
+- `frontend/src/types/api.ts` - Complete API type definitions (200+ lines)
+- `frontend/src/utils/async.ts` - React hooks and async utilities (350+ lines)
+- `frontend/src/components/ApiHealthCheck.tsx` - Health check component (120+ lines)
+- `PR11_IMPLEMENTATION.md` - Comprehensive implementation documentation
+
+**Modified**:
+- `frontend/src/services/api.ts` - Enhanced with interceptors and error handling (350+ lines)
+- `frontend/src/App.tsx` - Added ApiHealthCheck component integration
+- `frontend/package.json` - Added @mui/icons-material dependency
+
+#### Dependencies Added
+- `@mui/icons-material@^7.1.12` - Material-UI icons for UI components
+
+#### Build Verification
+- TypeScript compilation: ✅ No errors
+- Production build: ✅ Success (373.56 KB, gzipped: 120.39 KB)
+- All new types properly integrated
+- No linting errors
+
+#### Testing
+- Manual testing: ✅ ApiHealthCheck component works correctly
+- Loading states: ✅ Display correctly
+- Error states: ✅ Network errors handled properly
+- Success states: ✅ Health check succeeds with backend running
+
+#### Documentation
+- Comprehensive PR11_IMPLEMENTATION.md created
+- All functions have JSDoc comments
+- Usage examples provided for hooks and utilities
+- Backend API reference created by Explore agent
+
+#### Code Review & Improvements (2025-11-03)
+**Review Agent**: pr-reviewer
+**Overall Assessment**: Ready for merge (95% CLAUDE.md compliance)
+
+**Critical Fixes Applied**:
+- ✅ Fixed `MachineInfo.id` type mismatch: `string` → `number` (frontend/src/types/api.ts:156)
+- ✅ Fixed `SetupResponse.machines` type mismatch: `string[]` → `number` (frontend/src/types/api.ts:135)
+
+**Important Improvements Applied**:
+- ✅ Added `isBusinessError()` helper for metrics endpoints that return `{ error: string }` with 200 OK
+- ✅ Updated all metrics endpoints (getOEE, getScrap, getQuality, getDowntime) to check for business errors
+- ✅ Removed unused state variables from App.tsx (selectedMachine, dateRange)
+- ✅ Fixed useAsyncData dependency array issue with useRef pattern to prevent unnecessary re-renders
+- ✅ Added comprehensive JSDoc documentation to AsyncState and UseAsyncDataOptions interfaces
+
+**Review Highlights**:
+- Excellent TypeScript type coverage across all API responses
+- Comprehensive error handling with user-friendly messages
+- Beginner-friendly patterns with extensive inline comments
+- Appropriate simplicity for demo project (no over-engineering)
+- Strong foundation for future PRs to build upon
+
+**Files Modified During Review**:
+- `frontend/src/types/api.ts` - Type fixes for backend alignment
+- `frontend/src/services/api.ts` - Business error handling added
+- `frontend/src/App.tsx` - Removed placeholder code
+- `frontend/src/utils/async.ts` - Fixed dependency array issue, added JSDoc
+
+---
+
+### 📋 PR12: Dashboard Layout & Navigation
+**Status**: Planned
+**Priority**: HIGH
+**Estimated Effort**: 3-4 hours
+
+#### Overview
+Create the main dashboard layout with Material-UI components, navigation structure, and responsive design patterns. This establishes the visual framework for Phase 3.
+
+#### Tasks
+
+- [ ] Create main dashboard layout with MUI AppBar and Drawer (frontend/src/components/layout/MainLayout.tsx)
+  - **Priority**: HIGH
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Top-level layout component
+  - **Details**:
+    - MUI AppBar with title and user menu
+    - Persistent Drawer with navigation links
+    - Main content area that adapts to drawer open/close
+    - Logo and branding in header
+    - Responsive design for mobile
+
+- [ ] Add navigation structure with React Router (frontend/src/App.tsx)
+  - **Priority**: HIGH
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Routes for all dashboard sections
+  - **Details**:
+    - React Router v6 setup with BrowserRouter
+    - Routes: Dashboard, Machines, Alerts, Chat
+    - Active route styling in navigation
+    - Route transitions with Suspense
+    - Error boundary for route errors
+
+- [ ] Implement responsive design patterns (frontend/src/styles/theme.ts)
+  - **Priority**: HIGH
+  - **Effort**: Quick (1 hour)
+  - **Context**: MUI theme and responsive utilities
+  - **Details**:
+    - Material-UI custom theme (colors, typography, spacing)
+    - Breakpoints for mobile/tablet/desktop
+    - CSS-in-JS utilities for responsive components
+    - Dark mode toggle setup (for future)
+    - Consistent spacing and alignment
+
+#### Deliverables
+- ✅ Main layout with AppBar and Drawer
+- ✅ Navigation structure with React Router
+- ✅ Responsive design patterns
+- ✅ MUI theme configuration
+
+---
+
+### 📋 PR13: Metrics Dashboard & Charts
+**Status**: Planned
+**Priority**: HIGH
+**Estimated Effort**: 4-5 hours
+
+#### Overview
+Build the metrics overview page with cards for key statistics and implement Recharts visualizations. This is the core dashboard view users see first.
+
+#### Tasks
+
+- [ ] Build metrics overview page with statistic cards (frontend/src/pages/Dashboard.tsx)
+  - **Priority**: HIGH
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Main dashboard page layout
+  - **Details**:
+    - Grid layout with cards: Current OEE, Production Rate, Quality Score, Uptime %
+    - Date range picker for filtering
+    - Machine dropdown filter
+    - Loading skeleton while data loads
+    - Error state with retry button
+    - Real-time data refresh (optional polling)
+
+- [ ] Implement Recharts visualizations for production trends (frontend/src/components/charts/)
+  - **Priority**: HIGH
+  - **Effort**: Medium (2 hours)
+  - **Context**: 3 main charts
+  - **Details**:
+    - OEETrendChart.tsx: LineChart showing daily OEE % over time
+    - ProductionRateChart.tsx: AreaChart showing production rate trend
+    - EfficiencyBreakdownChart.tsx: PieChart showing availability/performance/quality split
+    - All charts responsive, labeled axes, tooltips
+    - Click legend to show/hide series
+
+- [ ] Create reusable chart components (frontend/src/components/charts/ChartContainer.tsx)
+  - **Priority**: HIGH
+  - **Effort**: Quick (1 hour)
+  - **Context**: Wrapper for all charts
+  - **Details**:
+    - ChartContainer: Loading state, error handling, empty state
+    - ChartLegend: Custom legend for Recharts
+    - ChartTooltip: Formatted tooltip component
+    - Theme colors for consistency
+
+- [ ] Add real-time data fetching from backend API (frontend/src/hooks/useMetrics.ts)
+  - **Priority**: HIGH
+  - **Effort**: Medium (1 hour)
+  - **Context**: Custom hook for metrics data
+  - **Details**:
+    - useMetrics hook with loading/error state
+    - Auto-fetch on mount and filter changes
+    - Optional polling with configurable interval
+    - Caching to avoid duplicate requests
+    - Error recovery with retry
+
+#### Deliverables
+- ✅ Metrics dashboard page with statistics cards
+- ✅ 3 interactive Recharts charts
+- ✅ Reusable chart wrapper components
+- ✅ Real-time data fetching with caching
+
+---
+
+### 📋 PR14: Machine Status & Alerts View
+**Status**: Planned
+**Priority**: MEDIUM
+**Estimated Effort**: 3-4 hours
+
+#### Overview
+Create machine list view with status indicators and alerts notification system. Provides operational visibility into individual machines.
+
+#### Tasks
+
+- [ ] Create machine list view with status indicators (frontend/src/pages/Machines.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Machine inventory page
+  - **Details**:
+    - MUI DataGrid for machine list
+    - Columns: Name, Status, OEE, Last Updated, Actions
+    - Status indicator: Green (Running), Yellow (Warning), Red (Down)
+    - Sort and filter capabilities
+    - Click machine to view details
+
+- [ ] Build alert notification system (frontend/src/components/alerts/AlertNotification.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Alert display and management
+  - **Details**:
+    - Alert card component with severity colors
+    - Alert list showing recent alerts (last 10)
+    - Filter by machine and severity
+    - Mark alert as resolved
+    - Toast notifications for new alerts
+    - Alert history page
+
+- [ ] Add filtering and sorting capabilities (frontend/src/hooks/useMachineFilter.ts)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (45 minutes)
+  - **Context**: Machine list filtering
+  - **Details**:
+    - Filter by status (Running, Warning, Down)
+    - Sort by Name, OEE, Last Updated
+    - Search by machine name
+    - Persist filters in URL params
+
+- [ ] Implement machine detail view (frontend/src/pages/MachineDetail.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1 hour)
+  - **Context**: Detailed machine view
+  - **Details**:
+    - Machine stats: Current OEE, Status, Efficiency, Performance, Quality
+    - Last 30 days trend chart
+    - Recent alerts for this machine
+    - Back button to machine list
+
+#### Deliverables
+- ✅ Machine list view with status indicators
+- ✅ Alert notification system with filtering
+- ✅ Filtering and sorting on machine list
+- ✅ Machine detail page with statistics
+
+---
+
+### 📋 PR15: AI Chat Interface
+**Status**: Planned
+**Priority**: MEDIUM
+**Estimated Effort**: 3-4 hours
+
+#### Overview
+Create chat UI component with message history and integrate with backend chat API. Provides AI assistant interaction for factory insights.
+
+#### Tasks
+
+- [ ] Create chat UI component with message history (frontend/src/components/chat/ChatConsole.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1.5 hours)
+  - **Context**: Main chat interface
+  - **Details**:
+    - Message list with auto-scroll to bottom
+    - Message styling: different colors for user/assistant
+    - Timestamp on each message
+    - Loading indicator while waiting for response
+    - Chat history persisted in component state
+
+- [ ] Integrate with backend /api/chat endpoint (frontend/src/hooks/useChat.ts)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1 hour)
+  - **Context**: Chat API integration
+  - **Details**:
+    - useChat hook managing conversation state
+    - Send message function with error handling
+    - Conversation history management (max 50 messages)
+    - Optimistic updates (show user message immediately)
+    - Error recovery with retry
+
+- [ ] Add typing indicators and loading states (frontend/src/components/chat/TypingIndicator.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (45 minutes)
+  - **Context**: UX feedback
+  - **Details**:
+    - Animated typing indicator when AI is responding
+    - Loading spinner on send button
+    - Disable input while waiting for response
+    - Estimated time remaining (optional)
+
+- [ ] Implement suggested questions/prompts (frontend/src/components/chat/SuggestedPrompts.tsx)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (45 minutes)
+  - **Context**: Help users get started
+  - **Details**:
+    - Show suggested questions initially (when chat is empty)
+    - Examples: "What's the OEE for Machine A?", "Show me today's downtime"
+    - Click to fill input box
+    - Hide after first message
+
+#### Deliverables
+- ✅ Chat console with message history
+- ✅ Integration with backend API
+- ✅ Typing indicators and loading states
+- ✅ Suggested prompts for easy interaction
+
+---
+
+### 📋 PR16: Authentication & Azure AD Integration
+**Status**: Planned
+**Priority**: LOW (Optional for demo, HIGH for production)
+**Estimated Effort**: 2-3 hours
+
+#### Overview
+Add Azure AD authentication with Microsoft accounts. Enables secure multi-user access and aligns with enterprise Azure ecosystem.
+
+#### Tasks
+
+- [ ] Add @azure/msal-react for Azure AD authentication (frontend/src/authConfig.ts)
+  - **Priority**: LOW
+  - **Effort**: Quick (45 minutes)
+  - **Context**: MSAL setup and configuration
+  - **Details**:
+    - Configure MSAL with Azure AD app registration
+    - Set client ID, tenant ID, redirect URI
+    - Add login request scopes
+    - Create msalInstance and wrap App with MsalProvider
+
+- [ ] Implement login/logout flow (frontend/src/components/auth/AuthButtons.tsx)
+  - **Priority**: LOW
+  - **Effort**: Medium (1 hour)
+  - **Context**: User authentication UI
+  - **Details**:
+    - Login button with MSAL popup
+    - Logout button
+    - User profile display (optional)
+    - Handle auth errors gracefully
+    - Loading state during auth flow
+
+- [ ] Add protected routes (frontend/src/components/auth/ProtectedRoute.tsx)
+  - **Priority**: LOW
+  - **Effort**: Quick (45 minutes)
+  - **Context**: Route-level auth protection
+  - **Details**:
+    - ProtectedRoute component checking authentication
+    - Redirect to login if not authenticated
+    - Show loading while checking auth status
+    - Pass auth token to API client
+
+- [ ] Configure redirect URIs and tenant settings (documentation)
+  - **Priority**: LOW
+  - **Effort**: Quick (30 minutes)
+  - **Context**: Azure AD app registration
+  - **Details**:
+    - Document Azure AD app registration steps
+    - List required redirect URIs
+    - Explain tenant configuration
+    - Provide example .env.example entries
+
+#### Deliverables
+- ✅ MSAL configuration for Azure AD
+- ✅ Login/logout UI components
+- ✅ Protected routes
+- ✅ Azure AD setup documentation
+
+---
+
+### 📋 PR17: Deployment & CI/CD
+**Status**: Planned
+**Priority**: MEDIUM
+**Estimated Effort**: 3-4 hours
+
+#### Overview
+Create Docker containers for React frontend and update deployment pipeline. Enables Azure Container Apps deployment with automated CI/CD.
+
+#### Tasks
+
+- [ ] Create Dockerfile for React frontend (frontend/Dockerfile)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (30 minutes)
+  - **Context**: Container image for frontend
+  - **Details**:
+    - Multi-stage build: Node build stage + Nginx serve stage
+    - Build stage: Install dependencies, build with Vite
+    - Production stage: Alpine nginx, copy built assets
+    - Health check (optional)
+    - Non-root user for security
+
+- [ ] Create nginx configuration (frontend/nginx.conf)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (30 minutes)
+  - **Context**: Web server configuration
+  - **Details**:
+    - Serve static files from /dist
+    - SPA routing: Fallback to index.html
+    - Proxy /api requests to backend
+    - Proxy /ws for WebSocket (future)
+    - GZIP compression
+    - Cache headers for assets
+
+- [ ] Update GitHub Actions workflow for frontend build/deploy (frontend steps added to .github/workflows/azure-deploy.yml)
+  - **Priority**: MEDIUM
+  - **Effort**: Medium (1 hour)
+  - **Context**: CI/CD pipeline
+  - **Details**:
+    - Add frontend Docker build step
+    - Add frontend Docker push step
+    - Add frontend Container Apps update step
+    - Test step: npm run build succeeds
+    - Use secrets for Azure credentials
+
+- [ ] Configure Azure Container Apps for frontend container (documentation)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (45 minutes)
+  - **Context**: Deployment setup
+  - **Details**:
+    - Container Apps environment (shared with backend)
+    - Frontend Container App with 80 port exposure
+    - Environment variables: VITE_API_URL pointing to backend
+    - Min/max replicas configuration
+    - Ingress configuration for HTTPS
+    - Document manual setup steps for Azure Portal
+
+- [ ] Add environment variable configuration (frontend/.env.example)
+  - **Priority**: MEDIUM
+  - **Effort**: Quick (15 minutes)
+  - **Context**: Build-time configuration
+  - **Details**:
+    - VITE_API_URL: Backend API URL
+    - VITE_AZURE_AD_CLIENT_ID: Azure AD client ID
+    - VITE_AZURE_AD_TENANT_ID: Azure AD tenant ID
+    - VITE_REDIRECT_URI: Auth redirect URI
+    - Document each variable
+
+#### Deliverables
+- ✅ Frontend Dockerfile with multi-stage build
+- ✅ Nginx configuration for SPA + API proxying
+- ✅ Updated GitHub Actions workflow
+- ✅ Azure Container Apps deployment documentation
+
+---
+
+## 🎯 Upcoming Work Items
 
 ### Phase 4: Voice Integration (Post-Phase 3)
 **Target**: Week 3-4 implementation
 **Key Tasks**:
-- Add transcribe endpoint (Azure Whisper)
-- Add synthesize endpoint (Azure TTS)
+- Add transcribe endpoint (Azure OpenAI Whisper)
+- Add synthesize endpoint (Azure OpenAI TTS)
 - Build voice UI components
 
 ### Phase 5: Containerization & Azure Deployment (Post-Phase 4)
