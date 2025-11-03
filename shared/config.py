@@ -1,7 +1,7 @@
 """Configuration settings for the factory operations chatbot."""
 
 import os
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,3 +19,14 @@ TTS_VOICE: str = "alloy"  # OpenAI voice: alloy, echo, fable, onyx, nova, shimme
 TTS_MODEL: str = "tts-1"  # or "tts-1-hd" for higher quality
 WHISPER_MODEL: str = "whisper-1"
 RECORDING_DURATION: int = 5  # seconds
+
+# API Security settings
+ALLOWED_ORIGINS: List[str] = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173"
+    ).split(",")
+]
+RATE_LIMIT_CHAT: str = os.getenv("RATE_LIMIT_CHAT", "10/minute")
+RATE_LIMIT_SETUP: str = os.getenv("RATE_LIMIT_SETUP", "5/minute")

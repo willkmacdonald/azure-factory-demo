@@ -2,6 +2,10 @@
 fastapi==0.115.13
 uvicorn[standard]==0.32.1
 pydantic==2.10.6
+slowapi==0.1.9
+
+# Async file I/O
+aiofiles==24.1.0
 
 # Environment variable management
 python-dotenv==1.0.1

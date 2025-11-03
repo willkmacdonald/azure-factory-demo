@@ -48,7 +48,7 @@ async def get_oee(
         GET /api/metrics/oee?start_date=2024-01-01&end_date=2024-01-31
         GET /api/metrics/oee?start_date=2024-01-01&end_date=2024-01-31&machine=CNC-001
     """
-    return calculate_oee(start_date, end_date, machine)
+    return await calculate_oee(start_date, end_date, machine)
 
 
 @router.get("/scrap", response_model=Union[ScrapMetrics, Dict[str, str]])
@@ -72,7 +72,7 @@ async def get_scrap(
         GET /api/metrics/scrap?start_date=2024-01-01&end_date=2024-01-31
         GET /api/metrics/scrap?start_date=2024-01-01&end_date=2024-01-31&machine=Assembly-001
     """
-    return get_scrap_metrics(start_date, end_date, machine)
+    return await get_scrap_metrics(start_date, end_date, machine)
 
 
 @router.get("/quality", response_model=Union[QualityIssues, Dict[str, str]])
@@ -101,7 +101,7 @@ async def get_quality(
         GET /api/metrics/quality?start_date=2024-01-01&end_date=2024-01-31&severity=High
         GET /api/metrics/quality?start_date=2024-01-01&end_date=2024-01-31&machine=Testing-001&severity=Medium
     """
-    return get_quality_issues(start_date, end_date, severity, machine)
+    return await get_quality_issues(start_date, end_date, severity, machine)
 
 
 @router.get("/downtime", response_model=Union[DowntimeAnalysis, Dict[str, str]])
@@ -125,4 +125,4 @@ async def get_downtime(
         GET /api/metrics/downtime?start_date=2024-01-01&end_date=2024-01-31
         GET /api/metrics/downtime?start_date=2024-01-01&end_date=2024-01-31&machine=Packaging-001
     """
-    return get_downtime_analysis(start_date, end_date, machine)
+    return await get_downtime_analysis(start_date, end_date, machine)
