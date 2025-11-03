@@ -10,7 +10,7 @@ env/
 
 # Data
 data/
-archive/
+/archive/
 
 # IDE
 .vscode/
