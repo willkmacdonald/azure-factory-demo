@@ -11,8 +11,8 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
-from src.data import load_data, MACHINES
-from src.metrics import (
+from shared.data import load_data, MACHINES
+from src.metrics_sync import (
     calculate_oee,
     get_downtime_analysis,
     get_quality_issues,

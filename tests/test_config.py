@@ -5,7 +5,7 @@ import pytest
 
 def test_voice_config_constants():
     """Verify voice configuration constants are properly set."""
-    from src.config import TTS_VOICE, TTS_MODEL, WHISPER_MODEL, RECORDING_DURATION
+    from shared.config import TTS_VOICE, TTS_MODEL, WHISPER_MODEL, RECORDING_DURATION
 
     # Test TTS_VOICE is one of valid OpenAI voices
     valid_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
@@ -38,7 +38,7 @@ def test_audio_dependencies_import():
 
 def test_existing_config_constants():
     """Verify existing configuration constants are accessible."""
-    from src.config import (
+    from shared.config import (
         AZURE_API_KEY,
         AZURE_ENDPOINT,
         AZURE_DEPLOYMENT_NAME,

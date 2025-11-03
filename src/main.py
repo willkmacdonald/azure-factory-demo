@@ -149,9 +149,12 @@ def setup() -> None:
     """Initialize database with synthetic data."""
     console.print(Panel.fit("🏭 Factory Operations Data Generation", style="bold blue"))
 
-    initialize_data(days=30)
+    result = initialize_data(days=30)
 
-    console.print("\n✅ Setup complete! Run 'chat' to start.\n", style="bold green")
+    console.print(f"\n✅ Generated {result['days']} days of data", style="bold green")
+    console.print(f"   Date range: {result['start_date']} to {result['end_date']}", style="green")
+    console.print(f"   Machines: {result['machines']}", style="green")
+    console.print(f"   Saved to: {result['file_path']}\n", style="green")
 
 
 @app.command()

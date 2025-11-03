@@ -5,8 +5,11 @@ from datetime import datetime, timedelta
 import json
 import random
 from pathlib import Path
+import logging
 import aiofiles
 from .config import DATA_FILE
+
+logger = logging.getLogger(__name__)
 
 # Simple in-memory data structures
 MACHINES = [
@@ -247,19 +250,33 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
     }
 
 
-def initialize_data(days: int = 30) -> None:
+def initialize_data(days: int = 30) -> Dict[str, Any]:
     """
     Generate and save production data.
 
     Args:
         days: Number of days of data to generate (default: 30)
+
+    Returns:
+        Dictionary containing metadata about the generated data:
+        - days: Number of days generated
+        - start_date: Start date (YYYY-MM-DD)
+        - end_date: End date (YYYY-MM-DD)
+        - machines: Number of machines
+        - file_path: Path to saved data file
     """
-    print(f"Generating {days} days of production data...")
+    logger.info(f"Generating {days} days of production data...")
     data = generate_production_data(days)
     save_data(data)
-    print(f"✓ Generated data from {data['start_date']} to {data['end_date']}")
 
-    # Print summary
     total_days = len(data["production"])
-    print(f"✓ {total_days} days of data for {len(MACHINES)} machines")
-    print(f"✓ Data saved to {DATA_FILE}")
+    logger.info(f"Generated {total_days} days from {data['start_date']} to {data['end_date']}")
+    logger.info(f"Data saved to {DATA_FILE}")
+
+    return {
+        "days": total_days,
+        "start_date": data["start_date"],
+        "end_date": data["end_date"],
+        "machines": len(MACHINES),
+        "file_path": str(DATA_FILE),
+    }

@@ -165,23 +165,15 @@ async def setup_data(request: SetupRequest = SetupRequest()) -> SetupResponse:
         }
     """
     try:
-        # Generate and save data
-        initialize_data(days=request.days)
-
-        # Load data to get metadata
-        data = load_data()
-        if data is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to load generated data"
-            )
+        # Generate and save data, get metadata directly from return value
+        result = initialize_data(days=request.days)
 
         return SetupResponse(
             message="Data generated successfully",
-            days=request.days,
-            start_date=data["start_date"],
-            end_date=data["end_date"],
-            machines=len(data["machines"])
+            days=result["days"],
+            start_date=result["start_date"],
+            end_date=result["end_date"],
+            machines=result["machines"]
         )
     except Exception as e:
         raise HTTPException(
