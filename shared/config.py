@@ -10,6 +10,7 @@ load_dotenv()
 AZURE_ENDPOINT: Optional[str] = os.getenv("AZURE_ENDPOINT")
 AZURE_API_KEY: Optional[str] = os.getenv("AZURE_API_KEY")
 AZURE_DEPLOYMENT_NAME: str = os.getenv("AZURE_DEPLOYMENT_NAME", "gpt-4")
+AZURE_API_VERSION: str = os.getenv("AZURE_API_VERSION", "2024-08-01-preview")
 FACTORY_NAME: str = os.getenv("FACTORY_NAME", "Demo Factory")
 DATA_FILE: str = os.getenv("DATA_FILE", "./data/production.json")
 

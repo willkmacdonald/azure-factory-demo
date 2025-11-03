@@ -19,13 +19,67 @@ logger = logging.getLogger(__name__)
 
 # Import from shared package (proper Python imports, no sys.path manipulation)
 from shared.config import FACTORY_NAME, AZURE_DEPLOYMENT_NAME
-from shared.data import load_data, MACHINES
+from shared.data import load_data, load_data_async, MACHINES
 from shared.metrics import (
     calculate_oee,
     get_scrap_metrics,
     get_quality_issues,
     get_downtime_analysis,
 )
+
+
+def sanitize_user_input(user_message: str) -> str:
+    """Sanitize user input to prevent prompt injection attacks.
+
+    Args:
+        user_message: Raw user input message
+
+    Returns:
+        Sanitized message safe for LLM processing
+
+    Note:
+        This is a basic sanitization approach suitable for demo purposes.
+        Production systems should implement more comprehensive security measures.
+    """
+    # Strip leading/trailing whitespace
+    sanitized = user_message.strip()
+
+    # Check for suspicious patterns that could indicate prompt injection
+    suspicious_patterns = [
+        "ignore previous instructions",
+        "ignore all previous",
+        "disregard previous",
+        "forget previous",
+        "system:",
+        "assistant:",
+        "[SYSTEM]",
+        "[INST]",
+        "</s>",
+        "<|im_start|>",
+        "<|im_end|>",
+    ]
+
+    # Convert to lowercase for case-insensitive matching
+    lower_message = sanitized.lower()
+
+    # Log warning if suspicious patterns detected (but don't block - could be false positive)
+    for pattern in suspicious_patterns:
+        if pattern in lower_message:
+            logger.warning(
+                f"Potential prompt injection detected in user input: pattern '{pattern}' found",
+                extra={"user_message_preview": sanitized[:100]},
+            )
+            # For demo purposes, we log but don't block
+            # Production systems might want to reject or further sanitize
+
+    # Remove any null bytes
+    sanitized = sanitized.replace("\x00", "")
+
+    # Limit consecutive newlines to prevent prompt breaking
+    import re
+    sanitized = re.sub(r"\n{4,}", "\n\n\n", sanitized)
+
+    return sanitized
 
 
 # Tool definitions for Azure OpenAI
@@ -159,7 +213,7 @@ async def build_system_prompt() -> str:
         RuntimeError: If no data is available
     """
     logger.debug("Building system prompt with factory context")
-    data = load_data()
+    data = await load_data_async()
     if not data:
         logger.error("No data available for building system prompt")
         raise RuntimeError("No data available. Run 'python -m src.main setup' first.")
@@ -201,13 +255,13 @@ async def execute_tool(tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, A
     try:
         result: Any
         if tool_name == "calculate_oee":
-            result = calculate_oee(**tool_args)
+            result = await calculate_oee(**tool_args)
         elif tool_name == "get_scrap_metrics":
-            result = get_scrap_metrics(**tool_args)
+            result = await get_scrap_metrics(**tool_args)
         elif tool_name == "get_quality_issues":
-            result = get_quality_issues(**tool_args)
+            result = await get_quality_issues(**tool_args)
         elif tool_name == "get_downtime_analysis":
-            result = get_downtime_analysis(**tool_args)
+            result = await get_downtime_analysis(**tool_args)
         else:
             logger.warning(f"Unknown tool requested: {tool_name}")
             return {"error": f"Unknown tool: {tool_name}"}
@@ -249,10 +303,15 @@ async def get_chat_response(
     """
     logger.info(f"Processing chat message: {user_message[:50]}...")
 
+    # Sanitize user input to prevent prompt injection
+    sanitized_message = sanitize_user_input(user_message)
+    if sanitized_message != user_message:
+        logger.debug("User input was sanitized")
+
     # Build messages list with system prompt, history, and new message
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_history)
-    messages.append({"role": "user", "content": user_message})
+    messages.append({"role": "user", "content": sanitized_message})
 
     # Track where new messages start (after existing history)
     history_start_index = len(messages) - 1  # Index of new user message

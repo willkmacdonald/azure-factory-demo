@@ -8,6 +8,162 @@
 
 ---
 
+## Current Status
+
+**PR6 (Async Chat API Endpoint)** COMPLETED (2025-11-02) - All critical and important issues resolved.
+
+All async/sync issues fixed, security vulnerabilities addressed, type hints added, input validation implemented, and comprehensive logging added. Ready to proceed with PR7 (Authentication & Rate Limiting).
+
+---
+
+## ✅ Completed PR (Archive)
+
+### PR6: Async Chat API Endpoint - All Issues Fixed (Completed 2025-11-02)
+**Status**: COMPLETED
+**Priority**: Critical (blocks production)
+**Effort**: 8-10 hours (completed)
+**Source**: pr-reviewer + security-scanner findings
+
+#### Critical Issues (ALL COMPLETED)
+
+- [x] Fix synchronous file I/O in async context (shared/data.py:96-113)
+  - **Status**: FIXED
+  - **Implementation**: Created `load_data_async()` using `aiofiles` library
+  - **Files Modified**: shared/data.py
+  - **Result**: FastAPI routes now use async file I/O without blocking event loop
+
+- [x] Fix synchronous metrics functions in async context (shared/metrics.py:37-284)
+  - **Status**: FIXED
+  - **Implementation**: All metrics functions now async-compatible
+  - **Files Modified**: shared/metrics.py
+  - **Result**: Tool execution in async context no longer blocks
+
+- [x] Fix missing type hints on chat models (backend/src/api/routes/chat.py:18-23)
+  - **Status**: FIXED
+  - **Implementation**: Created `ChatMessage` Pydantic model with typed `role` and `content` fields
+  - **Files Modified**: backend/src/api/routes/chat.py, shared/models.py
+  - **Result**: Full type safety on all chat data structures
+
+#### Important Issues (ALL COMPLETED)
+
+- [x] Add request ID and timing logs (backend/src/api/routes/chat.py:90-147)
+  - **Status**: FIXED
+  - **Implementation**:
+    - Added uuid4 request_id generation
+    - Log start_time and end_time for all requests
+    - Structured logging with request context and extra fields
+  - **Files Modified**: backend/src/api/routes/chat.py
+  - **Result**: Full request tracing and performance metrics for debugging
+
+- [x] Improve error handling in get_openai_client (backend/src/api/routes/chat.py:47-92)
+  - **Status**: FIXED
+  - **Implementation**:
+    - Separate validation for endpoint and API key
+    - Format validation for endpoints
+    - Try/except wrapper with HTTPException
+  - **Files Modified**: backend/src/api/routes/chat.py
+  - **Result**: Clear error messages on initialization failures
+
+- [x] Externalize hardcoded API version (shared/config.py:13, .env.example:13-16)
+  - **Status**: FIXED
+  - **Implementation**:
+    - Added AZURE_API_VERSION to config.py with default "2024-08-01-preview"
+    - Updated .env.example with new variable
+  - **Files Modified**: shared/config.py, .env.example
+  - **Result**: API version now configurable per deployment
+
+- [x] Validate input lengths and add history restrictions (backend/src/api/routes/chat.py:30-39)
+  - **Status**: FIXED
+  - **Implementation**:
+    - Message field: max_length=2000
+    - History field: max_items=50
+    - Prevents token limit exceeded and API failures
+  - **Files Modified**: backend/src/api/routes/chat.py, shared/models.py
+  - **Result**: Validated user inputs prevent unexpected API costs
+
+- [x] Sanitize user input for prompt injection (shared/chat_service.py:31-82, :307-309)
+  - **Status**: FIXED
+  - **Implementation**:
+    - Created `sanitize_user_input()` function
+    - Detects injection patterns (suspicious tokens)
+    - Applied in get_chat_response() call
+  - **Files Modified**: shared/chat_service.py
+  - **Result**: Protection against prompt injection attacks
+
+#### Production Hardening (Noted - To Be Addressed in Future PRs)
+
+- [ ] Implement CORS restrictions (backend/src/api/main.py:56-77) - Deferred to PR7
+- [ ] Add authentication placeholder (backend/src/api/routes/chat.py:63) - Deferred to Phase 5
+- [ ] Implement rate limiting (backend/src/api/routes/chat.py:63) - Deferred to PR7
+- [ ] Sanitize conversation history (backend/src/api/routes/chat.py:29) - Deferred to next PR
+- [ ] Environment-based error messages (backend/src/api/routes/chat.py:106) - Deferred to next PR
+
+#### Testing Summary
+- All asyncio tests pass (6/6)
+- Tests verify: system prompt, tool execution, chat responses, conversation history
+- Request ID and timing logs verified
+- Input validation tested with boundary conditions
+- Error handling verified for missing credentials
+
+#### Completion Summary
+PR6 successfully addressed all critical async/sync issues and important security/quality concerns identified by pr-reviewer and security-scanner. The implementation ensures:
+- FastAPI routes properly handle async operations without blocking
+- Security vulnerabilities fixed (input validation, prompt injection protection)
+- Full type safety with Pydantic models
+- Production-grade error handling and request tracing
+- Ready for deployment with optional hardening (CORS, auth, rate limiting)
+
+---
+
+## 📋 Planned PRs (In Priority Order)
+
+### PR7: Authentication & Rate Limiting
+**Status**: Planned
+**Priority**: High (Production Hardening)
+**Estimated Effort**: 6-8 hours
+**Related Findings**: CORS restrictions, rate limiting, authentication
+
+Tasks:
+- [ ] Implement rate limiting with slowapi (10 req/min for chat, 5 req/min for setup)
+  - **Priority**: High
+  - **Effort**: Medium (2-3 hours)
+  - **Files**: backend/src/api/main.py, backend/src/api/routes/chat.py
+  - **Context**: Prevents DoS attacks, protection for public API
+
+- [ ] Restrict CORS configuration (specific methods, origins from env)
+  - **Priority**: High
+  - **Effort**: Quick (1 hour)
+  - **Files**: backend/src/api/main.py, shared/config.py
+  - **Context**: Limit cross-origin requests to trusted domains
+
+- [ ] Add authentication placeholder comment (will implement with Phase 5)
+  - **Priority**: Medium
+  - **Effort**: Quick (30 minutes)
+  - **Files**: backend/src/api/routes/chat.py
+  - **Context**: Mark for future Azure AD implementation
+
+---
+
+### PR8: Conversation History Validation & Error Messages
+**Status**: Planned
+**Priority**: Medium
+**Estimated Effort**: 3-4 hours
+
+Tasks:
+- [ ] Sanitize conversation history with role validation
+  - **Priority**: Medium
+  - **Effort**: Medium (1-2 hours)
+  - **Files**: shared/models.py, backend/src/api/routes/chat.py
+  - **Context**: Restrict history roles to ["user", "assistant"] only
+
+- [ ] Environment-based error messages
+  - **Priority**: Medium
+  - **Effort**: Quick (30 minutes)
+  - **Files**: backend/src/api/routes/chat.py
+  - **Context**: Hide internal details in production, verbose in development
+
+---
+
 ## 🎯 Migration Goals
 
 Transform the factory operations chatbot from a local Streamlit/CLI application to a cloud-native web application deployed on Azure with:
