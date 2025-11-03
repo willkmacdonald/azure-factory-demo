@@ -8,7 +8,7 @@ A cloud-native AI demonstration system for factory operations analysis, featurin
 
 - **Legacy System**: Streamlit dashboard + Typer CLI (fully functional)
 - **New System**: React frontend + FastAPI backend + Azure Container Apps (in development)
-- **Migration Plan**: See [implementation-plan-prs.md](implementation-plan-prs.md) for the 15-PR phased approach
+- **Migration Plan**: See [implementation-plan.md](implementation-plan.md) for the phased approach
 
 **Current Progress:**
 - ✅ **Phase 1: Backend API Foundation** (Complete - PR6, PR7, PR8)
@@ -737,6 +737,25 @@ Production-ready architecture with modern best practices:
 - **Azure Container Apps** (serverless, auto-scaling)
 - **Azure AD authentication** (enterprise-grade security)
 - **CI/CD with GitHub Actions** (automated deployments)
+
+## 📚 Documentation
+
+### Root Directory
+- **[README.md](README.md)** - Main project documentation (you are here)
+- **[implementation-plan.md](implementation-plan.md)** - Complete migration roadmap with PR breakdown
+- **[INSTALL.md](INSTALL.md)** - Installation and setup instructions
+- **[PR11_IMPLEMENTATION.md](PR11_IMPLEMENTATION.md)** - Latest PR implementation details
+
+### Reference Documentation (`docs/reference/`)
+- **[ARCHITECTURE.md](docs/reference/ARCHITECTURE.md)** - Complete technical architecture
+- **[QUICK_REFERENCE.md](docs/reference/QUICK_REFERENCE.md)** - Quick lookup for common tasks
+- **[CODEBASE_GUIDE.md](docs/reference/CODEBASE_GUIDE.md)** - Guide to navigating the codebase
+- **[BACKEND_API_REFERENCE.md](docs/reference/BACKEND_API_REFERENCE.md)** - API endpoint documentation
+- **[AZURE_STORAGE_SETUP.md](docs/reference/AZURE_STORAGE_SETUP.md)** - Azure Blob Storage setup guide
+- **[WORKFLOW.md](docs/reference/WORKFLOW.md)** - Development workflow and best practices
+
+### Historical Documentation (`docs/archive/`)
+Historical planning documents and implementation summaries from the migration process.
 
 ### Testing
 
