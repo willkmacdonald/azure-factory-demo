@@ -8,6 +8,9 @@ env/
 # Environment
 .env
 
+# MCP Configuration (contains secrets)
+.mcp.json
+
 # Data
 data/
 /archive/
