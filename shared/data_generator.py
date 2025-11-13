@@ -3,8 +3,9 @@
 import logging
 import random
 from datetime import datetime, timedelta
-from typing import List
+from typing import Any, Dict, List
 
+from pydantic import ValidationError
 from shared.models import MaterialLot, MaterialSpec, Order, OrderItem, Supplier
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ def generate_suppliers() -> List[Supplier]:
     Returns:
         List of 5-10 Supplier instances with quality metrics and certifications.
     """
+    logger.debug("Generating suppliers...")
     suppliers_data = [
         {
             "id": "SUP-001",
@@ -110,7 +112,9 @@ def generate_suppliers() -> List[Supplier]:
         },
     ]
 
-    return [Supplier(**data) for data in suppliers_data]
+    suppliers = [Supplier(**data) for data in suppliers_data]
+    logger.info(f"Generated {len(suppliers)} suppliers")
+    return suppliers
 
 
 def generate_materials_catalog() -> List[MaterialSpec]:
@@ -120,6 +124,7 @@ def generate_materials_catalog() -> List[MaterialSpec]:
     Returns:
         List of 15-20 MaterialSpec instances for various materials.
     """
+    logger.debug("Generating materials catalog...")
     materials_data = [
         # Steel materials for CNC machines
         {
@@ -230,7 +235,9 @@ def generate_materials_catalog() -> List[MaterialSpec]:
         },
     ]
 
-    return [MaterialSpec(**data) for data in materials_data]
+    materials = [MaterialSpec(**data) for data in materials_data]
+    logger.info(f"Generated {len(materials)} materials")
+    return materials
 
 
 def generate_material_lots(
@@ -359,6 +366,9 @@ def generate_orders(start_date: datetime, days: int = 30) -> List[Order]:
     Returns:
         List of 10-15 Order instances with line items.
     """
+    logger.debug(
+        f"Generating orders for {days} days starting {start_date.strftime('%Y-%m-%d')}..."
+    )
     orders = []
 
     # Customer names
@@ -408,8 +418,10 @@ def generate_orders(start_date: datetime, days: int = 30) -> List[Order]:
             )
             total_value += quantity * unit_price
 
-        # Due date 5-25 days after start
-        due_date_offset = random.randint(5, min(25, days))
+        # Due date 5-25 days after start (or 1-days if days < 5)
+        min_offset = min(5, max(1, days - 1))
+        max_offset = min(25, max(1, days))
+        due_date_offset = random.randint(min_offset, max_offset)
         due_date = start_date + timedelta(days=due_date_offset)
 
         # Status based on due date
@@ -454,4 +466,352 @@ def generate_orders(start_date: datetime, days: int = 30) -> List[Order]:
         )
         orders.append(order)
 
+    logger.info(f"Generated {len(orders)} customer orders")
     return orders
+
+
+def _validate_production_data(data: Dict[str, Any]) -> None:
+    """
+    Validate production_data structure has required keys and correct types.
+
+    Args:
+        data: Production data dictionary to validate
+
+    Raises:
+        ValueError: If required keys are missing or have wrong types
+    """
+    required_keys = ["machines", "shifts", "production"]
+    for key in required_keys:
+        if key not in data:
+            raise ValueError(
+                f"Production data missing required key '{key}'. "
+                f"Expected keys: {required_keys}"
+            )
+
+    if not isinstance(data["machines"], list):
+        raise ValueError(
+            f"'machines' must be a list, got {type(data['machines']).__name__}"
+        )
+    if not isinstance(data["shifts"], list):
+        raise ValueError(
+            f"'shifts' must be a list, got {type(data['shifts']).__name__}"
+        )
+    if not isinstance(data["production"], dict):
+        raise ValueError(
+            f"'production' must be a dict, got {type(data['production']).__name__}"
+        )
+
+    if not data["shifts"]:
+        raise ValueError("'shifts' list cannot be empty")
+
+    # Validate shift structure
+    required_shift_keys = ["id", "name", "start_hour", "end_hour"]
+    for i, shift in enumerate(data["shifts"]):
+        if not isinstance(shift, dict):
+            raise ValueError(
+                f"Shift at index {i} must be a dict, got {type(shift).__name__}"
+            )
+        for key in required_shift_keys:
+            if key not in shift:
+                raise ValueError(
+                    f"Shift at index {i} missing required key '{key}'. "
+                    f"Expected keys: {required_shift_keys}"
+                )
+
+    # Validate machine structure (only if not empty)
+    if data["machines"]:
+        required_machine_keys = ["id", "name"]
+        for i, machine in enumerate(data["machines"]):
+            if not isinstance(machine, dict):
+                raise ValueError(
+                    f"Machine at index {i} must be a dict, got {type(machine).__name__}"
+                )
+            for key in required_machine_keys:
+                if key not in machine:
+                    raise ValueError(
+                        f"Machine at index {i} missing required key '{key}'. "
+                        f"Expected keys: {required_machine_keys}"
+                    )
+
+
+def generate_production_batches(
+    production_data: Dict[str, Any],
+    materials_catalog: List[MaterialSpec],
+    material_lots: List[MaterialLot],
+    orders: List[Order],
+) -> List["ProductionBatch"]:
+    """
+    Generate production batches with full traceability to materials, suppliers, and orders.
+
+    This function converts daily production aggregates into individual batches with
+    complete material traceability, order linkage, and serial number tracking.
+
+    Args:
+        production_data: Production data structure from generate_production_data().
+            Must contain 'machines', 'shifts', and 'production' keys.
+        materials_catalog: List of MaterialSpec instances for material lookup.
+        material_lots: List of MaterialLot instances for lot traceability.
+        orders: List of Order instances for batch-to-order assignment.
+
+    Returns:
+        List of ProductionBatch instances (~1.5 batches per shift per machine).
+        For 4 machines × 2 shifts × 30 days = ~360 batches expected.
+
+    Raises:
+        ValueError: If production_data is missing required 'shifts' key.
+        RuntimeError: If batch generation encounters data structure errors.
+        KeyError: If production_data is missing expected keys.
+        TypeError: If data types are incompatible.
+
+    Logic:
+        - Convert daily production totals into batches (~1.5 batches per shift per machine)
+        - Assign batches to orders (round-robin through available orders)
+        - Select material lots for each batch based on machine type:
+          * CNC: Steel/aluminum (MAT-001, MAT-002, MAT-003)
+          * Assembly: Fasteners (MAT-005, MAT-006)
+          * Packaging: Components (MAT-007, MAT-008)
+          * Testing: Components (MAT-008)
+        - Move quality_issues from production[date][machine] to batches
+        - Assign sequential, non-overlapping serial number ranges
+        - Generate batch timing (start/end times, duration)
+
+    Note:
+        This function does NOT update material_lot.quantity_remaining or order.status.
+        Those updates should be handled by a separate inventory management function.
+    """
+    from shared.models import MaterialUsage, ProductionBatch, QualityIssue
+
+    # Validate production_data structure early
+    _validate_production_data(production_data)
+
+    logger.info("Generating production batches with traceability...")
+
+    try:
+        batches: List[ProductionBatch] = []
+        machines = production_data.get("machines", [])
+        shifts = production_data.get("shifts", [])
+        production = production_data.get("production", {})
+
+        # Check for empty data (allowed, returns empty list)
+        if not machines:
+            logger.warning(
+                "No machines found in production data, returning empty batch list"
+            )
+            return []
+
+        if not production:
+            logger.warning("No production data found, returning empty batch list")
+            return []
+
+        # Create machine and material lookup maps
+        machine_map = {m["id"]: m for m in machines}
+        material_map = {mat.id: mat for mat in materials_catalog}
+
+        # Create material lots by material_id for efficient lookup
+        lots_by_material: Dict[str, List[MaterialLot]] = {}
+        for lot in material_lots:
+            if lot.material_id not in lots_by_material:
+                lots_by_material[lot.material_id] = []
+            lots_by_material[lot.material_id].append(lot)
+
+        # Track available orders by part number
+        available_orders = [o for o in orders if o.status in ["Pending", "InProgress"]]
+        order_index = 0
+
+        # Track serial number sequence
+        serial_counter = 1000
+
+        # Operator names for variety
+        operators = [
+            "John Smith",
+            "Sarah Johnson",
+            "Mike Chen",
+            "Emily Davis",
+            "Carlos Rodriguez",
+            "Lisa Anderson",
+        ]
+
+        # Process each date in production data
+        for date_str in sorted(production.keys()):
+            date_data = production[date_str]
+
+            for machine in machines:
+                machine_id = machine["id"]
+                machine_name = machine["name"]
+
+                if machine_name not in date_data:
+                    continue
+
+                daily_data = date_data[machine_name]
+                shifts_data = daily_data.get("shifts", {})
+
+                # Get quality issues for this machine/date (to distribute to batches)
+                quality_issues_list = daily_data.get("quality_issues", [])
+
+                # Generate batches for each shift
+                for shift in shifts:
+                    shift_id = shift["id"]
+                    shift_name = shift["name"]
+
+                    if shift_name not in shifts_data:
+                        continue
+
+                    shift_data = shifts_data[shift_name]
+                    shift_parts = shift_data["parts_produced"]
+                    shift_scrap = shift_data["scrap_parts"]
+                    shift_good = shift_data["good_parts"]
+
+                    if shift_parts == 0:
+                        continue
+
+                    # Generate 1-2 batches per shift (avg 1.5)
+                    num_batches = random.choice([1, 2])
+
+                    for batch_num in range(num_batches):
+                        batch_id = f"BATCH-{date_str}-{machine_name}-{shift_name}-{batch_num + 1:02d}"
+
+                        # Distribute parts across batches
+                        if batch_num == num_batches - 1:
+                            # Last batch gets remaining parts
+                            batch_parts = shift_parts
+                            batch_scrap = shift_scrap
+                        else:
+                            # Split evenly
+                            batch_parts = shift_parts // num_batches
+                            batch_scrap = shift_scrap // num_batches
+                            shift_parts -= batch_parts
+                            shift_scrap -= batch_scrap
+
+                        batch_good = batch_parts - batch_scrap
+
+                        # Assign to order (round-robin)
+                        order_id = None
+                        part_number = f"PART-{machine_id:03d}"
+                        if available_orders:
+                            order = available_orders[
+                                order_index % len(available_orders)
+                            ]
+                            order_id = order.id
+                            # Use part number from order if available
+                            if order.items:
+                                part_number = order.items[0].part_number
+                            order_index += 1
+
+                        # Select materials based on machine type
+                        materials_consumed = []
+                        if machine_name.startswith("CNC"):
+                            # CNC uses steel/aluminum
+                            mat_ids = ["MAT-001", "MAT-002", "MAT-003"]
+                        elif machine_name.startswith("Assembly"):
+                            # Assembly uses fasteners + components
+                            mat_ids = ["MAT-005", "MAT-006", "MAT-007"]
+                        elif machine_name.startswith("Packaging"):
+                            # Packaging uses components (simplified for demo)
+                            mat_ids = ["MAT-007", "MAT-008"]
+                        else:
+                            # Testing uses components (simplified for demo)
+                            mat_ids = ["MAT-008"]
+
+                        for mat_id in mat_ids:
+                            if mat_id in material_map and mat_id in lots_by_material:
+                                material = material_map[mat_id]
+                                available_lots = [
+                                    lot
+                                    for lot in lots_by_material[mat_id]
+                                    if lot.status in ["Available", "InUse"]
+                                    and lot.quantity_remaining > 0
+                                ]
+                                if available_lots:
+                                    # Select random available lot
+                                    lot = random.choice(available_lots)
+                                    quantity_used = random.uniform(10.0, 50.0)
+
+                                    materials_consumed.append(
+                                        MaterialUsage(
+                                            material_id=mat_id,
+                                            material_name=material.name,
+                                            lot_number=lot.lot_number,
+                                            quantity_used=round(quantity_used, 2),
+                                            unit=material.unit,
+                                        )
+                                    )
+
+                        # Distribute quality issues to batches
+                        batch_quality_issues = []
+                        if quality_issues_list and batch_num == 0:
+                            # Assign all quality issues to first batch of shift
+                            for issue_data in quality_issues_list:
+                                batch_quality_issues.append(
+                                    QualityIssue(
+                                        type=issue_data["type"],
+                                        description=issue_data["description"],
+                                        parts_affected=issue_data["parts_affected"],
+                                        severity=issue_data["severity"],
+                                        date=date_str,
+                                        machine=machine_name,
+                                    )
+                                )
+
+                        # Assign serial numbers
+                        serial_start = serial_counter
+                        serial_end = serial_counter + batch_parts - 1
+                        serial_counter = serial_end + 1
+
+                        # Generate batch start/end times based on shift
+                        start_hour = shift["start_hour"]
+                        batch_duration = random.uniform(2.0, 4.0)
+                        start_time = f"{start_hour:02d}:{random.randint(0, 59):02d}"
+                        end_hour = start_hour + int(batch_duration)
+                        end_time = f"{end_hour:02d}:{random.randint(0, 59):02d}"
+
+                        # Select random operator
+                        operator = random.choice(operators)
+
+                        # Create batch with error handling
+                        try:
+                            batch = ProductionBatch(
+                                batch_id=batch_id,
+                                date=date_str,
+                                machine_id=machine_id,
+                                machine_name=machine_name,
+                                shift_id=shift_id,
+                                shift_name=shift_name,
+                                order_id=order_id,
+                                part_number=part_number,
+                                operator=operator,
+                                parts_produced=batch_parts,
+                                good_parts=batch_good,
+                                scrap_parts=batch_scrap,
+                                serial_start=serial_start,
+                                serial_end=serial_end,
+                                materials_consumed=materials_consumed,
+                                quality_issues=batch_quality_issues,
+                                start_time=start_time,
+                                end_time=end_time,
+                                duration_hours=round(batch_duration, 2),
+                            )
+                            batches.append(batch)
+                        except ValidationError as e:
+                            logger.warning(
+                                f"Skipping invalid batch {batch_id} for {machine_name} "
+                                f"on {date_str} shift {shift_name}: {e}"
+                            )
+                            continue  # Skip this batch but continue processing others
+
+        logger.info(f"Generated {len(batches)} production batches")
+        return batches
+
+    except KeyError as e:
+        logger.error(f"Missing required key in production data: {e}")
+        raise RuntimeError(f"Failed to generate batches: missing key {e}") from e
+    except (TypeError, AttributeError) as e:
+        logger.error(f"Invalid data structure in production data: {e}")
+        raise RuntimeError(
+            f"Failed to generate batches: invalid data structure {e}"
+        ) from e
+    except ValueError as e:
+        logger.error(f"Invalid value encountered during batch generation: {e}")
+        raise RuntimeError(f"Failed to generate batches: {e}") from e
+    except Exception as e:
+        logger.error(f"Unexpected error generating production batches: {e}")
+        raise RuntimeError(f"Failed to generate batches: {e}") from e

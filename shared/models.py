@@ -196,3 +196,81 @@ class Order(BaseModel):
         default=None, description="Actual shipping date (YYYY-MM-DD)"
     )
     total_value: float = Field(ge=0, description="Total order value in dollars")
+
+
+# ============================================================================
+# Production Batch Traceability Models (PR14)
+# ============================================================================
+
+
+class MaterialUsage(BaseModel):
+    """Material consumed in a production batch with lot traceability."""
+
+    material_id: str = Field(description="Reference to MaterialSpec.id")
+    material_name: str = Field(description="Material name for readability")
+    lot_number: str = Field(description="Reference to MaterialLot.lot_number")
+    quantity_used: float = Field(ge=0, description="Quantity consumed in batch")
+    unit: str = Field(description="Unit of measure (kg, pieces, meters)")
+
+
+class ProductionBatch(BaseModel):
+    """
+    Detailed production batch with full traceability to materials, suppliers, and orders.
+
+    This is the source of truth for production data. The production[date][machine]
+    structure becomes a DERIVED/AGGREGATED view from batches.
+    """
+
+    batch_id: str = Field(description="Unique batch identifier (e.g., BATCH-20240115-CNC001-001)")
+    date: str = Field(description="Production date (YYYY-MM-DD)")
+    machine_id: int = Field(ge=1, description="Reference to machine ID")
+    machine_name: str = Field(description="Machine name for readability")
+    shift_id: int = Field(ge=1, description="Reference to shift ID (1=Day, 2=Night)")
+    shift_name: str = Field(description="Shift name for readability (Day/Night)")
+    order_id: Optional[str] = Field(
+        default=None, description="Reference to Order.id that this batch fulfills"
+    )
+    part_number: str = Field(description="Part number produced in this batch")
+    operator: str = Field(description="Operator name/ID")
+
+    # Production quantities
+    parts_produced: int = Field(ge=0, description="Total parts produced in batch")
+    good_parts: int = Field(ge=0, description="Number of good parts")
+    scrap_parts: int = Field(ge=0, description="Number of scrapped parts")
+
+    # Serial number tracking
+    serial_start: Optional[int] = Field(
+        default=None, description="Starting serial number (e.g., 1000)"
+    )
+    serial_end: Optional[int] = Field(
+        default=None, description="Ending serial number (e.g., 1120)"
+    )
+
+    # Material traceability
+    materials_consumed: List[MaterialUsage] = Field(
+        default_factory=list,
+        description="Materials used in this batch with lot traceability"
+    )
+
+    # Quality tracking (moved from production[date][machine])
+    quality_issues: List[QualityIssue] = Field(
+        default_factory=list,
+        description="Quality issues specific to this batch"
+    )
+
+    # Process parameters (optional for demo)
+    process_parameters: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Process parameters (temperature, pressure, speed, etc.)"
+    )
+
+    # Timing
+    start_time: Optional[str] = Field(
+        default=None, description="Batch start time (HH:MM)"
+    )
+    end_time: Optional[str] = Field(
+        default=None, description="Batch end time (HH:MM)"
+    )
+    duration_hours: Optional[float] = Field(
+        default=None, ge=0, description="Batch duration in hours"
+    )

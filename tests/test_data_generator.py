@@ -292,3 +292,410 @@ class TestGenerateOrders:
                 assert (
                     abs(order.total_value - calculated_total) < tolerance
                 ), f"Order {order.id} total_value mismatch: {order.total_value} vs {calculated_total}"
+
+
+class TestGenerateProductionBatches:
+    """Test generate_production_batches() function (PR14)."""
+
+    def test_generate_production_batches_creates_batches(self):
+        """Test that production batches are generated successfully."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        # Generate base data (2 days for quick test)
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        # Generate batches
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Verify batches were created
+        assert len(batches) > 0
+        assert all(batch.batch_id for batch in batches)
+
+    def test_production_batch_fields_valid(self):
+        """Test that all batch fields are properly populated."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        # Generate data
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Check first batch has all required fields
+        batch = batches[0]
+        assert batch.batch_id
+        assert batch.date
+        assert batch.machine_id >= 1
+        assert batch.machine_name
+        assert batch.shift_id >= 1
+        assert batch.shift_name in ["Day", "Night"]
+        assert batch.part_number
+        assert batch.operator
+        assert batch.parts_produced >= 0
+        assert batch.good_parts >= 0
+        assert batch.scrap_parts >= 0
+
+    def test_batch_serial_numbers_sequential(self):
+        """Test that serial numbers are sequential and non-overlapping."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Collect all serial ranges
+        serial_ranges = []
+        for batch in batches:
+            if batch.serial_start is not None and batch.serial_end is not None:
+                serial_ranges.append((batch.serial_start, batch.serial_end))
+
+        # Check ranges are non-overlapping
+        for i, (start1, end1) in enumerate(serial_ranges):
+            for start2, end2 in serial_ranges[i + 1 :]:
+                # Ranges should not overlap
+                assert not (
+                    start1 <= end2 and start2 <= end1
+                ), f"Serial ranges overlap: [{start1}, {end1}] and [{start2}, {end2}]"
+
+    def test_batch_materials_consumed_valid(self):
+        """Test that materials consumed are valid and link to material lots."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Get all material and lot IDs for validation
+        material_ids = {mat.id for mat in materials_catalog}
+        lot_numbers = {lot.lot_number for lot in material_lots}
+
+        # Check batches with materials
+        batches_with_materials = [b for b in batches if b.materials_consumed]
+        assert len(batches_with_materials) > 0, "Some batches should have materials"
+
+        for batch in batches_with_materials:
+            for material_usage in batch.materials_consumed:
+                assert (
+                    material_usage.material_id in material_ids
+                ), f"Invalid material_id: {material_usage.material_id}"
+                assert (
+                    material_usage.lot_number in lot_numbers
+                ), f"Invalid lot_number: {material_usage.lot_number}"
+                assert material_usage.quantity_used >= 0
+                assert material_usage.unit
+
+    def test_batch_order_assignment(self):
+        """Test that batches are assigned to orders."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        order_ids = {order.id for order in orders}
+
+        # Check that assigned order_ids are valid
+        batches_with_orders = [b for b in batches if b.order_id is not None]
+        assert len(batches_with_orders) > 0, "Some batches should be assigned to orders"
+
+        for batch in batches_with_orders:
+            assert batch.order_id in order_ids, f"Invalid order_id: {batch.order_id}"
+
+    def test_batch_quality_issues_assigned(self):
+        """Test that quality issues are assigned to batches."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(
+            days=30
+        )  # More days for quality issues
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=30
+        )
+        orders = generate_orders(start_date, days=30)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Check if quality issues were moved to batches
+        batches_with_issues = [b for b in batches if b.quality_issues]
+        # With planted scenarios and random issues, we should have some
+        assert len(batches_with_issues) > 0, "Some batches should have quality issues"
+
+        for batch in batches_with_issues:
+            for issue in batch.quality_issues:
+                assert issue.type
+                assert issue.description
+                assert issue.parts_affected >= 0
+                assert issue.severity in ["Low", "Medium", "High"]
+                assert issue.date
+                assert issue.machine
+
+    def test_batch_count_per_day(self):
+        """Test that approximately correct number of batches are generated per day."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=5)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=5
+        )
+        orders = generate_orders(start_date, days=5)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Expected: ~1.5 batches per shift per machine
+        # 4 machines × 2 shifts × 1.5 batches × 5 days = ~60 batches
+        # Allow for variation (40-80 batches)
+        assert (
+            40 <= len(batches) <= 80
+        ), f"Expected 40-80 batches for 5 days, got {len(batches)}"
+
+    def test_batch_generation_with_no_available_orders(self):
+        """Test that batches can be generated even without orders."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = []  # Empty orders list
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Should still generate batches, but with order_id=None
+        assert len(batches) > 0
+        assert all(batch.order_id is None for batch in batches)
+
+    def test_batch_generation_with_no_available_material_lots(self):
+        """Test batch generation when no material lots are available."""
+        from shared.data import generate_production_data
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        production_data = generate_production_data(days=2)
+        start_date = datetime.fromisoformat(production_data["start_date"])
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = []  # Empty lots list
+        orders = generate_orders(start_date, days=2)
+
+        batches = generate_production_batches(
+            production_data, materials_catalog, material_lots, orders
+        )
+
+        # Should still generate batches, but with empty materials_consumed
+        assert len(batches) > 0
+        assert all(len(batch.materials_consumed) == 0 for batch in batches)
+
+    def test_batch_generation_with_missing_shifts_raises_error(self):
+        """Test that missing 'shifts' key raises clear error."""
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        start_date = datetime(2024, 1, 1)
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        # Invalid production data (missing 'shifts' key)
+        invalid_data = {
+            "machines": [],
+            "production": {},
+            # Missing 'shifts' key
+        }
+
+        with pytest.raises(ValueError) as exc_info:
+            generate_production_batches(
+                invalid_data, materials_catalog, material_lots, orders
+            )
+
+        assert "shifts" in str(exc_info.value).lower()
+
+    def test_batch_generation_with_empty_shifts_raises_error(self):
+        """Test that empty 'shifts' list raises clear error."""
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        start_date = datetime(2024, 1, 1)
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        # Invalid production data (empty 'shifts' list)
+        invalid_data = {
+            "machines": [],
+            "shifts": [],  # Empty shifts
+            "production": {},
+        }
+
+        with pytest.raises(ValueError) as exc_info:
+            generate_production_batches(
+                invalid_data, materials_catalog, material_lots, orders
+            )
+
+        assert "shifts" in str(exc_info.value).lower()
+        assert "empty" in str(exc_info.value).lower()
+
+    def test_batch_generation_with_empty_machines_returns_empty(self):
+        """Test that empty machines list returns empty batch list."""
+        from shared.data_generator import (
+            generate_materials_catalog,
+            generate_material_lots,
+            generate_orders,
+            generate_production_batches,
+            generate_suppliers,
+        )
+
+        start_date = datetime(2024, 1, 1)
+        suppliers = generate_suppliers()
+        materials_catalog = generate_materials_catalog()
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days=2
+        )
+        orders = generate_orders(start_date, days=2)
+
+        # Valid data but empty machines
+        data_with_no_machines = {
+            "machines": [],  # Empty machines
+            "shifts": [{"id": 1, "name": "Day", "start_hour": 6, "end_hour": 14}],
+            "production": {},
+        }
+
+        batches = generate_production_batches(
+            data_with_no_machines, materials_catalog, material_lots, orders
+        )
+
+        # Should return empty list (not crash)
+        assert len(batches) == 0

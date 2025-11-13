@@ -3,7 +3,16 @@
 import pytest
 from pydantic import ValidationError
 
-from shared.models import MaterialLot, MaterialSpec, Order, OrderItem, Supplier
+from shared.models import (
+    MaterialLot,
+    MaterialSpec,
+    MaterialUsage,
+    Order,
+    OrderItem,
+    ProductionBatch,
+    QualityIssue,
+    Supplier,
+)
 
 
 class TestSupplier:
@@ -320,3 +329,323 @@ class TestOrder:
         assert "customer" in error_fields
         assert "due_date" in error_fields
         assert "total_value" in error_fields
+
+
+class TestMaterialUsage:
+    """Test MaterialUsage model validation (PR14)."""
+
+    def test_valid_material_usage(self):
+        """Test that valid material usage data is accepted."""
+        usage = MaterialUsage(
+            material_id="MAT-001",
+            material_name="Steel Bar 304",
+            lot_number="LOT-20240115-001",
+            quantity_used=25.5,
+            unit="kg",
+        )
+
+        assert usage.material_id == "MAT-001"
+        assert usage.material_name == "Steel Bar 304"
+        assert usage.lot_number == "LOT-20240115-001"
+        assert usage.quantity_used == 25.5
+        assert usage.unit == "kg"
+
+    def test_material_usage_zero_quantity(self):
+        """Test that zero quantity is allowed."""
+        usage = MaterialUsage(
+            material_id="MAT-002",
+            material_name="Aluminum Bar",
+            lot_number="LOT-20240116-001",
+            quantity_used=0.0,
+            unit="kg",
+        )
+
+        assert usage.quantity_used == 0.0
+
+    def test_material_usage_negative_quantity(self):
+        """Test that negative quantity raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            MaterialUsage(
+                material_id="MAT-003",
+                material_name="Steel Plate",
+                lot_number="LOT-20240117-001",
+                quantity_used=-10.5,
+                unit="kg",
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 1
+        assert errors[0]["loc"] == ("quantity_used",)
+        assert "greater_than_equal" in errors[0]["type"]
+
+    def test_material_usage_missing_required_fields(self):
+        """Test that missing required fields raise ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            MaterialUsage(
+                material_id="MAT-004",
+                # Missing material_name, lot_number, quantity_used, unit
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 4
+        error_fields = {err["loc"][0] for err in errors}
+        assert "material_name" in error_fields
+        assert "lot_number" in error_fields
+        assert "quantity_used" in error_fields
+        assert "unit" in error_fields
+
+
+class TestProductionBatch:
+    """Test ProductionBatch model validation (PR14)."""
+
+    def test_valid_production_batch_minimal(self):
+        """Test that valid minimal batch data is accepted."""
+        batch = ProductionBatch(
+            batch_id="BATCH-2024-01-15-CNC001-Day-01",
+            date="2024-01-15",
+            machine_id=1,
+            machine_name="CNC-001",
+            shift_id=1,
+            shift_name="Day",
+            part_number="PART-001",
+            operator="John Smith",
+            parts_produced=120,
+            good_parts=115,
+            scrap_parts=5,
+        )
+
+        assert batch.batch_id == "BATCH-2024-01-15-CNC001-Day-01"
+        assert batch.machine_id == 1
+        assert batch.parts_produced == 120
+        assert batch.good_parts == 115
+        assert batch.scrap_parts == 5
+        assert batch.order_id is None
+        assert batch.serial_start is None
+        assert batch.serial_end is None
+        assert len(batch.materials_consumed) == 0
+        assert len(batch.quality_issues) == 0
+
+    def test_valid_production_batch_full(self):
+        """Test that valid full batch data is accepted."""
+        quality_issue = QualityIssue(
+            type="dimensional",
+            description="Out of tolerance",
+            parts_affected=3,
+            severity="Medium",
+            date="2024-01-15",
+            machine="CNC-001",
+        )
+
+        material_usage = MaterialUsage(
+            material_id="MAT-001",
+            material_name="Steel Bar 304",
+            lot_number="LOT-20240115-001",
+            quantity_used=45.2,
+            unit="kg",
+        )
+
+        batch = ProductionBatch(
+            batch_id="BATCH-2024-01-15-CNC001-Day-01",
+            date="2024-01-15",
+            machine_id=1,
+            machine_name="CNC-001",
+            shift_id=1,
+            shift_name="Day",
+            order_id="ORD-001",
+            part_number="PART-001",
+            operator="John Smith",
+            parts_produced=120,
+            good_parts=115,
+            scrap_parts=5,
+            serial_start=1000,
+            serial_end=1119,
+            materials_consumed=[material_usage],
+            quality_issues=[quality_issue],
+            process_parameters={"temperature": 850.0, "pressure": 120.5},
+            start_time="06:15",
+            end_time="09:45",
+            duration_hours=3.5,
+        )
+
+        assert batch.order_id == "ORD-001"
+        assert batch.serial_start == 1000
+        assert batch.serial_end == 1119
+        assert len(batch.materials_consumed) == 1
+        assert batch.materials_consumed[0].material_id == "MAT-001"
+        assert len(batch.quality_issues) == 1
+        assert batch.quality_issues[0].type == "dimensional"
+        assert batch.process_parameters["temperature"] == 850.0
+        assert batch.start_time == "06:15"
+        assert batch.duration_hours == 3.5
+
+    def test_production_batch_negative_parts(self):
+        """Test that negative parts values raise ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            ProductionBatch(
+                batch_id="BATCH-2024-01-15-CNC001-Day-01",
+                date="2024-01-15",
+                machine_id=1,
+                machine_name="CNC-001",
+                shift_id=1,
+                shift_name="Day",
+                part_number="PART-001",
+                operator="John Smith",
+                parts_produced=-10,
+                good_parts=0,
+                scrap_parts=0,
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 1
+        assert errors[0]["loc"] == ("parts_produced",)
+        assert "greater_than_equal" in errors[0]["type"]
+
+    def test_production_batch_invalid_machine_id(self):
+        """Test that zero/negative machine_id raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            ProductionBatch(
+                batch_id="BATCH-2024-01-15-CNC001-Day-01",
+                date="2024-01-15",
+                machine_id=0,
+                machine_name="CNC-001",
+                shift_id=1,
+                shift_name="Day",
+                part_number="PART-001",
+                operator="John Smith",
+                parts_produced=100,
+                good_parts=95,
+                scrap_parts=5,
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 1
+        assert errors[0]["loc"] == ("machine_id",)
+        assert "greater_than_equal" in errors[0]["type"]
+
+    def test_production_batch_negative_duration(self):
+        """Test that negative duration raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            ProductionBatch(
+                batch_id="BATCH-2024-01-15-CNC001-Day-01",
+                date="2024-01-15",
+                machine_id=1,
+                machine_name="CNC-001",
+                shift_id=1,
+                shift_name="Day",
+                part_number="PART-001",
+                operator="John Smith",
+                parts_produced=100,
+                good_parts=95,
+                scrap_parts=5,
+                duration_hours=-1.5,
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 1
+        assert errors[0]["loc"] == ("duration_hours",)
+        assert "greater_than_equal" in errors[0]["type"]
+
+    def test_production_batch_missing_required_fields(self):
+        """Test that missing required fields raise ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            ProductionBatch(
+                batch_id="BATCH-2024-01-15-CNC001-Day-01",
+                date="2024-01-15",
+                # Missing machine_id, machine_name, shift_id, shift_name,
+                # part_number, operator, parts_produced, good_parts, scrap_parts
+            )
+
+        errors = exc_info.value.errors()
+        assert len(errors) == 9
+        error_fields = {err["loc"][0] for err in errors}
+        assert "machine_id" in error_fields
+        assert "machine_name" in error_fields
+        assert "shift_id" in error_fields
+        assert "shift_name" in error_fields
+        assert "part_number" in error_fields
+        assert "operator" in error_fields
+        assert "parts_produced" in error_fields
+        assert "good_parts" in error_fields
+        assert "scrap_parts" in error_fields
+
+    def test_production_batch_with_multiple_materials(self):
+        """Test batch with multiple materials consumed."""
+        materials = [
+            MaterialUsage(
+                material_id="MAT-001",
+                material_name="Steel Bar 304",
+                lot_number="LOT-20240115-001",
+                quantity_used=25.5,
+                unit="kg",
+            ),
+            MaterialUsage(
+                material_id="MAT-005",
+                material_name="M8 Hex Bolt",
+                lot_number="LOT-20240115-002",
+                quantity_used=150.0,
+                unit="pieces",
+            ),
+        ]
+
+        batch = ProductionBatch(
+            batch_id="BATCH-2024-01-15-Assembly001-Day-01",
+            date="2024-01-15",
+            machine_id=2,
+            machine_name="Assembly-001",
+            shift_id=1,
+            shift_name="Day",
+            part_number="PART-002",
+            operator="Sarah Johnson",
+            parts_produced=80,
+            good_parts=78,
+            scrap_parts=2,
+            materials_consumed=materials,
+        )
+
+        assert len(batch.materials_consumed) == 2
+        assert batch.materials_consumed[0].material_id == "MAT-001"
+        assert batch.materials_consumed[0].unit == "kg"
+        assert batch.materials_consumed[1].material_id == "MAT-005"
+        assert batch.materials_consumed[1].unit == "pieces"
+
+    def test_production_batch_with_multiple_quality_issues(self):
+        """Test batch with multiple quality issues."""
+        issues = [
+            QualityIssue(
+                type="dimensional",
+                description="Out of tolerance",
+                parts_affected=2,
+                severity="Medium",
+                date="2024-01-15",
+                machine="CNC-001",
+            ),
+            QualityIssue(
+                type="surface",
+                description="Surface finish issues",
+                parts_affected=3,
+                severity="Low",
+                date="2024-01-15",
+                machine="CNC-001",
+            ),
+        ]
+
+        batch = ProductionBatch(
+            batch_id="BATCH-2024-01-15-CNC001-Day-01",
+            date="2024-01-15",
+            machine_id=1,
+            machine_name="CNC-001",
+            shift_id=1,
+            shift_name="Day",
+            part_number="PART-001",
+            operator="John Smith",
+            parts_produced=120,
+            good_parts=115,
+            scrap_parts=5,
+            quality_issues=issues,
+        )
+
+        assert len(batch.quality_issues) == 2
+        assert batch.quality_issues[0].type == "dimensional"
+        assert batch.quality_issues[0].severity == "Medium"
+        assert batch.quality_issues[1].type == "surface"
+        assert batch.quality_issues[1].severity == "Low"
