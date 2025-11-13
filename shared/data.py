@@ -16,6 +16,13 @@ import logging
 import aiofiles
 from .config import DATA_FILE, STORAGE_MODE
 from .blob_storage import BlobStorageClient
+from .data_generator import (
+    generate_materials_catalog,
+    generate_material_lots,
+    generate_orders,
+    generate_production_batches,
+    generate_suppliers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +152,9 @@ async def load_data_async() -> Optional[Dict[str, Any]]:
             raise
         except Exception as e:
             logger.error(f"Unexpected error loading data from Azure Blob Storage: {e}")
-            raise RuntimeError(f"Failed to load data from Azure Blob Storage: {e}") from e
+            raise RuntimeError(
+                f"Failed to load data from Azure Blob Storage: {e}"
+            ) from e
         finally:
             # Always close client, even on error
             await blob_client.close()
@@ -332,6 +341,68 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
 
         current_date += timedelta(days=1)
 
+    # Generate supply chain entities (PR13)
+    try:
+        logger.info("Generating supply chain entities...")
+
+        suppliers = generate_suppliers()
+        logger.debug(f"Generated {len(suppliers)} suppliers")
+
+        materials_catalog = generate_materials_catalog()
+        logger.debug(f"Generated {len(materials_catalog)} materials")
+
+        material_lots = generate_material_lots(
+            suppliers, materials_catalog, start_date, days
+        )
+        logger.debug(f"Generated {len(material_lots)} material lots")
+
+        orders = generate_orders(start_date, days)
+        logger.info(
+            f"Generated {len(suppliers)} suppliers, {len(materials_catalog)} materials, "
+            f"{len(material_lots)} lots, {len(orders)} orders"
+        )
+    except (ValueError, RuntimeError) as e:
+        # These are expected errors with good context - re-raise as-is
+        logger.error(f"Supply chain data generation failed: {e}")
+        raise
+    except Exception as e:
+        # Unexpected errors - log with full stack trace
+        logger.exception(f"Unexpected error during supply chain generation: {e}")
+        raise RuntimeError(f"Supply chain generation failed unexpectedly: {e}") from e
+
+    # Generate production batches with traceability (PR14)
+    try:
+        logger.info("Generating production batches with traceability...")
+        base_data = {
+            "generated_at": datetime.now().isoformat(),
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "machines": MACHINES,
+            "shifts": SHIFTS,
+            "production": production_data,
+        }
+
+        production_batches = generate_production_batches(
+            base_data,
+            materials_catalog,
+            material_lots,
+            orders,
+        )
+        logger.info(f"Generated {len(production_batches)} production batches")
+    except (ValueError, RuntimeError, KeyError, TypeError) as e:
+        logger.error(f"Failed to generate production batches: {e}")
+        raise RuntimeError(f"Production batch generation failed: {e}") from e
+    except Exception as e:
+        logger.error(f"Unexpected error during batch generation: {e}")
+        raise RuntimeError(f"Batch generation failed: {e}") from e
+
+    # Convert Pydantic models to dicts for JSON serialization
+    suppliers_dict = [s.model_dump() for s in suppliers]
+    materials_catalog_dict = [m.model_dump() for m in materials_catalog]
+    material_lots_dict = [lot.model_dump() for lot in material_lots]
+    orders_dict = [o.model_dump() for o in orders]
+    production_batches_dict = [batch.model_dump() for batch in production_batches]
+
     return {
         "generated_at": datetime.now().isoformat(),
         "start_date": start_date.strftime("%Y-%m-%d"),
@@ -339,6 +410,13 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
         "machines": MACHINES,
         "shifts": SHIFTS,
         "production": production_data,
+        # Supply chain entities (PR13)
+        "suppliers": suppliers_dict,
+        "materials_catalog": materials_catalog_dict,
+        "material_lots": material_lots_dict,
+        "orders": orders_dict,
+        # Production batches (PR14)
+        "production_batches": production_batches_dict,
     }
 
 
@@ -362,7 +440,9 @@ def initialize_data(days: int = 30) -> Dict[str, Any]:
     save_data(data)
 
     total_days = len(data["production"])
-    logger.info(f"Generated {total_days} days from {data['start_date']} to {data['end_date']}")
+    logger.info(
+        f"Generated {total_days} days from {data['start_date']} to {data['end_date']}"
+    )
     logger.info(f"Data saved to {DATA_FILE}")
 
     return {
@@ -398,7 +478,9 @@ async def initialize_data_async(days: int = 30) -> Dict[str, Any]:
     await save_data_async(data)
 
     total_days = len(data["production"])
-    logger.info(f"Generated {total_days} days from {data['start_date']} to {data['end_date']}")
+    logger.info(
+        f"Generated {total_days} days from {data['start_date']} to {data['end_date']}"
+    )
     logger.info(f"Data saved using {STORAGE_MODE} storage mode")
 
     return {

@@ -1,0 +1,541 @@
+{
+  "_meta": {
+    "schema_version": "2.0",
+    "generated_at": "2025-11-08T10:00:00Z",
+    "start_date": "2025-10-03",
+    "end_date": "2025-11-02"
+  },
+
+  "suppliers": [
+    {
+      "id": "SUP-001",
+      "name": "Acme Steel Co.",
+      "type": "Raw Material",
+      "materials_supplied": ["304 Stainless Steel", "316 Stainless Steel"],
+      "contact": {
+        "email": "sales@acmesteel.com",
+        "phone": "+1-555-0100",
+        "address": "123 Industrial Way, Pittsburgh, PA"
+      },
+      "quality_metrics": {
+        "rating": 4.2,
+        "total_lots_received": 45,
+        "defect_rate_ppm": 250,
+        "on_time_delivery_pct": 92.5,
+        "last_audit_date": "2025-09-15",
+        "certifications": ["ISO 9001", "AS9100"]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "SUP-002",
+      "name": "Quality Fasteners Inc.",
+      "type": "Component",
+      "materials_supplied": ["M8 Bolts", "M10 Nuts", "Washers"],
+      "contact": {
+        "email": "orders@qualityfasteners.com",
+        "phone": "+1-555-0200",
+        "address": "456 Parts Ave, Cleveland, OH"
+      },
+      "quality_metrics": {
+        "rating": 4.8,
+        "total_lots_received": 120,
+        "defect_rate_ppm": 85,
+        "on_time_delivery_pct": 98.5,
+        "last_audit_date": "2025-10-01",
+        "certifications": ["ISO 9001"]
+      },
+      "status": "approved"
+    }
+  ],
+
+  "materials_catalog": [
+    {
+      "id": "MAT-001",
+      "name": "304 Stainless Steel Bar",
+      "category": "Raw Material",
+      "specification": "ASTM A276",
+      "unit": "kg",
+      "preferred_suppliers": ["SUP-001"],
+      "quality_requirements": {
+        "hardness_range": [70, 90],
+        "tensile_strength_min": 515,
+        "inspection_required": true
+      }
+    },
+    {
+      "id": "MAT-002",
+      "name": "M8 x 20mm Socket Head Cap Screw",
+      "category": "Fastener",
+      "specification": "DIN 912",
+      "unit": "piece",
+      "preferred_suppliers": ["SUP-002"],
+      "quality_requirements": {
+        "torque_spec": "20 Nm",
+        "inspection_required": false
+      }
+    }
+  ],
+
+  "material_lots": [
+    {
+      "lot_number": "LOT-2025-001",
+      "material_id": "MAT-001",
+      "supplier_id": "SUP-001",
+      "received_date": "2025-10-01",
+      "quantity_received": 5000,
+      "quantity_remaining": 2340,
+      "unit": "kg",
+      "certificate_of_conformance": "COC-2025-001.pdf",
+      "inspection_results": {
+        "passed": true,
+        "hardness_avg": 82,
+        "tensile_strength": 530,
+        "inspector": "John Smith",
+        "date": "2025-10-01"
+      },
+      "status": "approved",
+      "quarantine": false
+    },
+    {
+      "lot_number": "LOT-2025-002",
+      "material_id": "MAT-001",
+      "supplier_id": "SUP-001",
+      "received_date": "2025-10-15",
+      "quantity_received": 5000,
+      "quantity_remaining": 4500,
+      "unit": "kg",
+      "certificate_of_conformance": "COC-2025-002.pdf",
+      "inspection_results": {
+        "passed": false,
+        "hardness_avg": 65,
+        "tensile_strength": 505,
+        "inspector": "Jane Doe",
+        "date": "2025-10-15",
+        "notes": "Hardness below spec, lot quarantined"
+      },
+      "status": "rejected",
+      "quarantine": true,
+      "disposition": "Return to supplier"
+    }
+  ],
+
+  "orders": [
+    {
+      "id": "ORD-1001",
+      "order_number": "PO-2025-1001",
+      "customer": {
+        "name": "ABC Manufacturing",
+        "contact": "procurement@abcmfg.com",
+        "order_date": "2025-09-20"
+      },
+      "items": [
+        {
+          "part_number": "PART-A123",
+          "description": "Precision Shaft Assembly",
+          "quantity_ordered": 500,
+          "quantity_completed": 485,
+          "quantity_good": 478,
+          "quantity_scrap": 7,
+          "unit_price": 125.00
+        }
+      ],
+      "due_date": "2025-10-15",
+      "status": "completed",
+      "priority": "high",
+      "shipping_date": "2025-10-14",
+      "total_value": 62500.00
+    },
+    {
+      "id": "ORD-1002",
+      "order_number": "PO-2025-1002",
+      "customer": {
+        "name": "XYZ Industries",
+        "contact": "orders@xyzind.com",
+        "order_date": "2025-10-05"
+      },
+      "items": [
+        {
+          "part_number": "PART-B456",
+          "description": "Control Housing",
+          "quantity_ordered": 1000,
+          "quantity_completed": 650,
+          "quantity_good": 642,
+          "quantity_scrap": 8,
+          "unit_price": 45.00
+        }
+      ],
+      "due_date": "2025-11-10",
+      "status": "in_progress",
+      "priority": "normal",
+      "shipping_date": null,
+      "total_value": 45000.00
+    }
+  ],
+
+  "machines": [
+    {"id": 1, "name": "CNC-001", "type": "CNC Machining Center", "ideal_cycle_time": 45},
+    {"id": 2, "name": "Assembly-001", "type": "Assembly Station", "ideal_cycle_time": 120},
+    {"id": 3, "name": "Packaging-001", "type": "Automated Packaging Line", "ideal_cycle_time": 30},
+    {"id": 4, "name": "Testing-001", "type": "Quality Testing Station", "ideal_cycle_time": 90}
+  ],
+
+  "shifts": [
+    {"id": 1, "name": "Day", "start_hour": 6, "end_hour": 14},
+    {"id": 2, "name": "Night", "start_hour": 14, "end_hour": 22}
+  ],
+
+  "production": {
+    "2025-10-03": {
+      "CNC-001": {
+        "parts_produced": 850,
+        "good_parts": 825,
+        "scrap_parts": 25,
+        "scrap_rate": 2.94,
+        "uptime_hours": 15.8,
+        "downtime_hours": 0.2,
+
+        "batches": [
+          {
+            "batch_id": "BATCH-2025-1003-001",
+            "order_id": "ORD-1001",
+            "part_number": "PART-A123",
+            "shift": "Day",
+            "operator": "Mike Johnson",
+            "parts_produced": 425,
+            "good_parts": 413,
+            "scrap_parts": 12,
+            "serial_range": {
+              "start": 1000,
+              "end": 1424
+            },
+            "materials_consumed": [
+              {
+                "material_id": "MAT-001",
+                "lot_number": "LOT-2025-001",
+                "quantity": 150.5,
+                "unit": "kg"
+              },
+              {
+                "material_id": "MAT-002",
+                "lot_number": "LOT-FAST-001",
+                "quantity": 850,
+                "unit": "piece"
+              }
+            ],
+            "process_parameters": {
+              "spindle_speed_rpm": 3500,
+              "feed_rate_mm_min": 250,
+              "tool_number": "T-05",
+              "coolant_type": "synthetic"
+            }
+          },
+          {
+            "batch_id": "BATCH-2025-1003-002",
+            "order_id": "ORD-1001",
+            "part_number": "PART-A123",
+            "shift": "Night",
+            "operator": "Sarah Williams",
+            "parts_produced": 425,
+            "good_parts": 412,
+            "scrap_parts": 13,
+            "serial_range": {
+              "start": 1425,
+              "end": 1849
+            },
+            "materials_consumed": [
+              {
+                "material_id": "MAT-001",
+                "lot_number": "LOT-2025-001",
+                "quantity": 148.2,
+                "unit": "kg"
+              },
+              {
+                "material_id": "MAT-002",
+                "lot_number": "LOT-FAST-001",
+                "quantity": 850,
+                "unit": "piece"
+              }
+            ],
+            "process_parameters": {
+              "spindle_speed_rpm": 3500,
+              "feed_rate_mm_min": 250,
+              "tool_number": "T-05",
+              "coolant_type": "synthetic"
+            }
+          }
+        ],
+
+        "quality_issues": [
+          {
+            "issue_id": "QI-2025-1003-001",
+            "type": "dimensional",
+            "description": "Shaft diameter out of tolerance (+0.05mm)",
+            "parts_affected": 5,
+            "severity": "High",
+            "detected_at": "final_inspection",
+            "detected_by": "QC Inspector - Tom Chen",
+
+            "traceability": {
+              "batch_id": "BATCH-2025-1003-001",
+              "order_id": "ORD-1001",
+              "part_number": "PART-A123",
+              "customer": "ABC Manufacturing",
+              "affected_serials": [1023, 1045, 1067, 1089, 1102],
+              "shift": "Day",
+              "operator": "Mike Johnson"
+            },
+
+            "materials_used": [
+              {
+                "material_id": "MAT-001",
+                "material_name": "304 Stainless Steel Bar",
+                "lot_number": "LOT-2025-001",
+                "supplier_id": "SUP-001",
+                "supplier_name": "Acme Steel Co."
+              }
+            ],
+
+            "investigation": {
+              "status": "closed",
+              "root_cause_category": "material",
+              "root_cause_details": "Material hardness at high end of spec (88 HRB) causing excessive tool deflection",
+              "suspected_lots": ["LOT-2025-001"],
+              "verification_tests": [
+                {
+                  "test": "hardness_retest",
+                  "result": "88 HRB (spec: 70-90)",
+                  "date": "2025-10-04"
+                },
+                {
+                  "test": "tool_wear_inspection",
+                  "result": "0.03mm wear on cutting edge",
+                  "date": "2025-10-04"
+                }
+              ],
+              "root_cause_confirmed": true,
+              "investigator": "Quality Engineer - Lisa Park"
+            },
+
+            "corrective_actions": [
+              {
+                "action": "Replace cutting tool",
+                "responsible": "Mike Johnson",
+                "completed_date": "2025-10-04",
+                "verified": true
+              },
+              {
+                "action": "Add tool offset compensation for high-hardness material",
+                "responsible": "Process Engineer - David Lee",
+                "completed_date": "2025-10-05",
+                "verified": true
+              }
+            ],
+
+            "preventive_actions": [
+              {
+                "action": "Request tighter hardness spec from supplier (75-85 HRB)",
+                "responsible": "Purchasing - Amy Rodriguez",
+                "target_date": "2025-10-20",
+                "status": "in_progress"
+              },
+              {
+                "action": "Implement incoming material hardness trending",
+                "responsible": "Quality Manager - Robert Kim",
+                "target_date": "2025-11-01",
+                "status": "planned"
+              }
+            ],
+
+            "supplier_notification": {
+              "notified": true,
+              "notification_date": "2025-10-04",
+              "supplier_response": "Acknowledged, will tighten process controls",
+              "supplier_capa_number": "CAPA-2025-042"
+            },
+
+            "cost_impact": {
+              "scrap_cost": 625.00,
+              "rework_cost": 0.00,
+              "downtime_cost": 150.00,
+              "investigation_cost": 400.00,
+              "total_cost": 1175.00,
+              "charged_to_supplier": false
+            }
+          },
+
+          {
+            "issue_id": "QI-2025-1003-002",
+            "type": "surface",
+            "description": "Minor surface scratches on finish",
+            "parts_affected": 3,
+            "severity": "Low",
+            "detected_at": "in_process",
+            "detected_by": "Operator - Sarah Williams",
+
+            "traceability": {
+              "batch_id": "BATCH-2025-1003-002",
+              "order_id": "ORD-1001",
+              "part_number": "PART-A123",
+              "customer": "ABC Manufacturing",
+              "affected_serials": [1567, 1598, 1623],
+              "shift": "Night",
+              "operator": "Sarah Williams"
+            },
+
+            "materials_used": [
+              {
+                "material_id": "MAT-001",
+                "material_name": "304 Stainless Steel Bar",
+                "lot_number": "LOT-2025-001",
+                "supplier_id": "SUP-001",
+                "supplier_name": "Acme Steel Co."
+              }
+            ],
+
+            "investigation": {
+              "status": "closed",
+              "root_cause_category": "process",
+              "root_cause_details": "Chip accumulation in part ejection chute causing minor contact marks",
+              "suspected_lots": [],
+              "verification_tests": [
+                {
+                  "test": "ejection_chute_inspection",
+                  "result": "Metal chips found in chute",
+                  "date": "2025-10-03"
+                }
+              ],
+              "root_cause_confirmed": true,
+              "investigator": "Operator - Sarah Williams"
+            },
+
+            "corrective_actions": [
+              {
+                "action": "Clean ejection chute and adjust chip removal",
+                "responsible": "Sarah Williams",
+                "completed_date": "2025-10-03",
+                "verified": true
+              }
+            ],
+
+            "preventive_actions": [
+              {
+                "action": "Add ejection chute inspection to shift startup checklist",
+                "responsible": "Production Supervisor - Mark Thompson",
+                "target_date": "2025-10-10",
+                "status": "completed"
+              }
+            ],
+
+            "supplier_notification": {
+              "notified": false,
+              "notification_date": null,
+              "supplier_response": null,
+              "supplier_capa_number": null
+            },
+
+            "cost_impact": {
+              "scrap_cost": 0.00,
+              "rework_cost": 90.00,
+              "downtime_cost": 25.00,
+              "investigation_cost": 50.00,
+              "total_cost": 165.00,
+              "charged_to_supplier": false
+            }
+          }
+        ],
+
+        "downtime_events": [
+          {
+            "event_id": "DT-2025-1003-001",
+            "reason": "mechanical",
+            "description": "Spindle bearing noise, preventive replacement",
+            "duration_hours": 0.2,
+            "shift": "Day",
+            "start_time": "2025-10-03T10:30:00Z",
+            "end_time": "2025-10-03T10:42:00Z",
+            "technician": "Maintenance - Carlos Ramirez",
+            "parts_replaced": ["Bearing-SKF-6205"],
+            "cost": 280.00
+          }
+        ],
+
+        "shifts": {
+          "Day": {
+            "parts_produced": 425,
+            "scrap_parts": 12,
+            "good_parts": 413,
+            "uptime_hours": 7.9,
+            "downtime_hours": 0.1
+          },
+          "Night": {
+            "parts_produced": 425,
+            "scrap_parts": 13,
+            "good_parts": 412,
+            "uptime_hours": 7.9,
+            "downtime_hours": 0.1
+          }
+        }
+      },
+
+      "Assembly-001": {
+        "parts_produced": 280,
+        "good_parts": 272,
+        "scrap_parts": 8,
+        "scrap_rate": 2.86,
+        "uptime_hours": 15.5,
+        "downtime_hours": 0.5,
+
+        "batches": [
+          {
+            "batch_id": "BATCH-2025-1003-A001",
+            "order_id": "ORD-1001",
+            "part_number": "PART-A123",
+            "shift": "Day",
+            "operator": "Assembly Team A",
+            "parts_produced": 140,
+            "good_parts": 136,
+            "scrap_parts": 4,
+            "serial_range": {
+              "start": 1000,
+              "end": 1139
+            },
+            "components_consumed": [
+              {
+                "component": "Machined Shaft (from CNC-001)",
+                "serials": [1000, 1001, 1002, "..."],
+                "quantity": 140
+              },
+              {
+                "material_id": "MAT-002",
+                "lot_number": "LOT-FAST-001",
+                "quantity": 560,
+                "unit": "piece"
+              }
+            ]
+          }
+        ],
+
+        "quality_issues": [],
+        "downtime_events": [],
+
+        "shifts": {
+          "Day": {
+            "parts_produced": 140,
+            "scrap_parts": 4,
+            "good_parts": 136,
+            "uptime_hours": 7.8,
+            "downtime_hours": 0.2
+          },
+          "Night": {
+            "parts_produced": 140,
+            "scrap_parts": 4,
+            "good_parts": 136,
+            "uptime_hours": 7.7,
+            "downtime_hours": 0.3
+          }
+        }
+      }
+    }
+  }
+}
