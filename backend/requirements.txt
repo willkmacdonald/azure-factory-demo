@@ -11,5 +11,8 @@ aiofiles==24.1.0
 azure-storage-blob>=12.15.0
 aiohttp>=3.8.0
 
+# Azure OpenAI SDK (async support)
+openai>=1.51.0
+
 # Environment variable management
 python-dotenv==1.0.1

@@ -405,8 +405,8 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
 
     return {
         "generated_at": datetime.now().isoformat(),
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
+        "start_date": start_date.strftime("%Y-%m-%d"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
         "machines": MACHINES,
         "shifts": SHIFTS,
         "production": production_data,
