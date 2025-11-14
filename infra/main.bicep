@@ -176,7 +176,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   name: containerRegistryName
   location: location
   sku: {
-    name: 'Basic'                    // Cost-optimized tier for demos/small projects
+    name: 'Standard'                 // Standard tier (Basic not supported in all regions)
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)
