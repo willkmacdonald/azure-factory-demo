@@ -41,9 +41,9 @@ param location string = resourceGroup().location
 ])
 param environmentName string = 'dev'
 
-@description('Unique suffix for ACR name (6 chars, alphanumeric). Leave empty to auto-generate.')
+@description('Unique suffix for ACR name (6 chars, alphanumeric). Auto-generated from resource group.')
 @maxLength(6)
-param acrSuffix string = uniqueString(resourceGroup().id)
+param acrSuffix string = substring(uniqueString(resourceGroup().id), 0, 6)
 
 @description('Container image tag (e.g., latest, v1.0.0, or commit SHA)')
 param imageTag string = 'latest'
