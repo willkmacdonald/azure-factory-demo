@@ -81,10 +81,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   location: location
   kind: 'linux'
   sku: {
-    name: 'B1'                       // Basic tier - good for dev/demo (~$13/month)
-    tier: 'Basic'
-    size: 'B1'
-    capacity: 1
+    name: 'F1'                       // Free tier - no quota restrictions, no cost
+    tier: 'Free'
   }
   properties: {
     reserved: true                   // Required for Linux
