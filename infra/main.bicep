@@ -41,9 +41,9 @@ param location string = resourceGroup().location
 ])
 param environmentName string = 'dev'
 
-@description('Unique suffix for ACR name (6 chars, alphanumeric). Auto-generated from resource group.')
-@maxLength(6)
-param acrSuffix string = substring(uniqueString(resourceGroup().id), 0, 6)
+// Unique suffix for ACR name (6 chars, alphanumeric) - auto-generated from resource group ID
+// Note: This ensures consistent ACR naming across deployments to the same resource group
+var acrSuffix = substring(uniqueString(resourceGroup().id), 0, 6)
 
 @description('Container image tag (e.g., latest, v1.0.0, or commit SHA)')
 param imageTag string = 'latest'
@@ -118,7 +118,10 @@ param memorySize string = '1.0'
 // =============================================================================
 
 var resourceNamePrefix = '${appName}-${environmentName}'
-var containerRegistryName = replace('${appName}${acrSuffix}acr', '-', '') // ACR names: alphanumeric only, globally unique
+// ACR names must be globally unique and alphanumeric only (no hyphens allowed)
+// Format: {appName}{6-char-hash}acr (e.g., factoryagent9a2f3bacr)
+// The uniqueString ensures different resource groups get different ACR names
+var containerRegistryName = replace('${appName}${acrSuffix}acr', '-', '')
 var logAnalyticsName = '${resourceNamePrefix}-logs'
 var containerEnvName = '${resourceNamePrefix}-env'
 var backendAppName = '${resourceNamePrefix}-backend'

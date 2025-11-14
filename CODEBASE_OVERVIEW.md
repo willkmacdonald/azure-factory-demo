@@ -1,8 +1,8 @@
 # Factory Agent - Comprehensive Codebase Overview
 
-**Project Status**: Active Development (PR12 Complete, Planning PR13)
-**Last Updated**: November 12, 2025
-**Current Branch**: `claude/data-store-structure-review-011CUviXrzLrmtvECzNe7Tzs`
+**Project Status**: Active Development (PR12 Complete, Documentation PR Complete)
+**Last Updated**: November 14, 2025
+**Current Branch**: `main`
 
 ---
 
@@ -217,16 +217,24 @@ Data Layer
 
 ### 2. Data Models (shared/models.py - 85 lines)
 
-**Pydantic Models**:
-- `OEEMetrics`: OEE, availability, performance, quality components
-- `ScrapMetrics`: Scrap rate, breakdown by machine
-- `QualityIssue`: Individual defect record
-- `QualityIssues`: Collection with severity breakdown
-- `DowntimeEvent`: Downtime record
-- `MajorDowntimeEvent`: Downtime >2 hours
-- `DowntimeAnalysis`: Downtime with event details
+**For comprehensive model documentation, see `docs/MODEL_REFERENCE.md`.**
 
-**Status**: Foundation layer, ready for traceability extension (PR13)
+**Current Models** (15 total):
+- **Production Metrics**: `OEEMetrics`, `ScrapMetrics`
+- **Quality Management**: `QualityIssue`, `QualityIssues`
+- **Machine Management**: `MachineStatus`, `MachineCollection`
+- **Alerts**: `Alert`
+- **AI Chat**: `ChatRequest`, `ChatResponse`, `ConversationHistory`
+- **Data Access**: `ProductionData`, `MachineData`, `SystemInfo`
+- **Health**: `HealthResponse`
+- **Dashboard**: `DashboardData`
+
+**Patterns Used**:
+- Item/Collection pattern (QualityIssue + QualityIssues)
+- Request/Response pattern (ChatRequest + ChatResponse)
+- Metrics pattern (OEEMetrics with components)
+
+**Status**: Foundation layer, ready for traceability extension (PR13-14)
 
 ---
 
@@ -748,68 +756,22 @@ pytest --cov=shared tests/ --cov-report=html  # Coverage report
 
 ---
 
-## Migration Roadmap (PRs 13-22)
+## Migration Roadmap
 
-### Phase 3A: Backend Data Model (PRs 13-16) - CRITICAL
+**For detailed PR plans and task breakdown, see `implementation-plan.md`.**
 
-```
-PR13: Models + Basic Generation
-  ├─ Supplier, Material, MaterialLot, Order models
-  ├─ generate_suppliers(), generate_materials(), generate_lots(), generate_orders()
-  └─ Small reference datasets (~30KB)
+**Current Phase**: Phase 3 - React Frontend Development
+**Status**: PR12 complete (Dashboard Layout & Navigation)
+**Next**: PR13-14 (Supply chain traceability models - ready to merge)
 
-PR14: Production Batch Implementation
-  ├─ ProductionBatch model with materials_consumed[], order_allocations[]
-  ├─ Batch generation logic (~18 batches/day)
-  ├─ ~540 batches for 30 days
-  └─ Move quality_issues from production to batches
+**Upcoming Major Milestones**:
+- **Phase 3A** (PRs 13-16): Backend data models for supply chain traceability
+- **Phase 3B** (PRs 17-18): Traceability API endpoints
+- **Phase 3C** (PRs 19-22): React frontend for supply chain views (optional)
 
-PR15: Aggregation & Backward Compatibility
-  ├─ aggregate_batches_to_production() function
-  ├─ Derive production[date][machine] from batches
-  ├─ Test existing metrics.py functions unchanged
-  └─ Ensure no breaking changes
+**Total Estimated Effort**: 60-85 hours across 10 PRs
 
-PR16: Planted Scenarios & Data Realism
-  ├─ Day 15: Quality spike from bad supplier lot
-  ├─ Day 22: Machine breakdown affecting orders
-  ├─ Supplier quality correlation with defect rates
-  └─ Serial number tracking + quarantine logic
-```
-
-**Effort**: 30-40 hours (6-8 hours each)
-**Value**: Complete traceability foundation
-
-### Phase 3B: Backend API (PRs 17-18) - HIGH VALUE
-
-```
-PR17: Traceability API Endpoints
-  ├─ /api/suppliers, /api/suppliers/{id}/quality
-  ├─ /api/traceability/backward/{issue_id}
-  ├─ /api/traceability/forward/{supplier_id}
-  └─ /api/orders, /api/orders/{id}/quality
-
-PR18: Enhanced Quality Metrics API
-  ├─ Filter by supplier_id, lot_number, order_id
-  ├─ Cost impact calculations
-  └─ Quarantine recommendations
-```
-
-**Effort**: 12-16 hours
-**Value**: Full API capability for demo
-
-### Phase 3C: Frontend (PRs 19-22) - OPTIONAL
-
-```
-PR19: TypeScript Interfaces & API Client
-PR20: Supplier Quality Dashboard
-PR21: Material Lot Tracking View
-PR22: Order Impact View
-```
-
-**Effort**: 20-30 hours
-**Value**: Full UI implementation (nice-to-have)
-**Note**: Can skip if API-level demo is sufficient
+See `implementation-plan.md` for complete roadmap with task breakdowns, dependencies, and status tracking.
 
 ---
 

@@ -50,14 +50,14 @@ APP_NAME="factory-agent"
 LOCATION="${AZURE_LOCATION:-eastus}"
 RESOURCE_GROUP="${APP_NAME}-${ENVIRONMENT}-rg"
 
-# Generate unique ACR name (globally unique required)
-# Use resource group ID hash for consistency across deployments
-ACR_SUFFIX=$(echo "$RESOURCE_GROUP" | md5sum | cut -c1-6)
-ACR_NAME=$(echo "${APP_NAME}${ACR_SUFFIX}acr" | tr -d '-')  # Remove hyphens (ACR requirement)
-
 # Image configuration
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
-BACKEND_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:${IMAGE_TAG}"
+
+# Generate ACR name using same logic as Bicep (infra/main.bicep:var containerRegistryName)
+# Note: This script replicates Bicep's uniqueString() logic to know the ACR name before deployment
+# Bicep uses: substring(uniqueString(resourceGroup().id), 0, 6)
+# We cannot call Bicep's uniqueString() from bash, but we can hash the same input
+# This ensures the ACR exists before we try to push images to it
 
 # Colors for output
 RED='\033[0;31m'
@@ -202,6 +202,15 @@ fi
 
 echo ""
 
+# Get resource group ID for ACR name generation (matches Bicep uniqueString logic)
+RG_ID=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
+ACR_SUFFIX=$(echo -n "$RG_ID" | sha256sum | cut -c1-6)
+ACR_NAME=$(echo "${APP_NAME}${ACR_SUFFIX}acr" | tr -d '-')  # Remove hyphens (ACR naming requirement)
+BACKEND_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:${IMAGE_TAG}"
+
+log_info "Using ACR name: ${ACR_NAME} (generated from resource group ID hash)"
+echo ""
+
 # =============================================================================
 # BUILD DOCKER IMAGE
 # =============================================================================
@@ -305,6 +314,20 @@ CONTAINER_APP_NAME=$(az deployment group show \
     --query properties.outputs.backendAppName.value \
     -o tsv)
 
+# Verify ACR name matches Bicep's output (sanity check)
+BICEP_ACR_NAME=$(az deployment group show \
+    --name "$DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.containerRegistryName.value \
+    -o tsv)
+
+if [ "$ACR_NAME" != "$BICEP_ACR_NAME" ]; then
+    log_error "ACR name mismatch! Script: ${ACR_NAME}, Bicep: ${BICEP_ACR_NAME}"
+    log_error "This indicates the hash logic in deploy.sh doesn't match Bicep's uniqueString()"
+    exit 1
+fi
+
+log_success "ACR name verified: ${ACR_NAME}"
 echo ""
 
 # =============================================================================
