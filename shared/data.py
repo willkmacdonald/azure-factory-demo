@@ -7,7 +7,7 @@ This module supports two storage modes:
 Storage mode is controlled by the STORAGE_MODE environment variable.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timedelta
 import json
 import random
@@ -223,7 +223,7 @@ def data_exists() -> bool:
 
 
 def aggregate_batches_to_production(
-    production_batches: List[Any],
+    production_batches: List[Union["ProductionBatch", Dict[str, Any]]],
     machines: List[Dict[str, Any]],
     shifts: List[Dict[str, Any]],
 ) -> Dict[str, Dict[str, Any]]:

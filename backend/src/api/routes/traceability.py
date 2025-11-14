@@ -211,7 +211,7 @@ async def get_supplier_impact(
             # Check if batch uses any of supplier's material lots
             batch_lot_numbers = {
                 mat["lot_number"]
-                for mat in batch.get("materials_used", [])
+                for mat in batch.get("materials_consumed", [])
             }
 
             if batch_lot_numbers & lot_numbers:  # Intersection
@@ -221,7 +221,7 @@ async def get_supplier_impact(
                     "machine_name": batch["machine_name"],
                     "parts_produced": batch["parts_produced"],
                     "scrap_parts": batch["scrap_parts"],
-                    "materials_used": batch.get("materials_used", []),
+                    "materials_consumed": batch.get("materials_consumed", []),
                 })
 
                 # Count quality issues
@@ -401,7 +401,7 @@ async def backward_trace(
     Returns:
         Dictionary containing:
         - batch: Production batch details
-        - materials_used: List of materials with lot and supplier info
+        - materials_trace: List of materials with lot and supplier info
         - suppliers: Unique suppliers involved
         - supply_chain_summary: Summary statistics
 
@@ -426,11 +426,11 @@ async def backward_trace(
 
         batch = ProductionBatch(**batch_dict)
 
-        # Trace materials used in this batch
+        # Trace materials consumed in this batch
         materials_trace = []
         supplier_ids = set()
 
-        for material_usage in batch.materials_used:
+        for material_usage in batch.materials_consumed:
             # Find the material lot
             lot = next(
                 (
@@ -483,7 +483,7 @@ async def backward_trace(
 
         return {
             "batch": batch.model_dump(),
-            "materials_used": materials_trace,
+            "materials_trace": materials_trace,
             "suppliers": suppliers,
             "supply_chain_summary": {
                 "materials_count": len(materials_trace),
@@ -595,7 +595,7 @@ async def forward_trace(
             # Check if batch uses any of supplier's material lots
             batch_lot_numbers = {
                 mat["lot_number"]
-                for mat in batch.get("materials_used", [])
+                for mat in batch.get("materials_consumed", [])
             }
 
             if batch_lot_numbers & lot_numbers:  # Intersection
