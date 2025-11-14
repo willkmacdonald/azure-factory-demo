@@ -1,0 +1,146 @@
+# =============================================================================
+# Docker Compose Configuration for Factory Agent
+# =============================================================================
+# This file defines how to run the Factory Agent application locally using
+# Docker Compose. It orchestrates the backend API container and provides
+# configuration for local development and testing.
+#
+# Usage:
+#   Development:  docker-compose up --build
+#   Background:   docker-compose up -d
+#   Stop:         docker-compose down
+#   Logs:         docker-compose logs -f backend
+#   Rebuild:      docker-compose build --no-cache
+#
+# Environment Variables:
+#   Create a .env file in the project root with required variables
+#   (see .env.example for template)
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Backend API Service (FastAPI)
+  # ===========================================================================
+  backend:
+    # Build configuration
+    build:
+      context: .                      # Build context is the project root
+      dockerfile: backend/Dockerfile  # Use backend/Dockerfile
+      # Build arguments (optional, can override base image version)
+      # args:
+      #   PYTHON_VERSION: "3.11"
+
+    # Container name (easier to reference in docker commands)
+    container_name: factory-agent-backend
+
+    # Port mapping: <host-port>:<container-port>
+    # Maps port 8000 on your local machine to port 8000 in the container
+    # Access the API at http://localhost:8000
+    ports:
+      - "8000:8000"
+
+    # Environment variables for the backend
+    # These override default values and configure the application
+    environment:
+      # Application configuration
+      - DEBUG=true                    # Enable debug mode for local development
+      - LOG_LEVEL=debug               # Detailed logging for development
+
+      # Storage configuration (local JSON mode for development)
+      - STORAGE_MODE=local            # Use local JSON files (not Azure Blob)
+      - DATA_FILE_PATH=/code/data/production.json  # Path to data file
+
+      # CORS configuration (allow React dev server)
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+
+      # Azure OpenAI configuration (loaded from .env file)
+      # These are required for chat functionality
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+
+      # Azure Blob Storage configuration (optional for local development)
+      # Uncomment if you want to test blob storage locally
+      # - STORAGE_MODE=blob
+      # - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+      # - AZURE_STORAGE_CONTAINER_NAME=${AZURE_STORAGE_CONTAINER_NAME}
+
+    # Volume mounts for local development
+    # This allows you to edit code on your host machine and see changes
+    # without rebuilding the Docker image (for rapid development)
+    volumes:
+      # Mount backend source code (hot reload during development)
+      - ./backend/src:/code/src:ro          # :ro = read-only (safer)
+
+      # Mount shared modules (used by both CLI and API)
+      - ./shared:/code/shared:ro            # :ro = read-only
+
+      # Mount data directory for persistent local data
+      # This persists production.json across container restarts
+      - ./backend/data:/code/data           # Read-write for data persistence
+
+      # Mount .env file for environment variables (optional, environment: above is preferred)
+      # - ./.env:/code/.env:ro
+
+    # Health check configuration
+    # Docker will monitor the /health endpoint to verify the service is running
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s                   # Check every 30 seconds
+      timeout: 10s                    # Fail if check takes > 10 seconds
+      retries: 3                      # Mark unhealthy after 3 failures
+      start_period: 40s               # Wait 40s before first check
+
+    # Restart policy
+    # unless-stopped: Restart container if it crashes, but not if manually stopped
+    restart: unless-stopped
+
+    # Network configuration (optional, uses default bridge network)
+    # networks:
+    #   - factory-agent-network
+
+    # Resource limits (optional, useful for preventing resource exhaustion)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'               # Limit to 1 CPU core
+    #       memory: 512M              # Limit to 512MB RAM
+    #     reservations:
+    #       cpus: '0.5'               # Reserve 0.5 CPU cores
+    #       memory: 256M              # Reserve 256MB RAM
+
+  # ===========================================================================
+  # Frontend Service (React + Vite) - Optional, uncomment when ready
+  # ===========================================================================
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: factory-agent-frontend
+  #   ports:
+  #     - "3000:80"                   # Nginx serves on port 80 internally
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:8000
+  #   depends_on:
+  #     - backend                     # Wait for backend to start first
+  #   restart: unless-stopped
+
+# =============================================================================
+# Networks (optional, uncomment if you need custom networking)
+# =============================================================================
+# networks:
+#   factory-agent-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.28.0.0/16
+
+# =============================================================================
+# Volumes (optional, for named volumes instead of bind mounts)
+# =============================================================================
+# volumes:
+#   backend-data:                     # Named volume for backend data
+#     driver: local

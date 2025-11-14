@@ -1,0 +1,121 @@
+# =============================================================================
+# Docker Ignore File for Factory Agent Backend
+# =============================================================================
+# This file tells Docker which files and directories to exclude when building
+# the Docker image. Excluding unnecessary files:
+# - Reduces image size
+# - Speeds up build time (less data to copy to Docker context)
+# - Improves security (no sensitive files in image)
+# - Prevents cache invalidation (changes to ignored files don't trigger rebuilds)
+# =============================================================================
+
+# =============================================================================
+# Python Runtime Files
+# =============================================================================
+# Exclude Python bytecode and cache files (generated at runtime)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments (not needed in Docker, we install fresh)
+venv/
+env/
+ENV/
+.venv
+
+# =============================================================================
+# Development & Testing Files
+# =============================================================================
+# Exclude test files and coverage reports (not needed in production)
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+.tox/
+.nox/
+
+# IDE and editor files (not needed in container)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# =============================================================================
+# Environment & Configuration Files
+# =============================================================================
+# Exclude local environment files (use environment variables in container)
+.env
+.env.local
+.env.*.local
+*.env
+
+# But DO include .env.example (template for documentation)
+!.env.example
+
+# =============================================================================
+# Documentation & Git Files
+# =============================================================================
+# Exclude documentation files (not needed at runtime)
+*.md
+README*
+LICENSE
+CHANGELOG*
+docs/
+
+# Exclude Git repository (not needed in container)
+.git/
+.gitignore
+.gitattributes
+
+# =============================================================================
+# Build & Distribution Files
+# =============================================================================
+# Exclude build artifacts and distribution packages
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =============================================================================
+# Data & Log Files
+# =============================================================================
+# Exclude local data files (use Azure Blob Storage in production)
+# Note: The Dockerfile creates an empty data/ directory for development mode
+data/*.json
+data/*.db
+
+# Exclude log files (use Azure Monitor/Application Insights)
+*.log
+logs/
+
+# =============================================================================
+# Docker & Container Files
+# =============================================================================
+# Exclude Docker files (not needed inside the image)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# =============================================================================
+# CI/CD & Deployment Files
+# =============================================================================
+# Exclude deployment configurations (not needed in runtime image)
+.github/
+azure-pipelines*.yml
+.azure/
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+# Exclude temporary files and OS-specific files
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
