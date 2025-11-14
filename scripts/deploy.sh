@@ -202,74 +202,8 @@ fi
 
 echo ""
 
-# Get resource group ID for ACR name generation (matches Bicep uniqueString logic)
-RG_ID=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
-ACR_SUFFIX=$(echo -n "$RG_ID" | sha256sum | cut -c1-6)
-ACR_NAME=$(echo "${APP_NAME}${ACR_SUFFIX}acr" | tr -d '-')  # Remove hyphens (ACR naming requirement)
-BACKEND_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:${IMAGE_TAG}"
-
-log_info "Using ACR name: ${ACR_NAME} (generated from resource group ID hash)"
-echo ""
-
 # =============================================================================
-# BUILD DOCKER IMAGE
-# =============================================================================
-
-log_info "Building Docker image..."
-
-# Build the image with multi-stage build (context = project root)
-docker build \
-    --tag "${BACKEND_IMAGE}" \
-    --tag "${APP_NAME}/backend:latest" \
-    --file backend/Dockerfile \
-    .
-
-log_success "Docker image built: ${BACKEND_IMAGE}"
-echo ""
-
-# =============================================================================
-# AZURE CONTAINER REGISTRY
-# =============================================================================
-
-log_info "Checking Azure Container Registry..."
-
-if ! az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" &> /dev/null; then
-    log_info "Creating Azure Container Registry: ${ACR_NAME}"
-    az acr create \
-        --name "$ACR_NAME" \
-        --resource-group "$RESOURCE_GROUP" \
-        --location "$LOCATION" \
-        --sku Basic \
-        --admin-enabled false
-    log_success "Container Registry created"
-else
-    log_success "Container Registry exists: ${ACR_NAME}"
-fi
-
-echo ""
-
-# =============================================================================
-# PUSH IMAGE TO ACR
-# =============================================================================
-
-log_info "Pushing image to Azure Container Registry..."
-
-# Log in to ACR
-az acr login --name "$ACR_NAME"
-
-# Push the image
-docker push "${BACKEND_IMAGE}"
-
-# Also tag and push as 'latest'
-BACKEND_IMAGE_LATEST="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:latest"
-docker tag "${BACKEND_IMAGE}" "${BACKEND_IMAGE_LATEST}"
-docker push "${BACKEND_IMAGE_LATEST}"
-
-log_success "Image pushed to ACR"
-echo ""
-
-# =============================================================================
-# DEPLOY INFRASTRUCTURE
+# DEPLOY INFRASTRUCTURE (creates ACR with Bicep-generated name)
 # =============================================================================
 
 log_info "Deploying infrastructure with Bicep..."
@@ -297,6 +231,62 @@ log_success "Infrastructure deployed"
 echo ""
 
 # =============================================================================
+# GET ACR NAME FROM DEPLOYMENT
+# =============================================================================
+
+log_info "Getting ACR name from deployment..."
+
+ACR_NAME=$(az deployment group show \
+    --name "$DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.containerRegistryName.value \
+    -o tsv)
+
+if [ -z "$ACR_NAME" ]; then
+    log_error "Failed to get ACR name from deployment outputs"
+    exit 1
+fi
+
+log_success "ACR name: ${ACR_NAME}"
+
+# Set image names now that we have the ACR name
+BACKEND_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:${IMAGE_TAG}"
+BACKEND_IMAGE_LATEST="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:latest"
+echo ""
+
+# =============================================================================
+# BUILD DOCKER IMAGE
+# =============================================================================
+
+log_info "Building Docker image..."
+
+# Build the image with multi-stage build (context = project root)
+docker build \
+    --tag "${BACKEND_IMAGE}" \
+    --tag "${BACKEND_IMAGE_LATEST}" \
+    --file backend/Dockerfile \
+    .
+
+log_success "Docker image built: ${BACKEND_IMAGE}"
+echo ""
+
+# =============================================================================
+# PUSH IMAGE TO ACR
+# =============================================================================
+
+log_info "Pushing image to Azure Container Registry..."
+
+# Log in to ACR
+az acr login --name "$ACR_NAME"
+
+# Push both tags
+docker push "${BACKEND_IMAGE}"
+docker push "${BACKEND_IMAGE_LATEST}"
+
+log_success "Image pushed to ACR"
+echo ""
+
+# =============================================================================
 # GET DEPLOYMENT OUTPUTS
 # =============================================================================
 
@@ -314,20 +304,6 @@ CONTAINER_APP_NAME=$(az deployment group show \
     --query properties.outputs.backendAppName.value \
     -o tsv)
 
-# Verify ACR name matches Bicep's output (sanity check)
-BICEP_ACR_NAME=$(az deployment group show \
-    --name "$DEPLOYMENT_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --query properties.outputs.containerRegistryName.value \
-    -o tsv)
-
-if [ "$ACR_NAME" != "$BICEP_ACR_NAME" ]; then
-    log_error "ACR name mismatch! Script: ${ACR_NAME}, Bicep: ${BICEP_ACR_NAME}"
-    log_error "This indicates the hash logic in deploy.sh doesn't match Bicep's uniqueString()"
-    exit 1
-fi
-
-log_success "ACR name verified: ${ACR_NAME}"
 echo ""
 
 # =============================================================================
