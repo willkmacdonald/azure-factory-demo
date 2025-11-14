@@ -226,6 +226,7 @@ jobs:
           resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
           template: ./infra/main.bicep
           parameters: >
+            containerRegistryName=${{ env.AZURE_CONTAINER_REGISTRY }}
             imageTag=${{ needs.push.outputs.image-tag }}
             azureOpenAiEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
             azureOpenAiKey=${{ secrets.AZURE_OPENAI_KEY }}
