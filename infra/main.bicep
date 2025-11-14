@@ -183,7 +183,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   name: containerRegistryName
   location: location
   sku: {
-    name: 'Standard'                 // Standard tier (~$20/month, good balance)
+    name: 'Basic'                    // Basic tier (only supported SKU in some subscriptions)
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)

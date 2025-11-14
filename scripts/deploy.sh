@@ -239,7 +239,7 @@ if ! az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" &> /dev/n
         --name "$ACR_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --location "$LOCATION" \
-        --sku Standard \
+        --sku Basic \
         --admin-enabled false
     log_success "Container Registry created"
 else
