@@ -203,7 +203,35 @@ fi
 echo ""
 
 # =============================================================================
-# DEPLOY INFRASTRUCTURE (creates ACR with Bicep-generated name)
+# CREATE ACR WITH AZURE CLI (Bicep deployment fails with SKU errors)
+# =============================================================================
+
+log_info "Creating ACR with Azure CLI (workaround for Bicep SKU restriction)..."
+
+# Generate ACR name using same logic as Bicep
+RG_ID=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
+# Note: Using simple hash since we can't replicate Bicep's uniqueString() exactly
+# This creates a deterministic name that won't conflict
+ACR_NAME=$(echo -n "${APP_NAME}$(echo -n "$RG_ID" | sha256sum | cut -c1-6)acr" | tr -d '-')
+
+# Create ACR if it doesn't exist
+if ! az acr show --name "$ACR_NAME" &>/dev/null; then
+    log_info "Creating new ACR: ${ACR_NAME}"
+    az acr create \
+        --name "$ACR_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --location "$LOCATION" \
+        --sku Standard \
+        --admin-enabled false
+    log_success "ACR created: ${ACR_NAME}"
+else
+    log_success "ACR already exists: ${ACR_NAME}"
+fi
+
+echo ""
+
+# =============================================================================
+# DEPLOY INFRASTRUCTURE (will detect existing ACR)
 # =============================================================================
 
 log_info "Deploying infrastructure with Bicep..."
@@ -228,28 +256,8 @@ az deployment group create \
         azureStorageContainerName="${AZURE_STORAGE_CONTAINER_NAME:-factory-data}"
 
 log_success "Infrastructure deployed"
-echo ""
 
-# =============================================================================
-# GET ACR NAME FROM DEPLOYMENT
-# =============================================================================
-
-log_info "Getting ACR name from deployment..."
-
-ACR_NAME=$(az deployment group show \
-    --name "$DEPLOYMENT_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --query properties.outputs.containerRegistryName.value \
-    -o tsv)
-
-if [ -z "$ACR_NAME" ]; then
-    log_error "Failed to get ACR name from deployment outputs"
-    exit 1
-fi
-
-log_success "ACR name: ${ACR_NAME}"
-
-# Set image names now that we have the ACR name
+# Set image names (ACR_NAME was set earlier when we created the ACR)
 BACKEND_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:${IMAGE_TAG}"
 BACKEND_IMAGE_LATEST="${ACR_NAME}.azurecr.io/${APP_NAME}/backend:latest"
 echo ""

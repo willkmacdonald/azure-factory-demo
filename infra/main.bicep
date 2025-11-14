@@ -183,7 +183,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
   name: containerRegistryName
   location: location
   sku: {
-    name: 'Premium'                  // Premium tier (may be only SKU supported via Bicep in this subscription)
+    name: 'Standard'                 // Standard tier (created via CLI in deploy.sh, Bicep just validates)
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)
