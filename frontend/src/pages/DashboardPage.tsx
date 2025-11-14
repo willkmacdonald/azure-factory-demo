@@ -11,10 +11,6 @@ import {
   Alert,
 } from '@mui/material';
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   XAxis,
@@ -24,7 +20,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { apiService, getErrorMessage } from '../services/api';
+import { apiService, getErrorMessage } from '../api/client';
 import type { OEEMetrics, ScrapMetrics, DowntimeAnalysis, StatsResponse } from '../types/api';
 
 /**
@@ -293,62 +289,8 @@ const DashboardPage: React.FC = () => {
           </Paper>
         </Grid>
 
-        {/* Scrap Rate Card with Production Stats */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Production Quality
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Parts production and scrap statistics
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h4" color="primary">
-                    {oee?.total_parts.toLocaleString() ?? '—'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Parts
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h4" color="success.main">
-                    {oee?.good_parts.toLocaleString() ?? '—'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Good Parts
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h4" color="error.main">
-                    {scrap?.total_scrap.toLocaleString() ?? '—'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Scrap Parts
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h4" color="warning.main">
-                    {scrap ? `${scrap.scrap_rate.toFixed(1)}%` : '—'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Scrap Rate
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-
         {/* Downtime Analysis Bar Chart */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Downtime Analysis
@@ -367,6 +309,60 @@ const DashboardPage: React.FC = () => {
                 <Bar dataKey="hours" fill="#ff7300" name="Downtime Hours" />
               </BarChart>
             </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* Scrap Rate Card with Production Stats */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Production Quality
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Parts production and scrap statistics
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6} sm={3}>
+                <Box sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h4" color="primary">
+                    {oee?.total_parts.toLocaleString() ?? '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Parts
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Box sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h4" color="success.main">
+                    {oee?.good_parts.toLocaleString() ?? '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Good Parts
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Box sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h4" color="error.main">
+                    {scrap?.total_scrap.toLocaleString() ?? '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Scrap Parts
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Box sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h4" color="warning.main">
+                    {scrap ? `${scrap.scrap_rate.toFixed(1)}%` : '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Scrap Rate
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
       </Grid>
