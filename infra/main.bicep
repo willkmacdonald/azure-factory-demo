@@ -187,21 +187,9 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)
-    anonymousPullEnabled: false      // Require authentication to pull images
     publicNetworkAccess: 'Enabled'   // Allow access from internet (fine for demo)
-    dataEndpointEnabled: false       // Not needed for Container Apps
-    policies: {
-      quarantinePolicy: {
-        status: 'disabled'           // Quarantine disabled for simplicity
-      }
-      trustPolicy: {
-        status: 'disabled'           // Content trust disabled for simplicity
-      }
-      retentionPolicy: {
-        status: 'enabled'
-        days: 30                     // Keep images for 30 days
-      }
-    }
+    // Note: anonymousPullEnabled not supported in API 2023-07-01
+    // Authentication required by default (adminUserEnabled: false enforces this)
   }
   tags: {
     environment: environmentName
