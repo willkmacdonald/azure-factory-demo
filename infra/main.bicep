@@ -48,6 +48,9 @@ var acrSuffix = substring(uniqueString(resourceGroup().id), 0, 6)
 @description('Container image tag (e.g., latest, v1.0.0, or commit SHA)')
 param imageTag string = 'latest'
 
+@description('Existing Azure Container Registry name (without .azurecr.io)')
+param containerRegistryName string = 'factoryagent4u4zqkacr'
+
 @description('Azure OpenAI endpoint URL')
 @secure()
 param azureOpenAiEndpoint string
@@ -119,9 +122,8 @@ param memorySize string = '1.0'
 
 var resourceNamePrefix = '${appName}-${environmentName}'
 // ACR names must be globally unique and alphanumeric only (no hyphens allowed)
-// Format: {appName}{6-char-hash}acr (e.g., factoryagent9a2f3bacr)
-// The uniqueString ensures different resource groups get different ACR names
-var containerRegistryName = replace('${appName}${acrSuffix}acr', '-', '')
+// ACR name is provided as parameter to use existing registry
+// Format: {appName}{6-char-hash}acr (e.g., factoryagent4u4zqkacr)
 var logAnalyticsName = '${resourceNamePrefix}-logs'
 var containerEnvName = '${resourceNamePrefix}-env'
 var backendAppName = '${resourceNamePrefix}-backend'
