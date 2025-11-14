@@ -183,7 +183,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
   name: containerRegistryName
   location: location
   sku: {
-    name: 'Standard'                 // Standard tier required for Container Apps with Managed Identity
+    name: 'Premium'                  // Premium tier (may be only SKU supported via Bicep in this subscription)
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)
