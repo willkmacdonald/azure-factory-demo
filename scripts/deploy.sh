@@ -49,7 +49,11 @@ fi
 APP_NAME="factory-agent"
 LOCATION="${AZURE_LOCATION:-eastus}"
 RESOURCE_GROUP="${APP_NAME}-${ENVIRONMENT}-rg"
-ACR_NAME=$(echo "${APP_NAME}${ENVIRONMENT}acr" | tr -d '-')  # Remove hyphens (ACR requirement)
+
+# Generate unique ACR name (globally unique required)
+# Use resource group ID hash for consistency across deployments
+ACR_SUFFIX=$(echo "$RESOURCE_GROUP" | md5sum | cut -c1-6)
+ACR_NAME=$(echo "${APP_NAME}${ACR_SUFFIX}acr" | tr -d '-')  # Remove hyphens (ACR requirement)
 
 # Image configuration
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
