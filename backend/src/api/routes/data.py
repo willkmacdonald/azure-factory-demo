@@ -96,6 +96,10 @@ class StatsResponse(BaseModel):
         total_days: Total number of days with data
         total_machines: Total number of machines
         total_records: Total production records
+        supplier_count: Number of suppliers (traceability)
+        material_lot_count: Number of material lots (traceability)
+        order_count: Number of customer orders (traceability)
+        batch_count: Number of production batches (traceability)
     """
     exists: bool
     start_date: Optional[str] = None
@@ -103,6 +107,10 @@ class StatsResponse(BaseModel):
     total_days: Optional[int] = None
     total_machines: Optional[int] = None
     total_records: Optional[int] = None
+    supplier_count: Optional[int] = None
+    material_lot_count: Optional[int] = None
+    order_count: Optional[int] = None
+    batch_count: Optional[int] = None
 
 
 class MachineInfo(BaseModel):
@@ -232,7 +240,11 @@ async def get_stats() -> StatsResponse:
             "end_date": "2025-01-31T00:00:00",
             "total_days": 60,
             "total_machines": 4,
-            "total_records": 240
+            "total_records": 240,
+            "supplier_count": 10,
+            "material_lot_count": 45,
+            "order_count": 15,
+            "batch_count": 120
         }
 
         Response (no data):
@@ -242,7 +254,11 @@ async def get_stats() -> StatsResponse:
             "end_date": null,
             "total_days": null,
             "total_machines": null,
-            "total_records": null
+            "total_records": null,
+            "supplier_count": null,
+            "material_lot_count": null,
+            "order_count": null,
+            "batch_count": null
         }
     """
     try:
@@ -260,13 +276,23 @@ async def get_stats() -> StatsResponse:
             len(day_data) for day_data in production_data.values()
         )
 
+        # Traceability counts (Phase 2 enhancement)
+        supplier_count = len(data.get("suppliers", []))
+        material_lot_count = len(data.get("material_lots", []))
+        order_count = len(data.get("orders", []))
+        batch_count = len(data.get("production_batches", []))
+
         return StatsResponse(
             exists=True,
             start_date=data.get("start_date"),
             end_date=data.get("end_date"),
             total_days=total_days,
             total_machines=total_machines,
-            total_records=total_records
+            total_records=total_records,
+            supplier_count=supplier_count,
+            material_lot_count=material_lot_count,
+            order_count=order_count,
+            batch_count=batch_count
         )
     except Exception as e:
         raise HTTPException(

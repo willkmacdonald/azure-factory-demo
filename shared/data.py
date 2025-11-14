@@ -7,7 +7,7 @@ This module supports two storage modes:
 Storage mode is controlled by the STORAGE_MODE environment variable.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timedelta
 import json
 import random
@@ -222,6 +222,187 @@ def data_exists() -> bool:
     return get_data_path().exists()
 
 
+def aggregate_batches_to_production(
+    production_batches: List[Union["ProductionBatch", Dict[str, Any]]],
+    machines: List[Dict[str, Any]],
+    shifts: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Aggregate production batches into production[date][machine] structure.
+
+    This function derives the production[date][machine] structure from ProductionBatch
+    instances, maintaining backward compatibility with existing metrics and frontend code.
+
+    Args:
+        production_batches: List of ProductionBatch instances (can be Pydantic models or dicts)
+        machines: List of machine dictionaries
+        shifts: List of shift dictionaries
+
+    Returns:
+        Dictionary mapping date -> machine_name -> aggregated metrics.
+        Structure:
+        {
+            "YYYY-MM-DD": {
+                "Machine-Name": {
+                    "parts_produced": int,
+                    "good_parts": int,
+                    "scrap_parts": int,
+                    "scrap_rate": float,
+                    "uptime_hours": float,
+                    "downtime_hours": float,
+                    "downtime_events": List[Dict],
+                    "quality_issues": List[Dict],
+                    "shifts": {
+                        "Day": {...},
+                        "Night": {...}
+                    },
+                    "batches": List[str]  # List of batch IDs for traceability
+                }
+            }
+        }
+
+    Logic:
+        - Group batches by date and machine
+        - Sum parts_produced, good_parts, scrap_parts across batches
+        - Calculate scrap_rate as percentage
+        - Aggregate quality_issues from all batches
+        - Estimate uptime/downtime from batch durations (simplified for demo)
+        - Aggregate shift-level metrics (Day/Night)
+        - Track batch IDs for traceability linkage
+    """
+    from collections import defaultdict
+    from typing import Union
+
+    logger.info("Aggregating production batches to production structure...")
+
+    # Initialize production data structure
+    production: Dict[str, Dict[str, Any]] = defaultdict(lambda: defaultdict(dict))
+
+    # Create machine name lookup
+    machine_map = {m["id"]: m["name"] for m in machines}
+
+    # Group batches by date and machine
+    batches_by_date_machine: Dict[str, Dict[str, List[Any]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+
+    for batch in production_batches:
+        # Handle both Pydantic models and dicts
+        if hasattr(batch, "model_dump"):
+            batch_dict = batch.model_dump()
+        elif isinstance(batch, dict):
+            batch_dict = batch
+        else:
+            logger.warning(f"Skipping invalid batch type: {type(batch)}")
+            continue
+
+        date = batch_dict["date"]
+        machine_name = batch_dict["machine_name"]
+        batches_by_date_machine[date][machine_name].append(batch_dict)
+
+    # Aggregate batches into production structure
+    for date_str, machines_data in batches_by_date_machine.items():
+        for machine_name, machine_batches in machines_data.items():
+            # Initialize aggregated metrics
+            total_parts = 0
+            total_good = 0
+            total_scrap = 0
+            total_uptime = 0.0
+            total_downtime = 0.0
+            all_quality_issues = []
+            batch_ids = []
+
+            # Aggregate shift-level metrics
+            shift_metrics: Dict[str, Dict[str, Union[int, float]]] = {}
+            for shift in shifts:
+                shift_name = shift["name"]
+                shift_metrics[shift_name] = {
+                    "parts_produced": 0,
+                    "good_parts": 0,
+                    "scrap_parts": 0,
+                    "uptime_hours": 0.0,
+                    "downtime_hours": 0.0,
+                }
+
+            # Process each batch
+            for batch in machine_batches:
+                # Aggregate totals
+                total_parts += batch["parts_produced"]
+                total_good += batch["good_parts"]
+                total_scrap += batch["scrap_parts"]
+                batch_ids.append(batch["batch_id"])
+
+                # Aggregate quality issues
+                for issue in batch.get("quality_issues", []):
+                    # Convert QualityIssue Pydantic model to dict if needed
+                    if hasattr(issue, "model_dump"):
+                        issue_dict = issue.model_dump()
+                    else:
+                        issue_dict = issue
+                    all_quality_issues.append(issue_dict)
+
+                # Estimate uptime from batch duration (simplified for demo)
+                batch_duration = batch.get("duration_hours", 0.0)
+                if batch_duration > 0:
+                    total_uptime += batch_duration
+                else:
+                    # Fallback: estimate 3 hours per batch if no duration
+                    total_uptime += 3.0
+
+                # Aggregate shift metrics
+                shift_name = batch["shift_name"]
+                if shift_name in shift_metrics:
+                    shift_metrics[shift_name]["parts_produced"] += batch[
+                        "parts_produced"
+                    ]
+                    shift_metrics[shift_name]["good_parts"] += batch["good_parts"]
+                    shift_metrics[shift_name]["scrap_parts"] += batch["scrap_parts"]
+                    if batch_duration > 0:
+                        shift_metrics[shift_name]["uptime_hours"] += batch_duration
+                    else:
+                        shift_metrics[shift_name]["uptime_hours"] += 3.0
+
+            # Calculate derived metrics
+            scrap_rate = (total_scrap / total_parts * 100) if total_parts > 0 else 0.0
+
+            # Estimate downtime (simplified: 16 total hours - uptime)
+            planned_hours = 16.0  # 2 shifts × 8 hours
+            total_downtime = max(0.0, planned_hours - total_uptime)
+
+            # Distribute downtime across shifts proportionally
+            for shift_name, shift_data in shift_metrics.items():
+                shift_uptime = shift_data["uptime_hours"]
+                shift_planned = 8.0
+                shift_data["downtime_hours"] = max(0.0, shift_planned - shift_uptime)
+
+            # Create downtime events (simplified for demo - empty list for now)
+            downtime_events: List[Dict[str, Any]] = []
+
+            # Build aggregated machine data for this date
+            production[date_str][machine_name] = {
+                "parts_produced": total_parts,
+                "good_parts": total_good,
+                "scrap_parts": total_scrap,
+                "scrap_rate": round(scrap_rate, 2),
+                "uptime_hours": round(total_uptime, 2),
+                "downtime_hours": round(total_downtime, 2),
+                "downtime_events": downtime_events,
+                "quality_issues": all_quality_issues,
+                "shifts": shift_metrics,
+                "batches": batch_ids,  # Traceability linkage
+            }
+
+    # Convert defaultdict to regular dict for JSON serialization
+    production_dict = {date: dict(machines) for date, machines in production.items()}
+
+    logger.info(
+        f"Aggregated {len(production_batches)} batches into "
+        f"{len(production_dict)} days of production data"
+    )
+
+    return production_dict
+
+
 def generate_production_data(days: int = 30) -> Dict[str, Any]:
     """
     Generate simple production data with planted scenarios.
@@ -403,19 +584,33 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
     orders_dict = [o.model_dump() for o in orders]
     production_batches_dict = [batch.model_dump() for batch in production_batches]
 
+    # Aggregate batches back to production structure (PR15)
+    # This makes production_batches the SOURCE OF TRUTH and production[date][machine] DERIVED
+    try:
+        logger.info("Aggregating batches to production structure (PR15)...")
+        aggregated_production = aggregate_batches_to_production(
+            production_batches, MACHINES, SHIFTS
+        )
+        logger.info(
+            f"Aggregation complete: replaced original production data with aggregated version"
+        )
+    except Exception as e:
+        logger.error(f"Failed to aggregate batches to production: {e}")
+        raise RuntimeError(f"Batch aggregation failed: {e}") from e
+
     return {
         "generated_at": datetime.now().isoformat(),
         "start_date": start_date.strftime("%Y-%m-%d"),
         "end_date": end_date.strftime("%Y-%m-%d"),
         "machines": MACHINES,
         "shifts": SHIFTS,
-        "production": production_data,
+        "production": aggregated_production,  # DERIVED from batches (PR15)
         # Supply chain entities (PR13)
         "suppliers": suppliers_dict,
         "materials_catalog": materials_catalog_dict,
         "material_lots": material_lots_dict,
         "orders": orders_dict,
-        # Production batches (PR14)
+        # Production batches (PR14) - SOURCE OF TRUTH
         "production_batches": production_batches_dict,
     }
 

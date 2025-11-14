@@ -30,7 +30,7 @@ from slowapi.errors import RateLimitExceeded
 
 from shared.config import ALLOWED_ORIGINS, DEBUG
 
-from .routes import metrics, data, chat
+from .routes import metrics, data, chat, traceability
 
 # =============================================================================
 # APPLICATION INITIALIZATION
@@ -137,6 +137,11 @@ app.include_router(data.router)
 # This adds all endpoints from chat.py to the main app
 # Note: Chat and setup endpoints have rate limiting applied via decorators
 app.include_router(chat.router)
+
+# Include the traceability router with all its endpoints
+# This adds all endpoints from traceability.py to the main app
+# Provides supply chain traceability: suppliers, batches, orders, and trace queries
+app.include_router(traceability.router)
 
 # =============================================================================
 # API ENDPOINTS
