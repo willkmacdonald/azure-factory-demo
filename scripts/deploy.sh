@@ -127,6 +127,23 @@ log_info "Location: ${LOCATION}"
 echo ""
 
 # =============================================================================
+# LOAD ENVIRONMENT VARIABLES
+# =============================================================================
+
+# Load .env file if it exists (without overriding existing env vars)
+if [ -f ".env" ]; then
+    log_info "Loading environment variables from .env file..."
+    set -a
+    source .env
+    set +a
+    log_success "Environment variables loaded from .env"
+else
+    log_info "No .env file found, using existing environment variables"
+fi
+
+echo ""
+
+# =============================================================================
 # ENVIRONMENT VARIABLE CHECKS
 # =============================================================================
 
