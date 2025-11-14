@@ -179,7 +179,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 // -----------------------------------------------------------------------------
 // Private Docker registry for storing container images.
 // CI/CD pipeline pushes built images here, Container Apps pulls from here.
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: containerRegistryName
   location: location
   sku: {
