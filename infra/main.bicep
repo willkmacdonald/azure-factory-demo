@@ -183,7 +183,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   name: containerRegistryName
   location: location
   sku: {
-    name: 'Basic'                    // Basic tier (only supported SKU in some subscriptions)
+    name: 'Standard'                 // Standard tier required for Container Apps with Managed Identity
   }
   properties: {
     adminUserEnabled: false          // Use Managed Identity instead (more secure)
