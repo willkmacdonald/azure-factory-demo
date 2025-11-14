@@ -247,6 +247,7 @@ az deployment group create \
         environmentName="$ENVIRONMENT" \
         location="$LOCATION" \
         imageTag="$IMAGE_TAG" \
+        containerRegistryName="$ACR_NAME" \
         azureOpenAiEndpoint="$AZURE_OPENAI_ENDPOINT" \
         azureOpenAiKey="$AZURE_OPENAI_KEY" \
         azureOpenAiDeployment="${AZURE_OPENAI_DEPLOYMENT:-gpt-4}" \
@@ -306,10 +307,10 @@ BACKEND_URL=$(az deployment group show \
     --query properties.outputs.backendUrl.value \
     -o tsv)
 
-CONTAINER_APP_NAME=$(az deployment group show \
+APP_SERVICE_NAME=$(az deployment group show \
     --name "$DEPLOYMENT_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --query properties.outputs.backendAppName.value \
+    --query properties.outputs.appServiceName.value \
     -o tsv)
 
 echo ""

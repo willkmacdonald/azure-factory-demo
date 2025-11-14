@@ -1,49 +1,29 @@
 // =============================================================================
-// Azure Bicep Template for Factory Agent - Azure Container Apps Deployment
+// Azure App Service Infrastructure for Factory Agent
 // =============================================================================
-// This Infrastructure as Code (IaC) template deploys the Factory Agent
-// application to Azure Container Apps with all required resources.
-//
-// Resources Created:
-// - Container Apps Environment (shared runtime for containers)
-// - Container Registry (stores Docker images)
-// - Log Analytics Workspace (monitoring and diagnostics)
-// - Container App for Backend API (FastAPI)
-// - Managed Identity (for secure Azure service access)
-//
-// Deployment:
-//   az deployment group create \
-//     --resource-group <rg-name> \
-//     --template-file main.bicep \
-//     --parameters main.bicepparam
-//
-// Cost Optimization:
-// - Container Apps uses consumption plan (pay per use)
-// - Container Registry uses Basic tier (low cost for demos)
-// - Log Analytics with 30-day retention (minimal cost)
-// =============================================================================
+// Simpler alternative to Container Apps - more mature, fewer deployment issues
+
+targetScope = 'resourceGroup'
 
 // =============================================================================
 // PARAMETERS
 // =============================================================================
 
-@description('Name of the application (used as prefix for all resources)')
+@description('Application name (used as prefix for all resources)')
+@minLength(3)
+@maxLength(20)
 param appName string = 'factory-agent'
 
-@description('Azure region for all resources')
+@description('Azure region for resources')
 param location string = resourceGroup().location
 
-@description('Environment name (dev, staging, prod)')
+@description('Environment name')
 @allowed([
   'dev'
   'staging'
   'prod'
 ])
 param environmentName string = 'dev'
-
-// Unique suffix for ACR name (6 chars, alphanumeric) - auto-generated from resource group ID
-// Note: This ensures consistent ACR naming across deployments to the same resource group
-var acrSuffix = substring(uniqueString(resourceGroup().id), 0, 6)
 
 @description('Container image tag (e.g., latest, v1.0.0, or commit SHA)')
 param imageTag string = 'latest'
@@ -76,162 +56,38 @@ param azureStorageConnectionString string = ''
 @description('Azure Storage container name (required if storageMode=blob)')
 param azureStorageContainerName string = 'factory-data'
 
-@description('Allowed CORS origins (comma-separated)')
-param allowedOrigins string = '*'
-
-@description('Minimum number of container instances (0 for scale-to-zero)')
-@minValue(0)
-@maxValue(10)
-param minReplicas int = 0
-
-@description('Maximum number of container instances')
-@minValue(1)
-@maxValue(30)
-param maxReplicas int = 5
-
-@description('CPU cores per container instance')
-@allowed([
-  '0.25'
-  '0.5'
-  '0.75'
-  '1.0'
-  '1.25'
-  '1.5'
-  '1.75'
-  '2.0'
-])
-param cpuCores string = '0.5'
-
-@description('Memory per container instance (in GB)')
-@allowed([
-  '0.5'
-  '1.0'
-  '1.5'
-  '2.0'
-  '3.0'
-  '4.0'
-])
-param memorySize string = '1.0'
-
 // =============================================================================
 // VARIABLES
 // =============================================================================
 
 var resourceNamePrefix = '${appName}-${environmentName}'
-// ACR names must be globally unique and alphanumeric only (no hyphens allowed)
-// Format: {appName}{6-char-hash}acr (e.g., factoryagent9a2f3bacr)
-// The uniqueString ensures different resource groups get different ACR names
-var containerRegistryName = replace('${appName}${acrSuffix}acr', '-', '')
-var logAnalyticsName = '${resourceNamePrefix}-logs'
-var containerEnvName = '${resourceNamePrefix}-env'
-var backendAppName = '${resourceNamePrefix}-backend'
-var managedIdentityName = '${resourceNamePrefix}-identity'
+var appServicePlanName = '${resourceNamePrefix}-plan'
+var appServiceName = '${resourceNamePrefix}-backend'
 
-// Container image name (will be pushed to ACR by CI/CD)
-var backendImageName = '${containerRegistryName}.azurecr.io/${appName}/backend:${imageTag}'
+// ACR name (created by deploy.sh via CLI, passed as parameter would be cleaner but this matches CLI logic)
+// Note: We can't replicate bash sha256sum in Bicep, so deploy.sh will pass the actual ACR name
+@description('Container Registry name (auto-detected or created by deploy.sh)')
+param containerRegistryName string
 
 // =============================================================================
 // RESOURCES
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// User-Assigned Managed Identity
+// App Service Plan (Linux + Docker)
 // -----------------------------------------------------------------------------
-// Managed Identity provides secure authentication to Azure services without
-// storing credentials. The Container App uses this identity to:
-// - Pull images from Azure Container Registry
-// - Access Azure Blob Storage (if enabled)
-// - Write logs to Log Analytics
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: managedIdentityName
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: appServicePlanName
   location: location
-  tags: {
-    environment: environmentName
-    application: appName
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Log Analytics Workspace
-// -----------------------------------------------------------------------------
-// Centralized logging and monitoring for all Container Apps in the environment.
-// Stores container logs, application logs, and metrics for troubleshooting.
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: logAnalyticsName
-  location: location
-  properties: {
-    sku: {
-      name: 'PerGB2018'              // Pay-per-GB ingestion model
-    }
-    retentionInDays: 30              // Keep logs for 30 days (cost optimization)
-    features: {
-      enableLogAccessUsingOnlyResourcePermissions: true
-    }
-  }
-  tags: {
-    environment: environmentName
-    application: appName
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Azure Container Registry (ACR)
-// -----------------------------------------------------------------------------
-// Private Docker registry for storing container images.
-// CI/CD pipeline pushes built images here, Container Apps pulls from here.
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
-  name: containerRegistryName
-  location: location
+  kind: 'linux'
   sku: {
-    name: 'Standard'                 // Standard tier (created via CLI in deploy.sh, Bicep just validates)
+    name: 'B1'                       // Basic tier - good for dev/demo (~$13/month)
+    tier: 'Basic'
+    size: 'B1'
+    capacity: 1
   }
   properties: {
-    adminUserEnabled: false          // Use Managed Identity instead (more secure)
-    publicNetworkAccess: 'Enabled'   // Allow access from internet (fine for demo)
-    // Note: anonymousPullEnabled not supported in API 2023-07-01
-    // Authentication required by default (adminUserEnabled: false enforces this)
-  }
-  tags: {
-    environment: environmentName
-    application: appName
-  }
-}
-
-// Grant Managed Identity permission to pull images from ACR
-// Role: AcrPull (7f951dda-4ed3-4680-a7ca-43fe172d538d)
-resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, managedIdentity.id, 'AcrPull')
-  scope: containerRegistry
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-    principalId: managedIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Container Apps Environment
-// -----------------------------------------------------------------------------
-// Shared runtime environment for all Container Apps.
-// Provides networking, logging, and scaling infrastructure.
-resource containerEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
-  name: containerEnvName
-  location: location
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
-      }
-    }
-    zoneRedundant: false             // Single-zone for cost optimization
-    workloadProfiles: [
-      {
-        name: 'Consumption'
-        workloadProfileType: 'Consumption'
-      }
-    ]
+    reserved: true                   // Required for Linux
   }
   tags: {
     environment: environmentName
@@ -240,204 +96,105 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
 }
 
 // -----------------------------------------------------------------------------
-// Container App - Backend API (FastAPI)
+// App Service (Docker Container)
 // -----------------------------------------------------------------------------
-// The main backend API service running FastAPI with Uvicorn.
-// Configured for auto-scaling, health checks, and secure secret management.
-resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
-  name: backendAppName
+resource appService 'Microsoft.Web/sites@2023-01-01' = {
+  name: appServiceName
   location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${managedIdentity.id}': {}
-    }
-  }
+  kind: 'app,linux,container'
   properties: {
-    managedEnvironmentId: containerEnv.id
-    workloadProfileName: 'Consumption'
-
-    configuration: {
-      // Ingress configuration (HTTP/HTTPS traffic)
-      ingress: {
-        external: true               // Accessible from internet
-        targetPort: 8000             // Container listens on port 8000
-        transport: 'http'            // HTTP protocol (HTTPS handled by Azure)
-        allowInsecure: false         // Require HTTPS from clients
-        traffic: [
-          {
-            latestRevision: true     // Route 100% traffic to latest revision
-            weight: 100
-          }
-        ]
-        corsPolicy: {
-          allowedOrigins: split(allowedOrigins, ',')
-          allowedMethods: ['GET', 'POST', 'OPTIONS']
-          allowedHeaders: ['*']
-          allowCredentials: true
-        }
-      }
-
-      // Container registry configuration
-      registries: [
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${containerRegistryName}.azurecr.io/${appName}/backend:${imageTag}'
+      alwaysOn: false                // Set to false for Basic tier (true requires Standard+)
+      appSettings: [
         {
-          server: containerRegistry.properties.loginServer
-          identity: managedIdentity.id
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
         }
-      ]
-
-      // Secrets (stored securely, referenced by environment variables)
-      secrets: [
         {
-          name: 'azure-openai-key'
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://${containerRegistryName}.azurecr.io'
+        }
+        {
+          name: 'DOCKER_ENABLE_CI'
+          value: 'true'
+        }
+        // Application settings
+        {
+          name: 'AZURE_OPENAI_ENDPOINT'
+          value: azureOpenAiEndpoint
+        }
+        {
+          name: 'AZURE_OPENAI_KEY'
           value: azureOpenAiKey
         }
         {
-          name: 'azure-storage-connection-string'
+          name: 'AZURE_OPENAI_DEPLOYMENT'
+          value: azureOpenAiDeployment
+        }
+        {
+          name: 'AZURE_OPENAI_API_VERSION'
+          value: azureOpenAiApiVersion
+        }
+        {
+          name: 'STORAGE_MODE'
+          value: storageMode
+        }
+        {
+          name: 'AZURE_STORAGE_CONNECTION_STRING'
           value: azureStorageConnectionString
         }
-      ]
-
-      // Active revisions mode (single revision active at a time)
-      activeRevisionsMode: 'Single'
-    }
-
-    template: {
-      // Auto-scaling configuration
-      scale: {
-        minReplicas: minReplicas     // Scale to zero when idle (cost savings)
-        maxReplicas: maxReplicas     // Max instances under load
-        rules: [
-          {
-            name: 'http-scaling-rule'
-            http: {
-              metadata: {
-                concurrentRequests: '10'  // Scale up when > 10 concurrent requests
-              }
-            }
-          }
-        ]
-      }
-
-      // Container configuration
-      containers: [
         {
-          name: 'backend'
-          image: backendImageName
-          resources: {
-            cpu: json(cpuCores)      // CPU cores (0.5 = half a core)
-            memory: '${memorySize}Gi' // Memory in GB
-          }
-          env: [
-            {
-              name: 'DEBUG'
-              value: environmentName == 'dev' ? 'true' : 'false'
-            }
-            {
-              name: 'LOG_LEVEL'
-              value: environmentName == 'dev' ? 'debug' : 'info'
-            }
-            {
-              name: 'STORAGE_MODE'
-              value: storageMode
-            }
-            {
-              name: 'AZURE_OPENAI_ENDPOINT'
-              value: azureOpenAiEndpoint
-            }
-            {
-              name: 'AZURE_OPENAI_KEY'
-              secretRef: 'azure-openai-key'
-            }
-            {
-              name: 'AZURE_OPENAI_DEPLOYMENT'
-              value: azureOpenAiDeployment
-            }
-            {
-              name: 'AZURE_OPENAI_API_VERSION'
-              value: azureOpenAiApiVersion
-            }
-            {
-              name: 'AZURE_STORAGE_CONNECTION_STRING'
-              secretRef: 'azure-storage-connection-string'
-            }
-            {
-              name: 'AZURE_STORAGE_CONTAINER_NAME'
-              value: azureStorageContainerName
-            }
-            {
-              name: 'ALLOWED_ORIGINS'
-              value: allowedOrigins
-            }
-          ]
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/health'
-                port: 8000
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 30
-              timeoutSeconds: 10
-              successThreshold: 1
-              failureThreshold: 3
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/health'
-                port: 8000
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 10
-              timeoutSeconds: 5
-              successThreshold: 1
-              failureThreshold: 3
-            }
-          ]
+          name: 'AZURE_STORAGE_CONTAINER_NAME'
+          value: azureStorageContainerName
+        }
+        {
+          name: 'PORT'
+          value: '8000'              // FastAPI default port
         }
       ]
+      cors: {
+        allowedOrigins: [
+          '*'                        // Allow all origins for demo (restrict in production)
+        ]
+        supportCredentials: false
+      }
     }
+  }
+  identity: {
+    type: 'SystemAssigned'           // Managed Identity for ACR pull
   }
   tags: {
     environment: environmentName
     application: appName
   }
-  dependsOn: [
-    acrPullRoleAssignment
-  ]
+}
+
+// -----------------------------------------------------------------------------
+// Role Assignment: App Service → ACR Pull
+// -----------------------------------------------------------------------------
+// Note: ACR is created via CLI in deploy.sh, we reference it here for role assignment
+resource existingAcr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: containerRegistryName
+}
+
+resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(existingAcr.id, appService.id, 'AcrPull')
+  scope: existingAcr
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull role
+    principalId: appService.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 // =============================================================================
 // OUTPUTS
 // =============================================================================
 
-@description('URL of the deployed backend API')
-output backendUrl string = 'https://${backendApp.properties.configuration.ingress.fqdn}'
-
-@description('Container Registry login server')
-output containerRegistryLoginServer string = containerRegistry.properties.loginServer
-
-@description('Container Registry name')
-output containerRegistryName string = containerRegistry.name
-
-@description('Managed Identity client ID')
-output managedIdentityClientId string = managedIdentity.properties.clientId
-
-@description('Managed Identity resource ID')
-output managedIdentityId string = managedIdentity.id
-
-@description('Log Analytics workspace ID')
-output logAnalyticsWorkspaceId string = logAnalytics.id
-
-@description('Container Apps Environment ID')
-output containerEnvId string = containerEnv.id
-
-@description('Backend app name')
-output backendAppName string = backendApp.name
-
-@description('Resource group name')
-output resourceGroupName string = resourceGroup().name
+output backendUrl string = 'https://${appService.properties.defaultHostName}'
+output appServiceName string = appService.name
+output appServicePlanName string = appServicePlan.name
+output containerRegistryName string = containerRegistryName

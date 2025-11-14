@@ -1,0 +1,1 @@
+- Always avoid premium
