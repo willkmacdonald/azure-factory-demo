@@ -186,14 +186,26 @@ function formatApiError(error: AxiosError): FormattedApiError {
 }
 
 /**
+ * Type guard to check if error has a message property
+ */
+function isErrorWithMessage(error: unknown): error is { message: string } {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+}
+
+/**
  * Extract error message from FormattedApiError
  */
 export function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') {
     return error;
   }
-  if (error && typeof error === 'object' && 'message' in error) {
-    return (error as FormattedApiError).message;
+  if (isErrorWithMessage(error)) {
+    return error.message;
   }
   return 'An unexpected error occurred';
 }

@@ -14,7 +14,7 @@
  * - Follows React best practices from react.dev
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Container,
   Typography,

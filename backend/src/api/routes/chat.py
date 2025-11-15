@@ -103,7 +103,7 @@ class ChatRequest(BaseModel):
 
         This prevents attackers from sending many large messages to consume excessive API tokens.
         """
-        total_chars = sum(len(msg.content) for msg in v)
+        total_chars = sum(len(msg.content) for msg in v if msg.content is not None)
         if total_chars > 50000:  # 50K character limit for entire history
             raise ValueError(
                 f"Total conversation history too large: {total_chars} characters "
