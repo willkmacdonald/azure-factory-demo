@@ -182,14 +182,19 @@ async def load_data_async() -> Optional[Dict[str, Any]]:
         # Local file mode (default)
         path = get_data_path()
         if not path.exists():
+            logger.info(f"No data file found at {path}")
             return None
         try:
             async with aiofiles.open(path, "r") as f:
                 content = await f.read()
-                return json.loads(content)
+                data = json.loads(content)
+            logger.info(f"Successfully loaded data from {path}")
+            return data
         except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON from {path}: {e}")
             raise RuntimeError(f"Failed to parse JSON from {path}: {e}") from e
         except (IOError, OSError) as e:
+            logger.error(f"Failed to read data from {path}: {e}")
             raise RuntimeError(f"Failed to read data from {path}: {e}") from e
 
 

@@ -19,6 +19,7 @@ from datetime import datetime
 from fastapi import APIRouter, Query, HTTPException, Path
 from shared.models import Supplier, ProductionBatch, Order
 from shared.data import load_data_async
+from shared.config import DEFECT_COST_ESTIMATE
 
 logger = logging.getLogger(__name__)
 
@@ -272,8 +273,8 @@ async def get_supplier_impact(
                     })
                     total_defects += batch_defects
 
-        # Estimate cost impact (assuming $50 per defect as example)
-        estimated_cost_impact = total_defects * 50.0
+        # Estimate cost impact using configured defect cost
+        estimated_cost_impact = total_defects * DEFECT_COST_ESTIMATE
 
         return {
             "supplier": supplier.model_dump(),
@@ -684,7 +685,7 @@ async def forward_trace(
                 "quality_issues_count": len(quality_issues),
                 "total_defects": total_defects,
                 "orders_affected": len(affected_orders),
-                "estimated_cost_impact": total_defects * 50.0,  # $50 per defect estimate
+                "estimated_cost_impact": total_defects * DEFECT_COST_ESTIMATE,
             },
         }
 

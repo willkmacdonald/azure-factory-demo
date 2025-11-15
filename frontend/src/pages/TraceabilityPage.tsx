@@ -36,8 +36,8 @@ import {
   LocalShipping as SupplierIcon,
   ShoppingCart as OrderIcon,
   Error as ErrorIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
+  CheckCircle,
+  Warning,
   ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
 import { apiService, getErrorMessage } from '../api/client';

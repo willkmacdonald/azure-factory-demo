@@ -39,3 +39,6 @@ STORAGE_MODE: str = os.getenv("STORAGE_MODE", "local")  # "local" or "azure"
 AZURE_STORAGE_CONNECTION_STRING: Optional[str] = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_BLOB_CONTAINER: str = os.getenv("AZURE_BLOB_CONTAINER", "factory-data")
 AZURE_BLOB_NAME: str = os.getenv("AZURE_BLOB_NAME", "production.json")
+
+# Cost estimation settings
+DEFECT_COST_ESTIMATE: float = 50.0  # USD per defect (for demo cost impact calculations)
