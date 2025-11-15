@@ -395,25 +395,67 @@ const TraceabilityPage: React.FC = () => {
                           <TableCell>Lot Number</TableCell>
                           <TableCell align="right">Quantity Used</TableCell>
                           <TableCell>Supplier</TableCell>
+                          <TableCell align="center">Quality Status</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {backwardTrace.materials_trace.map((material, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{material.material_name}</TableCell>
-                            <TableCell>
-                              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                {material.lot_number}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="right">
-                              {material.quantity_used} {material.unit}
-                            </TableCell>
-                            <TableCell>
-                              {material.supplier?.name || 'Unknown'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {backwardTrace.materials_trace.map((material, index) => {
+                          // Check if this lot is linked to any quality issues
+                          const linkedIssues = backwardTrace.batch.quality_issues?.filter(
+                            (issue: any) => issue.lot_number === material.lot_number
+                          ) || [];
+                          const hasQualityIssues = linkedIssues.length > 0;
+
+                          return (
+                            <TableRow
+                              key={index}
+                              sx={{
+                                backgroundColor: hasQualityIssues ? 'error.light' : 'inherit',
+                                opacity: hasQualityIssues ? 0.9 : 1
+                              }}
+                            >
+                              <TableCell>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  {hasQualityIssues && (
+                                    <Warning color="error" fontSize="small" />
+                                  )}
+                                  <Typography variant="body2">
+                                    {material.material_name}
+                                  </Typography>
+                                </Stack>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                  {material.lot_number}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                {material.quantity_used} {material.unit}
+                              </TableCell>
+                              <TableCell>
+                                {material.supplier?.name || 'Unknown'}
+                              </TableCell>
+                              <TableCell align="center">
+                                {hasQualityIssues ? (
+                                  <Chip
+                                    icon={<Warning />}
+                                    label={`${linkedIssues.length} issue${linkedIssues.length > 1 ? 's' : ''}`}
+                                    color="error"
+                                    size="small"
+                                  />
+                                ) : (
+                                  <Chip
+                                    icon={<CheckCircle />}
+                                    label="OK"
+                                    color="success"
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>

@@ -254,9 +254,11 @@ def aggregate_batches_to_production(
     instances, maintaining backward compatibility with existing metrics and frontend code.
 
     Args:
-        production_batches: List of ProductionBatch instances (can be Pydantic models or dicts)
-        machines: List of machine dictionaries
-        shifts: List of shift dictionaries
+        production_batches: List of ProductionBatch instances (can be Pydantic models or dicts).
+                           Each batch must have: date, machine_name, parts_produced, good_parts,
+                           scrap_parts, quality_issues, shift_name, batch_id, duration_hours (optional).
+        machines: List of machine dictionaries with keys: id (int), name (str).
+        shifts: List of shift dictionaries with keys: name (str).
 
     Returns:
         Dictionary mapping date -> machine_name -> aggregated metrics.
@@ -270,13 +272,10 @@ def aggregate_batches_to_production(
                     "scrap_rate": float,
                     "uptime_hours": float,
                     "downtime_hours": float,
-                    "downtime_events": List[Dict],
-                    "quality_issues": List[Dict],
-                    "shifts": {
-                        "Day": {...},
-                        "Night": {...}
-                    },
-                    "batches": List[str]  # List of batch IDs for traceability
+                    "downtime_events": List[Dict[str, Any]],
+                    "quality_issues": List[Dict[str, Any]],
+                    "shifts": Dict[str, Dict[str, Union[int, float]]],
+                    "batches": List[str]
                 }
             }
         }

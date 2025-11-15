@@ -1,7 +1,7 @@
 # Factory Agent - Integrated Implementation Plan
 
-**Last Updated**: 2025-11-14
-**Phase**: Phase 3 - Frontend Development (100% COMPLETE)
+**Last Updated**: 2025-11-15
+**Phase**: Phase 3 - Frontend Development (100% COMPLETE) + Code Review Complete
 **Architecture**: React + FastAPI + Azure Container Apps + Supply Chain Traceability
 
 ---
@@ -18,7 +18,7 @@ Factory Agent is a comprehensive demo combining:
 
 ## Current Status
 
-**PHASE 3 COMPLETE - ALL 5 PAGES FUNCTIONAL**
+**PHASE 3 COMPLETE - ALL 5 PAGES FUNCTIONAL + CODE REVIEW COMPLETE**
 
 **Completed Work**:
 - ✅ **Phase 1**: Backend API complete (21 FastAPI endpoints: monitoring + traceability)
@@ -29,23 +29,54 @@ Factory Agent is a comprehensive demo combining:
   - ✅ AlertsPage (10,704 lines) - Quality issues with filtering
   - ✅ TraceabilityPage (42,200 lines) - 3-tab interface (Batch Lookup, Supplier Impact, Order Status)
   - ✅ ChatPage (12,311 lines) - AI assistant with Azure OpenAI integration
+- ✅ **Code Review Complete**: pr-reviewer agent analysis finished (2025-11-15)
 
 **Recent Commits**:
+- b531dd7 - feat(data): Add material-supplier root cause linkage to quality issues (PR19 - Backend)
+- 671a5f7 - fix(data): Add downtime event categorization to batch aggregation
+- aa2e28a - fix(data): Improve downtime events generation
+- cf3d226 - chore: Update implementation plan and fix minor bugs
 - b84c932 - feat(chat): Complete AI Chat Interface with Azure OpenAI integration
-- 4b6d628 - feat(ui): Add Traceability Page with 3-tab interface and refactor batch aggregation
-- f978c11 - feat(ui): Complete Phase 2 frontend integration with enhanced Alerts and Machines pages
-- 8923d9a - feat(ui): Rearrange dashboard layout - side-by-side charts with full-width quality metrics
-- f733c77 - Merge Phase 2: Supply Chain Traceability Implementation (10 API endpoints)
 
-**Current Work**:
-- 🔍 **Code Review**: 3 modified files ready for review/commit
-  - `backend/src/api/routes/chat.py`
-  - `frontend/src/api/client.ts`
-  - `frontend/src/pages/ChatPage.tsx`
+**Code Review Summary (2025-11-15 - UPDATED WITH ADDITIONAL CRITICAL ISSUES)**:
+- ✅ Overall code quality: **Very Good**
+- ✅ Async/await patterns: Correct throughout FastAPI
+- ✅ Type hints: Comprehensive in Python backend
+- ✅ TypeScript types: Complete API coverage
+- 🔴 **4 CRITICAL Issues Found** (PR20A - ABSOLUTE IMMEDIATE PRIORITY)
+  - Missing TypeScript icon imports causing runtime crashes
+  - Incorrect type annotations (unknown vs proper React types)
+  - Hardcoded cost values reducing flexibility
+  - Missing async logging for production debugging
+- 🔴 **3 Critical Backend Issues Found** (PR20 - IMMEDIATE after PR20A)
+  - Parameter ordering bug in data generation
+  - Material linkage incomplete (blocks PR19 frontend)
+  - Missing date validation on API endpoints
+- ⚠️ **4 Important Improvements Needed** (PR20B - Not blocking)
+- ✅ **3 Enhancement Opportunities Added to Backlog** (Low priority)
+- ✅ **Strengths**: Excellent documentation, proper error handling, strong traceability implementation
 
-**Next Up**:
-- 🚀 **Phase 4**: Deploy frontend to Azure (6-8 hours)
-- ✨ **Phase 5**: Polish with demonstrable scenarios (8-12 hours)
+**Critical Path** (Updated 2025-11-15 - NEW CRITICAL ISSUES ADDED):
+1. 🔥 **PR20A**: Critical Code Review Fixes - TypeScript & Runtime Issues (1 hour) - **ABSOLUTE IMMEDIATE PRIORITY**
+   - 4 critical issues blocking application runtime and type safety
+   - Missing icon imports causing runtime crashes
+   - Incorrect type annotations defeating TypeScript safety
+   - Hardcoded values reducing flexibility
+   - MUST be completed FIRST before any other work
+2. 🔥 **PR20**: Fix Critical Code Review Issues - Backend (1-2 hours) - **IMMEDIATE PRIORITY (After PR20A)**
+   - Blocks PR19 frontend completion (Issue 2: material linkage in metrics.py)
+   - Must be completed before PR19 frontend integration
+3. 🔥 **PR19**: Enhanced Quality Traceability - Complete Material-Supplier Linkage (2-3 hours) - **HIGH PRIORITY**
+   - Depends on PR20 completion
+   - Backend complete, API integration blocked, frontend pending
+4. 📋 **PR20B**: Code Review Improvements - Important Issues (1-2 hours) - **Important but not blocking**
+   - Can be done in parallel with Phase 4 deployment
+5. 📋 **PR21**: Additional Code Quality Improvements (2-3 hours) - **Important but not blocking**
+   - Can be done in parallel with Phase 4 deployment
+6. 🚀 **Phase 4**: Deploy frontend to Azure (6-8 hours)
+7. ✨ **Phase 5**: Polish with demonstrable scenarios (8-12 hours)
+
+**Backlog**: 3 enhancement opportunities (40 min total) added from code review - low priority, non-blocking
 
 **Reference**: See `ARCHIVE-completed-prs.md` for detailed specs of PR6-PR13 (completed work)
 
@@ -430,6 +461,508 @@ Complete all React pages with integrated monitoring + traceability features. ALL
 
 ---
 
+## PR20A: Critical Code Review Fixes - TypeScript & Runtime Issues (ABSOLUTE IMMEDIATE PRIORITY)
+
+### Overview
+Address 4 critical issues found in code review that cause runtime crashes, type safety violations, and reduced maintainability. These are blocking issues that must be fixed FIRST before any other work.
+
+**Status**: PLANNED
+**Priority**: CRITICAL (runtime crashes, type safety)
+**Estimated Effort**: 1 hour total
+**Phase**: Bug Fixes from Code Review
+**Date Identified**: 2025-11-15
+**Blocking**: All other work - MUST BE FIXED FIRST
+
+### Critical Issues to Fix
+
+**Issue 1: Missing TypeScript Icon Imports (TraceabilityPage.tsx:420, 442, 448)** ⚠️ CRITICAL
+- **File**: `frontend/src/pages/TraceabilityPage.tsx`
+- **Lines**: 420, 442, 448
+- **Problem**:
+  - Uses `Warning` and `CheckCircle` icons in JSX
+  - Icons are NOT imported from `@mui/icons-material`
+  - **Impact**: Application CRASHES at runtime when rendering batches with quality issues
+  - **User Experience**: "Uncaught ReferenceError: Warning is not defined" error
+- **Fix**: Add missing imports at top of file
+  ```typescript
+  // Add to imports (around line 40)
+  import { Warning, CheckCircle } from '@mui/icons-material';
+  ```
+- **Why**: Without imports, React cannot find the icon components → runtime crash
+- **Effort**: 5 minutes
+- **Priority**: CRITICAL (runtime crash)
+
+**Issue 2: Incorrect Type Annotation (TraceabilityPage.tsx:106)** ⚠️ CRITICAL
+- **File**: `frontend/src/pages/TraceabilityPage.tsx`
+- **Line**: 106
+- **Problem**:
+  - `_event` parameter typed as `unknown` instead of proper React type
+  - `unknown` defeats TypeScript's type safety
+  - **Impact**: Reduced type safety, potential bugs in click handlers
+  - **Code Quality**: Violates project TypeScript guidelines (no `unknown` for event handlers)
+- **Current**: `(_event: unknown) => { ... }`
+- **Fix**: Use proper React event type
+  ```typescript
+  // Correct pattern
+  (_event: React.MouseEvent<HTMLButtonElement> | null) => {
+    // Now TypeScript knows _event has proper structure
+  }
+  ```
+- **Why**: Enables TypeScript to catch errors at compile time, not runtime
+- **Effort**: 5 minutes
+- **Priority**: CRITICAL (type safety)
+
+**Issue 3: Hardcoded Cost Values (traceability.py:276, 687)** ⚠️ CRITICAL
+- **File**: `backend/src/api/routes/traceability.py`
+- **Lines**: 276, 687
+- **Problem**:
+  - `$50` defect cost hardcoded in two places
+  - Makes calculations non-configurable
+  - **Impact**: Less flexible for different demo scenarios, inconsistent if changed in one place
+  - **Maintenance**: Risk of divergence (one updated, other forgotten)
+- **Current**:
+  ```python
+  estimated_cost = len(issues) * 50  # Line 276
+  cost_impact = issue_count * 50     # Line 687
+  ```
+- **Fix**: Move to config.py as constant, import and use
+  ```python
+  # In config.py
+  DEFECT_COST_ESTIMATE = 50  # USD per defect
+
+  # In traceability.py
+  from .config import DEFECT_COST_ESTIMATE
+  estimated_cost = len(issues) * DEFECT_COST_ESTIMATE
+  cost_impact = issue_count * DEFECT_COST_ESTIMATE
+  ```
+- **Why**: Single source of truth, easier to adjust for demos, clearer intent
+- **Effort**: 15 minutes
+- **Priority**: CRITICAL (maintainability)
+
+**Issue 4: Missing Logging in Async Data Loading (shared/data.py:182-193)** ⚠️ CRITICAL
+- **File**: `shared/data.py`
+- **Lines**: 182-193
+- **Problem**:
+  - `load_data_async()` missing success/error logging in local file path
+  - Sync version (`load_data()`) has comprehensive logging
+  - **Impact**: Harder to debug production issues, inconsistent logging patterns
+  - **Debugging**: Can't tell why data load failed in production
+- **Current**: Async version has minimal logging
+- **Fix**: Add consistent logging like sync version
+  ```python
+  async def load_data_async(file_path: str = DEFAULT_DATA_FILE) -> Dict[str, Any]:
+      """Load production data asynchronously."""
+      try:
+          # ... loading code
+          logger.info(f"Successfully loaded data from {file_path}")
+          return data
+      except FileNotFoundError:
+          logger.error(f"Data file not found: {file_path}")
+          raise
+      except Exception as e:
+          logger.error(f"Error loading data from {file_path}: {e}")
+          raise
+  ```
+- **Why**: Production debugging requires clear logging of what went wrong
+- **Effort**: 30 minutes
+- **Priority**: CRITICAL (production debugging)
+
+### Tasks
+
+- [ ] Add missing TypeScript icon imports (TraceabilityPage.tsx:420, 442, 448)
+  - **Priority**: CRITICAL
+  - **Effort**: 5 min
+  - **File**: `frontend/src/pages/TraceabilityPage.tsx`
+  - **Impact**: Fixes runtime crash when viewing batches
+
+- [ ] Fix event handler type annotation (TraceabilityPage.tsx:106)
+  - **Priority**: CRITICAL
+  - **Effort**: 5 min
+  - **File**: `frontend/src/pages/TraceabilityPage.tsx`
+  - **Impact**: Restores full TypeScript type safety
+
+- [ ] Move hardcoded cost values to config (traceability.py:276, 687 & config.py)
+  - **Priority**: CRITICAL
+  - **Effort**: 15 min
+  - **Files**:
+    - `backend/src/api/routes/traceability.py:276, 687`
+    - `backend/src/api/config.py` (add DEFECT_COST_ESTIMATE)
+  - **Impact**: Single source of truth, easier demo adjustments
+
+- [ ] Add logging to load_data_async() (shared/data.py:182-193)
+  - **Priority**: CRITICAL
+  - **Effort**: 30 min
+  - **File**: `shared/data.py`
+  - **Impact**: Production debugging capability
+
+- [ ] Test all fixes
+  - **Priority**: CRITICAL
+  - **Effort**: 5 min
+  - Run: `npm run build` (check for TypeScript errors)
+  - Run: `pytest` (check backend tests still pass)
+  - Verify TraceabilityPage renders without console errors
+
+### Deliverables
+- ✅ All 4 critical code review issues fixed
+- ✅ TypeScript compiles without errors
+- ✅ Runtime crashes eliminated
+- ✅ Type safety fully restored
+- ✅ All backend tests still passing
+- ✅ Logging consistent across async/sync code
+
+### Notes
+- **MUST BE FIXED FIRST** - These are blocking runtime and type safety issues
+- No functional changes to APIs or features
+- All fixes are small, focused, and low-risk
+- Estimated total time: 1 hour
+- **START HERE** before any other work
+
+---
+
+## PR20: Fix Critical Code Review Issues (IMMEDIATE PRIORITY)
+
+### Overview
+Address the 3 critical issues identified by pr-reviewer agent to ensure code correctness and complete PR19 material linkage.
+
+**Status**: PLANNED
+**Priority**: Critical (blocking PR19 completion)
+**Estimated Effort**: 1-2 hours
+**Phase**: Bug Fixes from Code Review
+**Date Identified**: 2025-11-15
+
+### Critical Issues to Fix
+
+**Issue 1: Fix Parameter Ordering in regenerate_data.py** (15 minutes)
+- **File**: `regenerate_data.py:41-47`
+- **Problem**: Incorrect parameter ordering in `generate_material_lots()` call
+- **Current**: `generate_material_lots(suppliers, materials_catalog, days=60, start_date=start_date)`
+- **Fix**: Use keyword arguments explicitly:
+  ```python
+  material_lots = generate_material_lots(
+      suppliers=suppliers,
+      materials_catalog=materials_catalog,
+      start_date=start_date,
+      days=60
+  )
+  ```
+- **Why**: Prevents runtime errors from parameter mismatch
+
+**Issue 2: Complete Material Linkage in metrics.py** (30 minutes)
+- **File**: `shared/metrics.py:229-241`
+- **Problem**: `get_quality_issues()` doesn't populate PR19 material linkage fields
+- **Impact**: AlertsPage won't show material/supplier information for quality issues
+- **Fix**: Add missing fields to QualityIssue creation:
+  ```python
+  quality_issue = QualityIssue(
+      type=issue["type"],
+      description=issue["description"],
+      parts_affected=issue["parts_affected"],
+      severity=issue["severity"],
+      date=date,
+      machine=machine,
+      # PR19: Material-supplier root cause linkage
+      material_id=issue.get("material_id"),
+      lot_number=issue.get("lot_number"),
+      supplier_id=issue.get("supplier_id"),
+      supplier_name=issue.get("supplier_name"),
+      root_cause=issue.get("root_cause"),
+  )
+  ```
+- **Why**: Completes PR19 material-supplier traceability feature
+
+**Issue 3: Add Date Validation to list_batches Endpoint** (30 minutes)
+- **File**: `backend/src/api/routes/traceability.py:305-354`
+- **Problem**: No date format validation before using `start_date`/`end_date` in comparisons
+- **Risk**: Malformed dates cause crashes or incorrect filtering
+- **Fix**: Add validation function and call it:
+  ```python
+  def validate_date_format(date_str: Optional[str], param_name: str) -> None:
+      """Validate date string is in YYYY-MM-DD format."""
+      if date_str is None:
+          return
+      try:
+          datetime.strptime(date_str, "%Y-%m-%d")
+      except ValueError:
+          raise HTTPException(
+              status_code=400,
+              detail=f"{param_name} must be in YYYY-MM-DD format"
+          )
+
+  @router.get("/batches", response_model=List[ProductionBatch])
+  async def list_batches(...) -> List[ProductionBatch]:
+      # Validate date formats
+      validate_date_format(start_date, "start_date")
+      validate_date_format(end_date, "end_date")
+      # ... rest of function
+  ```
+- **Why**: Prevents crashes from invalid input, improves error messages
+
+### Tasks
+
+- [ ] Fix parameter ordering in `regenerate_data.py`
+  - **Priority**: Critical
+  - **Effort**: 15 min
+  - **File**: `regenerate_data.py:41-47`
+
+- [ ] Add material linkage fields to `get_quality_issues()` in `shared/metrics.py`
+  - **Priority**: Critical (blocks PR19 completion)
+  - **Effort**: 30 min
+  - **File**: `shared/metrics.py:229-241`
+
+- [ ] Add date validation to `list_batches()` endpoint
+  - **Priority**: Critical (security/stability)
+  - **Effort**: 30 min
+  - **File**: `backend/src/api/routes/traceability.py:305-354`
+
+- [ ] Test all fixes
+  - **Priority**: Critical
+  - **Effort**: 15 min
+  - Run pytest for metrics and traceability
+  - Verify AlertsPage shows material linkage
+  - Test invalid dates return 400 errors
+
+### Deliverables
+- ✅ All critical code review issues fixed
+- ✅ PR19 material linkage fully functional in API responses
+- ✅ Date validation prevents crashes
+- ✅ Tests passing
+
+### Notes
+- **Issue 2 is blocking PR19 frontend completion** - AlertsPage expects these fields
+- All fixes are small, focused changes with clear solutions
+- Should be completed before continuing PR19 frontend work
+
+---
+
+## PR20B: Code Review Improvements - Important Issues (Important but Not Blocking)
+
+### Overview
+Address the 4 important improvements identified by pr-reviewer for better code quality and maintainability.
+
+**Status**: PLANNED
+**Priority**: Important (not blocking)
+**Estimated Effort**: 2-3 hours
+**Phase**: Code Quality Improvements
+**Date Identified**: 2025-11-15
+
+### Important Improvements
+
+**1. Improve Error Logging in load_data_async()** (30 minutes)
+- **File**: `shared/data.py:182-193`
+- **Problem**: Async version doesn't log errors before raising (sync version does)
+- **Fix**: Add logger.info/error calls to match sync version pattern
+- **Why**: Consistent logging helps debugging in production
+
+**2. Verify Rate Limiting Configuration** (45 minutes)
+- **File**: `backend/src/api/routes/metrics.py:31-64`
+- **Problem**: Local limiter instance may not be connected to app's global limiter
+- **Fix**: Either use app.state.limiter or remove local instance and document
+- **Why**: Ensures rate limiting actually works (security)
+
+**3. Document Hardcoded OEE Performance Factor** (15 minutes)
+- **File**: `shared/metrics.py:100-103`
+- **Problem**: Performance = 0.95 is hardcoded (simplification for demo)
+- **Fix**: Add comment explaining simplification and how to calculate properly
+- **Why**: Makes demo shortcuts explicit for future contributors
+
+**4. Add Prompt Injection Security Documentation** (15 minutes)
+- **File**: `backend/src/api/routes/chat.py` (add comment)
+- **Problem**: SECURITY_STATUS.md mentions prompt injection but implementation unclear
+- **Fix**: Add docstring explaining security measures
+- **Why**: Documents what protections exist
+
+### Tasks
+
+- [ ] Add error logging to `load_data_async()`
+  - **Priority**: Important
+  - **Effort**: 30 min
+  - **File**: `shared/data.py:182-193`
+
+- [ ] Verify/fix rate limiting configuration
+  - **Priority**: Important
+  - **Effort**: 45 min
+  - **File**: `backend/src/api/routes/metrics.py:31-64`
+
+- [ ] Document OEE performance factor simplification
+  - **Priority**: Important
+  - **Effort**: 15 min
+  - **File**: `shared/metrics.py:100-103`
+
+- [ ] Add prompt injection security documentation
+  - **Priority**: Important
+  - **Effort**: 15 min
+  - **File**: `backend/src/api/routes/chat.py`
+
+### Deliverables
+- ✅ Consistent error logging patterns
+- ✅ Verified rate limiting working
+- ✅ Documentation improvements (OEE factor, prompt injection security)
+
+### Notes
+- None of these block PR19 or deployment
+- Can be done in parallel with Phase 4 deployment work
+- Improves code quality and maintainability
+
+---
+
+## Backlog (Enhancement Opportunities - Low Priority)
+
+### Overview
+Low-priority enhancement opportunities identified during code review. These are nice-to-haves that don't block deployment.
+
+**Status**: BACKLOG
+**Priority**: Low (enhancements, not blockers)
+**Total Effort**: 40 minutes
+
+### Enhancement Items
+
+**1. Fix TypeScript Warning Import Inconsistency** (15 minutes)
+- **File**: `frontend/src/pages/TraceabilityPage.tsx:40,407,420,442`
+- **Problem**: Imports `WarningIcon` but uses `Warning` in code
+- **Fix**: Change import to `Warning` (remove alias)
+- **Why**: Reduces confusion, improves code clarity
+- **Impact**: Cosmetic, no functional change
+
+**2. Delete Duplicate Data Regeneration Script** (10 minutes)
+- **Files**: `regenerate_data.py`, `regenerate_data_simple.py`
+- **Problem**: Two similar scripts, one has bugs (from PR20 Issue 1)
+- **Fix**: Delete buggy version (`regenerate_data.py`), rename `regenerate_data_simple.py` to `regenerate_data.py`
+- **Why**: Reduces maintenance burden, prevents using buggy version
+- **Impact**: Code cleanup, prevents future errors
+
+**3. Update SECURITY_STATUS.md with Known Limitations** (15 minutes)
+- **File**: `SECURITY_STATUS.md`
+- **Problem**: Should document known simplifications/limitations for demo
+- **Fix**: Add section documenting:
+  - Hardcoded OEE performance factor (0.95)
+  - Rate limiting configuration status
+  - Demo simplifications vs production requirements
+- **Why**: Complete security documentation, transparent about demo shortcuts
+- **Impact**: Documentation only, helps future contributors
+
+### Notes
+- **Not blocking deployment** - All are optional enhancements
+- Can be addressed anytime after deployment
+- Consider combining with Phase 5 polish work
+- Low effort, low risk changes
+
+---
+
+## PR19: Enhanced Quality Traceability - Material-Supplier Root Cause Linkage (HIGH PRIORITY)
+
+### Overview
+Add direct material-supplier linkage to quality issues to enable demonstrable root cause analysis. This fills a critical gap in the traceability feature where quality issues of type="material" don't currently link to specific material lots or suppliers.
+
+**Status**: PARTIALLY COMPLETE (Backend done, Frontend pending)
+**Priority**: High (core traceability feature gap)
+**Estimated Effort**: 4-6 hours total (2-3 hours remaining)
+**Phase**: Phase 3 Enhancement (data model + frontend)
+**Progress**: Backend model and data generation complete (b531dd7), API integration pending (PR20 Issue 2)
+
+### Problem Statement
+Currently:
+- Quality issues exist with type="material" but don't link to specific material lots
+- Users cannot directly identify which material lot or supplier caused a quality issue
+- Traceability requires manual inference (look at batch materials + quality issues separately)
+- Cannot answer: "Which supplier caused the Day 15 quality spike?"
+
+### Solution
+Add optional fields to QualityIssue model to enable direct material/supplier linkage and root cause tracking.
+
+### Tasks
+
+**1. Backend Data Model Updates** ✅ COMPLETED (b531dd7)
+- [x] Update `QualityIssue` model in `shared/models.py`:
+  - **Status**: COMPLETED
+  - **Commit**: b531dd7
+  - **Added fields**: `material_id`, `lot_number`, `supplier_id`, `supplier_name`, `root_cause` (all optional)
+  - Maintained backward compatibility
+
+- [x] Update `shared/data_generator.py`:
+  - **Status**: COMPLETED
+  - **Commit**: b531dd7
+  - **Implementation**: Material-type quality issues now link to specific material lots and suppliers
+  - Biased toward lower-quality suppliers (defect rate > 3%)
+  - Planted scenario created for demonstrable traceability
+
+**2. API Enhancement** (BLOCKED by PR20 Issue 2)
+- [ ] Update `GET /api/metrics/quality` response to include new fields
+  - **Priority**: Critical (BLOCKED by PR20 Issue 2)
+  - **Effort**: Quick (<30min)
+  - **Context**: Fix in `shared/metrics.py:229-241` needed first (PR20)
+  - **Blocker**: Currently doesn't populate material linkage fields
+
+- [ ] Add new endpoint: `GET /api/quality-issues/{issue_id}/root-cause` (OPTIONAL)
+  - **Priority**: Low (nice-to-have)
+  - **Effort**: Medium (1hr)
+  - **Context**: Can defer - AlertsPage can show linkage from existing endpoint once PR20 Issue 2 is fixed
+  - **Decision**: SKIP for now, add in Phase 5 if needed
+
+**3. Frontend Integration** (1.5-2 hours - pending PR20 completion)
+- [ ] Update `frontend/src/types/api.ts` with new QualityIssue fields
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Add optional fields to QualityIssue interface
+
+- [ ] Update `AlertsPage.tsx` to display material linkage
+  - **Priority**: High
+  - **Effort**: Medium (1hr)
+  - **Context**: Add columns: "Material", "Lot #", "Supplier" (when available). Add tooltip/expand row to show root cause details. Add filter: "Show material-related issues only"
+
+- [ ] Update `TraceabilityPage.tsx` (Batch Lookup tab)
+  - **Priority**: High
+  - **Effort**: Medium (30-45min)
+  - **Context**: Highlight materials linked to quality issues. Show icon/badge next to suspect material lots. Add "Root Cause" section showing which materials caused issues
+
+**4. Testing & Validation** (30-45 min)
+- [ ] Generate fresh data with new linkage
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Run `python -m src.main setup` to regenerate with material linkage
+
+- [ ] Verify Day 15 planted scenario works
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Confirm Day 15 has quality spike traceable to specific supplier
+
+- [ ] Test API endpoints return linked data
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Test `/api/metrics/quality` and `/api/quality-issues/{id}/root-cause`
+
+- [ ] Test frontend displays material/supplier info correctly
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Verify AlertsPage and TraceabilityPage show linkage
+
+- [ ] Manual E2E: "Find root cause of Day 15 quality spike"
+  - **Priority**: High
+  - **Effort**: Quick (<15min)
+  - **Context**: Walk through: View alerts → Identify Day 15 spike → Trace to supplier → View supplier quality metrics
+
+### Deliverables
+- ✅ QualityIssue model with optional material/supplier linkage fields
+- ✅ Data generator creates realistic material-quality correlations
+- ✅ Planted scenario: Day 15 quality spike traceable to specific supplier
+- ✅ API returns root cause information
+- ✅ Frontend displays material-supplier linkage in Alerts and Traceability pages
+- ✅ Demonstrable workflow: "This defect was caused by Lot X from Supplier Y"
+
+### Benefits
+- Makes traceability immediately demonstrable (no manual inference needed)
+- Enables root cause analysis questions: "Which supplier caused the most quality issues?"
+- Supports quarantine decisions: "Should we quarantine all lots from Supplier B?"
+- Enhances AI chat capabilities: Can answer "What caused the Day 15 quality spike?"
+- Fills critical gap in Phase 3 traceability implementation
+
+### Notes
+- All new fields are optional for backward compatibility
+- Planted scenario (Day 15) makes demos compelling
+- Natural extension of existing traceability infrastructure
+- Should be completed before deployment to avoid schema migration in production
+
+---
+
 ## Phase 4: Frontend Deployment (6-8 hours)
 
 ### Overview
@@ -585,16 +1118,37 @@ Only pursue if demo requires multi-user access or enterprise showcase.
 | Phase 1: Backend API | 12-16 hrs | ~14 hrs | COMPLETED ✅ |
 | Phase 2: Backend Integration | 8-12 hrs | ~10 hrs | COMPLETED ✅ |
 | Phase 3: Frontend Complete | 24-30 hrs | ~28 hrs | COMPLETED ✅ |
-| Phase 4: Frontend Deployment | 6-8 hrs | - | READY TO START 🚀 |
+| **Code Review** | 1 hr | 1 hr | COMPLETED ✅ |
+| **PR20A: Critical Fixes (Frontend/Backend)** | 1 hr | - | PLANNED (ABSOLUTE IMMEDIATE) 🔥 |
+| **PR20: Critical Fixes (Backend)** | 1-2 hrs | - | PLANNED (IMMEDIATE - After PR20A) 🔥 |
+| **PR19: Quality Traceability (remaining)** | 2-3 hrs | - | PLANNED (HIGH - Blocked by PR20) 🔥 |
+| **PR20B: Code Quality Improvements** | 1-2 hrs | - | PLANNED (Important, Not Blocking) 📋 |
+| **PR21: Additional Code Quality** | 2-3 hrs | - | PLANNED (Important, Not Blocking) 📋 |
+| Phase 4: Frontend Deployment | 6-8 hrs | - | PLANNED 📋 |
 | Phase 5: Polish & Scenarios | 8-12 hrs | - | PLANNED 📋 |
-| **Total** | **58-78 hours** | **~52 hours completed** | - |
+| **Backlog: Enhancements** | 40 min | - | BACKLOG (Low Priority) |
+| **Total** | **70-96 hours** | **~53 hours completed** | - |
 
-**Project Status**:
-- Completed: ~52 hours (67% of total project)
-- Remaining: ~14-20 hours (33% remaining)
+**Project Status** (Updated 2025-11-15 - NEW CRITICAL ISSUES IDENTIFIED):
+- Completed: ~53 hours (54% of updated total)
+- Remaining: ~17-43 hours (46% remaining)
 - Timeline: 2-3 weeks at 8 hours/week
-- **MAJOR MILESTONE**: All frontend development complete! Ready for deployment.
-- **NEXT FOCUS**: Phase 4 - Deploy to Azure Container Apps
+- **MAJOR MILESTONE**: All frontend development complete! Code review complete!
+- **CRITICAL PATH** (UPDATED):
+  - **ABSOLUTE FIRST**: PR20A (1 hr) - Fix 4 critical TypeScript/runtime issues
+  - **THEN**: PR20 (1-2 hrs) - Fix 3 critical backend issues (Issue 2 blocks PR19)
+  - **THEN**: PR19 (2-3 hrs) - Complete Quality Traceability Frontend
+  - **PARALLEL**: PR20B (1-2 hrs) + Deployment prep
+  - **PARALLEL**: PR21 (2-3 hrs) + Deployment prep
+- **⚠️ IMPORTANT**: Do NOT start any other work until PR20A is complete
+- **IMMEDIATE FOCUS**: PR20A - Fix Critical Code Review Issues (1 hour)
+  - Runtime crashes: Missing icon imports in TraceabilityPage
+  - Type safety: Incorrect event handler types
+  - Hardcoded values: Move cost to config
+  - Async logging: Add logging to load_data_async()
+- **NEXT**: PR20 - Fix 3 Critical Backend Issues (1-2 hours after PR20A)
+  - Issue 2 blocks PR19 frontend work (material linkage in metrics.py)
+- **THEN**: PR19 - Complete Quality Traceability Frontend (2-3 hours after PR20)
 
 ---
 
@@ -669,7 +1223,55 @@ Phase 1 complete. Includes:
 2. **Cleanup**: Remove backup env files (`.env.backup-foundry`, `.env.bak`)
 3. **Testing**: Manual E2E test of all 5 pages recommended
 
-**Next Phase - Deployment**:
+**Immediate Priority - PR20A (ABSOLUTE CRITICAL - DO FIRST)**:
+1. **PR20A - Critical Code Review Fixes** (1 hour) - **START HERE - DO BEFORE ANYTHING ELSE**:
+   - Fix missing TypeScript icon imports (TraceabilityPage.tsx:420, 442, 448) - 5 min
+     - Prevents runtime crashes when viewing batches
+   - Fix event handler type annotation (TraceabilityPage.tsx:106) - 5 min
+     - Restores full TypeScript type safety
+   - Move hardcoded cost values to config (traceability.py:276, 687) - 15 min
+     - Single source of truth for defect cost
+   - Add logging to load_data_async() (shared/data.py:182-193) - 30 min
+     - Enables production debugging
+   - Test all fixes (npm run build, pytest) - 5 min
+   - **WHY**: Runtime crashes and type safety violations blocking deployment
+   - **IMPACT**: Fixes application runtime and improves maintainability
+
+**Then Priority - PR20 (CRITICAL - After PR20A)**:
+1. **PR20 - Fix Critical Code Review Issues** (1-2 hours) - **After PR20A**:
+   - Fix parameter ordering in `regenerate_data.py:41-47` (15 min)
+   - Complete material linkage in `shared/metrics.py:229-241` (30 min) - **BLOCKS PR19**
+   - Add date validation to `backend/src/api/routes/traceability.py:305-354` (30 min)
+   - Test all fixes (15 min)
+   - **WHY**: Issue 2 blocks PR19 frontend completion
+   - **IMPACT**: Enables AlertsPage to show material/supplier information
+
+**Next Priority - PR19 (HIGH PRIORITY - After PR20)**:
+1. **PR19 - Enhanced Quality Traceability** (2-3 hours remaining) - **After PR20**:
+   - ✅ Backend data model complete (commit b531dd7)
+   - ⚠️ API integration blocked by PR20 Issue 2
+   - Update `frontend/src/types/api.ts` with new QualityIssue fields (15 min)
+   - Update AlertsPage to display material linkage (1 hr)
+   - Update TraceabilityPage Batch Lookup tab (30-45 min)
+   - Test frontend displays material/supplier info (15 min)
+   - **WHY**: Fills critical gap - enables demonstrable root cause analysis
+   - **BENEFIT**: "This defect was caused by Lot X from Supplier Y" workflow
+
+**Important but Not Blocking - PR20B**:
+1. **PR20B - Code Review Improvements** (1-2 hours) - **Can parallel with deployment**:
+   - Improve error logging in `shared/data.py:182-193` (30 min)
+   - Verify rate limiting configuration (45 min)
+   - Document OEE performance factor (15 min)
+   - Document prompt injection security (15 min)
+   - **WHY**: Code quality and maintainability improvements
+   - **IMPACT**: Better debugging, clearer documentation
+
+**Also Important but Not Blocking - PR21**:
+1. **PR21 - Additional Code Quality Improvements** (2-3 hours) - **Can parallel with deployment**:
+   - Additional code quality enhancements from review
+   - Can be done in parallel with Phase 4 deployment work
+
+**After Critical Fixes - Deployment**:
 1. **Phase 4 - Frontend Deployment** (6-8 hours):
    - Verify frontend Dockerfile
    - Update Bicep template for frontend Container App
@@ -680,3 +1282,8 @@ Phase 1 complete. Includes:
    - Quarantine logic enhancements
    - Screenshots/videos for demos
    - Validation tests
+
+**Backlog - Enhancements** (40 min total):
+1. Fix TypeScript Warning import (15 min)
+2. Delete duplicate regeneration script (10 min)
+3. Update SECURITY_STATUS.md with limitations (15 min)

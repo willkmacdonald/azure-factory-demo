@@ -5,10 +5,14 @@ This module provides REST endpoints for accessing factory metrics including:
 - Scrap metrics
 - Quality issues
 - Downtime analysis
+
+All endpoints have rate limiting applied to prevent API abuse.
 """
 
 from typing import Optional, Union, Dict
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from shared.models import (
     OEEMetrics,
     ScrapMetrics,
@@ -24,9 +28,15 @@ from shared.metrics import (
 
 router = APIRouter(prefix="/api/metrics", tags=["Metrics"])
 
+# Initialize rate limiter for metrics endpoints
+# Limits: 100 requests per minute per IP address
+limiter = Limiter(key_func=get_remote_address)
+
 
 @router.get("/oee", response_model=Union[OEEMetrics, Dict[str, str]])
+@limiter.limit("100/minute")
 async def get_oee(
+    request: Request,
     start_date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
     machine: Optional[str] = Query(None, description="Optional machine name filter"),
@@ -35,7 +45,10 @@ async def get_oee(
 
     OEE is calculated as: Availability × Performance × Quality
 
+    Rate limit: 100 requests per minute per IP address.
+
     Args:
+        request: FastAPI request object (for rate limiting)
         start_date: Start date for metrics calculation (YYYY-MM-DD)
         end_date: End date for metrics calculation (YYYY-MM-DD)
         machine: Optional machine name to filter results
@@ -52,14 +65,19 @@ async def get_oee(
 
 
 @router.get("/scrap", response_model=Union[ScrapMetrics, Dict[str, str]])
+@limiter.limit("100/minute")
 async def get_scrap(
+    request: Request,
     start_date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
     machine: Optional[str] = Query(None, description="Optional machine name filter"),
 ) -> Union[ScrapMetrics, Dict[str, str]]:
     """Get scrap and waste metrics.
 
+    Rate limit: 100 requests per minute per IP address.
+
     Args:
+        request: FastAPI request object (for rate limiting)
         start_date: Start date for metrics calculation (YYYY-MM-DD)
         end_date: End date for metrics calculation (YYYY-MM-DD)
         machine: Optional machine name to filter results
@@ -76,7 +94,9 @@ async def get_scrap(
 
 
 @router.get("/quality", response_model=Union[QualityIssues, Dict[str, str]])
+@limiter.limit("100/minute")
 async def get_quality(
+    request: Request,
     start_date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
     severity: Optional[str] = Query(
@@ -86,7 +106,10 @@ async def get_quality(
 ) -> Union[QualityIssues, Dict[str, str]]:
     """Get quality issues and defects.
 
+    Rate limit: 100 requests per minute per IP address.
+
     Args:
+        request: FastAPI request object (for rate limiting)
         start_date: Start date for metrics calculation (YYYY-MM-DD)
         end_date: End date for metrics calculation (YYYY-MM-DD)
         severity: Optional severity filter (Low, Medium, High)
@@ -105,14 +128,19 @@ async def get_quality(
 
 
 @router.get("/downtime", response_model=Union[DowntimeAnalysis, Dict[str, str]])
+@limiter.limit("100/minute")
 async def get_downtime(
+    request: Request,
     start_date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
     machine: Optional[str] = Query(None, description="Optional machine name filter"),
 ) -> Union[DowntimeAnalysis, Dict[str, str]]:
     """Get downtime analysis and major events.
 
+    Rate limit: 100 requests per minute per IP address.
+
     Args:
+        request: FastAPI request object (for rate limiting)
         start_date: Start date for metrics calculation (YYYY-MM-DD)
         end_date: End date for metrics calculation (YYYY-MM-DD)
         machine: Optional machine name to filter results

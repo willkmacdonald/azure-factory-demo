@@ -238,6 +238,12 @@ async def get_quality_issues(
                         severity=issue["severity"],
                         date=date,
                         machine=machine,
+                        # PR19: Material-supplier root cause linkage
+                        material_id=issue.get("material_id"),
+                        lot_number=issue.get("lot_number"),
+                        supplier_id=issue.get("supplier_id"),
+                        supplier_name=issue.get("supplier_name"),
+                        root_cause=issue.get("root_cause", "unknown"),
                     )
                     issues.append(quality_issue)
 

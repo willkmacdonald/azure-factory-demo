@@ -12,6 +12,7 @@ following FastAPI best practices for concurrent request handling.
 """
 
 import logging
+import re
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -20,6 +21,38 @@ from shared.models import Supplier, ProductionBatch, Order
 from shared.data import load_data_async
 
 logger = logging.getLogger(__name__)
+
+# Date validation pattern (YYYY-MM-DD)
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def validate_date_format(date_str: Optional[str], param_name: str) -> None:
+    """Validate date string format (YYYY-MM-DD).
+
+    Args:
+        date_str: Date string to validate
+        param_name: Parameter name for error messages
+
+    Raises:
+        HTTPException: 400 if date format is invalid
+    """
+    if date_str is None:
+        return
+
+    if not DATE_PATTERN.match(date_str):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {param_name} format. Expected YYYY-MM-DD, got: {date_str}",
+        )
+
+    # Validate date components are valid
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {param_name}: {str(e)}",
+        )
 
 router = APIRouter(prefix="/api", tags=["Traceability"])
 
@@ -142,8 +175,8 @@ async def get_supplier_impact(
 
     Args:
         supplier_id: Unique supplier identifier
-        start_date: Optional start date filter
-        end_date: Optional end date filter
+        start_date: Optional start date filter (YYYY-MM-DD format)
+        end_date: Optional end date filter (YYYY-MM-DD format)
 
     Returns:
         Dictionary containing:
@@ -155,12 +188,16 @@ async def get_supplier_impact(
         - estimated_cost_impact: Estimated cost of quality issues
 
     Raises:
-        HTTPException: 404 if supplier not found, 500 if analysis fails
+        HTTPException: 400 if date format invalid, 404 if supplier not found, 500 if analysis fails
 
     Example:
         GET /api/suppliers/SUP-001/impact
         GET /api/suppliers/SUP-001/impact?start_date=2024-01-01&end_date=2024-01-31
     """
+    # Validate date formats
+    validate_date_format(start_date, "start_date")
+    validate_date_format(end_date, "end_date")
+
     try:
         data = await load_data_async()
         if not data:
@@ -281,8 +318,8 @@ async def list_batches(
 
     Args:
         machine_id: Optional machine ID filter
-        start_date: Optional start date filter (YYYY-MM-DD)
-        end_date: Optional end date filter (YYYY-MM-DD)
+        start_date: Optional start date filter (YYYY-MM-DD format)
+        end_date: Optional end date filter (YYYY-MM-DD format)
         order_id: Optional order ID filter
         limit: Maximum number of batches to return (1-500)
 
@@ -290,13 +327,17 @@ async def list_batches(
         List of ProductionBatch objects (newest first)
 
     Raises:
-        HTTPException: 500 if data loading fails
+        HTTPException: 400 if date format invalid, 500 if data loading fails
 
     Example:
         GET /api/batches
         GET /api/batches?machine_id=1&start_date=2024-01-01
         GET /api/batches?order_id=ORD-001
     """
+    # Validate date formats
+    validate_date_format(start_date, "start_date")
+    validate_date_format(end_date, "end_date")
+
     try:
         data = await load_data_async()
         if not data or "production_batches" not in data:
@@ -525,8 +566,8 @@ async def forward_trace(
 
     Args:
         supplier_id: Unique supplier identifier
-        start_date: Optional start date filter
-        end_date: Optional end date filter
+        start_date: Optional start date filter (YYYY-MM-DD format)
+        end_date: Optional end date filter (YYYY-MM-DD format)
 
     Returns:
         Dictionary containing:
@@ -538,12 +579,16 @@ async def forward_trace(
         - impact_summary: Summary statistics
 
     Raises:
-        HTTPException: 404 if supplier not found, 500 if trace fails
+        HTTPException: 400 if date format invalid, 404 if supplier not found, 500 if trace fails
 
     Example:
         GET /api/traceability/forward/SUP-001
         GET /api/traceability/forward/SUP-001?start_date=2024-01-01&end_date=2024-01-31
     """
+    # Validate date formats
+    validate_date_format(start_date, "start_date")
+    validate_date_format(end_date, "end_date")
+
     try:
         data = await load_data_async()
         if not data:

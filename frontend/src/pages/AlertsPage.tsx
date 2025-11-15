@@ -278,6 +278,9 @@ const AlertsPage: React.FC = () => {
                 <TableCell>Machine</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Description</TableCell>
+                <TableCell>Material/Lot</TableCell>
+                <TableCell>Supplier</TableCell>
+                <TableCell>Root Cause</TableCell>
                 <TableCell align="center">Severity</TableCell>
                 <TableCell align="right">Parts Affected</TableCell>
               </TableRow>
@@ -294,6 +297,46 @@ const AlertsPage: React.FC = () => {
                     <TableCell>{issue.machine}</TableCell>
                     <TableCell>{issue.type}</TableCell>
                     <TableCell>{issue.description}</TableCell>
+                    <TableCell>
+                      {issue.material_id && issue.lot_number ? (
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {issue.material_id}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Lot: {issue.lot_number}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">—</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {issue.supplier_name ? (
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {issue.supplier_name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {issue.supplier_id}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">—</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {issue.root_cause && issue.root_cause !== 'unknown' ? (
+                        <Chip
+                          label={issue.root_cause.replace('_', ' ')}
+                          size="small"
+                          color={issue.root_cause === 'supplier_quality' ? 'error' : 'warning'}
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">—</Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="center">
                       <Chip
                         icon={getSeverityIcon(issue.severity)}
@@ -307,7 +350,7 @@ const AlertsPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={9} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                       No issues found matching the current filters
                     </Typography>

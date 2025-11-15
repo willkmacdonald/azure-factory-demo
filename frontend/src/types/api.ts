@@ -45,6 +45,13 @@ export interface QualityIssue {
   severity: 'Low' | 'Medium' | 'High';  // Issue severity
   date: string;                   // Date in YYYY-MM-DD format
   machine: string;                // Machine identifier
+
+  // Material-Supplier Root Cause Linkage (PR19)
+  material_id?: string;           // Material ID if issue is material-related
+  lot_number?: string;            // Specific material lot number that caused the issue
+  supplier_id?: string;           // Supplier ID if issue is traced to supplier quality
+  supplier_name?: string;         // Supplier name for readability
+  root_cause?: 'material_defect' | 'supplier_quality' | 'process_issue' | 'machine_issue' | 'unknown';  // Root cause category
 }
 
 /**

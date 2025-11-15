@@ -127,6 +127,7 @@ app.add_middleware(
 
 # Include the metrics router with all its endpoints
 # This adds all endpoints from metrics.py to the main app
+# Metrics endpoints have rate limiting applied (100 requests/minute per IP)
 app.include_router(metrics.router)
 
 # Include the data router with all its endpoints
