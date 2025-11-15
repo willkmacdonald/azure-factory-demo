@@ -496,16 +496,26 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
                 parts_produced = int(parts_produced * 0.5)  # Major production loss
             else:
                 downtime_hours = random.uniform(0.2, 0.8)  # Normal minor downtime
+                # Always create downtime events to match total downtime hours
+                # Distribute downtime across 1-2 reasons
+                num_events = random.randint(1, 2)
                 downtime_events = []
-                if random.random() < 0.3:  # 30% chance of logged downtime
+                remaining_hours = downtime_hours
+
+                for i in range(num_events):
                     reason = random.choice(list(DOWNTIME_REASONS.keys()))
-                    downtime_events = [
-                        {
-                            "reason": reason,
-                            "description": DOWNTIME_REASONS[reason],
-                            "duration_hours": round(random.uniform(0.1, 0.5), 2),
-                        }
-                    ]
+                    # Last event gets remaining hours, others get random split
+                    if i == num_events - 1:
+                        event_hours = remaining_hours
+                    else:
+                        event_hours = remaining_hours * random.uniform(0.3, 0.7)
+                        remaining_hours -= event_hours
+
+                    downtime_events.append({
+                        "reason": reason,
+                        "description": DOWNTIME_REASONS[reason],
+                        "duration_hours": round(event_hours, 2),
+                    })
 
             # Calculate derived metrics
             scrap_parts = int(parts_produced * scrap_rate)
