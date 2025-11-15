@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Error, Refresh } from '@mui/icons-material';
 import { useAsyncData } from '../utils/async';
-import apiService from '../services/api';
+import { apiService } from '../api/client';
 
 /**
  * ApiHealthCheck - Component for testing API connectivity

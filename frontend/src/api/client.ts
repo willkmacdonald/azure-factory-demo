@@ -24,6 +24,13 @@ import type {
   DateRangeResponse,
   MetricsQueryParams,
   ApiError,
+  Supplier,
+  SupplierImpact,
+  ProductionBatch,
+  BackwardTrace,
+  ForwardTrace,
+  Order,
+  OrderBatches,
 } from '../types/api';
 
 // ============================================================================
@@ -371,6 +378,135 @@ export const apiService = {
    */
   sendChatMessage: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await apiClient.post<ChatResponse>('/api/chat', request);
+    return response.data;
+  },
+
+  // ========================================
+  // Supply Chain Traceability - Suppliers
+  // ========================================
+
+  /**
+   * Get list of suppliers
+   * GET /api/suppliers
+   * @param status - Optional: filter by supplier status (Active, OnHold, Suspended)
+   */
+  listSuppliers: async (status?: string): Promise<Supplier[]> => {
+    const response = await apiClient.get<Supplier[]>('/api/suppliers', {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get supplier details by ID
+   * GET /api/suppliers/{supplier_id}
+   */
+  getSupplier: async (supplierId: string): Promise<Supplier> => {
+    const response = await apiClient.get<Supplier>(`/api/suppliers/${supplierId}`);
+    return response.data;
+  },
+
+  /**
+   * Get supplier impact analysis
+   * GET /api/suppliers/{supplier_id}/impact
+   * Analyzes the impact of a supplier on production batches and quality
+   */
+  getSupplierImpact: async (supplierId: string): Promise<SupplierImpact> => {
+    const response = await apiClient.get<SupplierImpact>(`/api/suppliers/${supplierId}/impact`);
+    return response.data;
+  },
+
+  // ========================================
+  // Supply Chain Traceability - Production Batches
+  // ========================================
+
+  /**
+   * Get list of production batches
+   * GET /api/batches
+   * @param params - Optional query parameters for filtering
+   */
+  listBatches: async (params?: {
+    machine_id?: number;
+    start_date?: string;
+    end_date?: string;
+    order_id?: string;
+    limit?: number;
+  }): Promise<ProductionBatch[]> => {
+    const response = await apiClient.get<ProductionBatch[]>('/api/batches', { params });
+    return response.data;
+  },
+
+  /**
+   * Get production batch details by ID
+   * GET /api/batches/{batch_id}
+   */
+  getBatch: async (batchId: string): Promise<ProductionBatch> => {
+    const response = await apiClient.get<ProductionBatch>(`/api/batches/${batchId}`);
+    return response.data;
+  },
+
+  // ========================================
+  // Supply Chain Traceability - Traceability
+  // ========================================
+
+  /**
+   * Get backward traceability for a production batch
+   * GET /api/traceability/backward/{batch_id}
+   * Traces materials and suppliers used in a specific batch
+   */
+  getBackwardTrace: async (batchId: string): Promise<BackwardTrace> => {
+    const response = await apiClient.get<BackwardTrace>(`/api/traceability/backward/${batchId}`);
+    return response.data;
+  },
+
+  /**
+   * Get forward traceability for a supplier
+   * GET /api/traceability/forward/{supplier_id}
+   * Traces impact of a supplier on batches and orders
+   * @param supplierId - Supplier ID
+   * @param params - Optional date range filter
+   */
+  getForwardTrace: async (
+    supplierId: string,
+    params?: { start_date?: string; end_date?: string }
+  ): Promise<ForwardTrace> => {
+    const response = await apiClient.get<ForwardTrace>(
+      `/api/traceability/forward/${supplierId}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  // ========================================
+  // Supply Chain Traceability - Orders
+  // ========================================
+
+  /**
+   * Get list of customer orders
+   * GET /api/orders
+   * @param params - Optional query parameters for filtering
+   */
+  listOrders: async (params?: { status?: string; limit?: number }): Promise<Order[]> => {
+    const response = await apiClient.get<Order[]>('/api/orders', { params });
+    return response.data;
+  },
+
+  /**
+   * Get order details by ID
+   * GET /api/orders/{order_id}
+   */
+  getOrder: async (orderId: string): Promise<Order> => {
+    const response = await apiClient.get<Order>(`/api/orders/${orderId}`);
+    return response.data;
+  },
+
+  /**
+   * Get production batches for an order
+   * GET /api/orders/{order_id}/batches
+   * Shows which batches have been assigned to fulfill this order
+   */
+  getOrderBatches: async (orderId: string): Promise<OrderBatches> => {
+    const response = await apiClient.get<OrderBatches>(`/api/orders/${orderId}/batches`);
     return response.data;
   },
 };

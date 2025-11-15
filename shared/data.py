@@ -5,6 +5,15 @@ This module supports two storage modes:
 2. Azure mode: Stores data in Azure Blob Storage (requires AZURE_STORAGE_CONNECTION_STRING)
 
 Storage mode is controlled by the STORAGE_MODE environment variable.
+
+Async/Sync Pattern (Hybrid Project Design):
+This module provides both synchronous and asynchronous versions of data access functions
+to support the hybrid CLI+API architecture:
+- Sync functions (load_data, save_data, initialize_data): Used by CLI tools (src/main.py, dashboard)
+- Async functions (load_data_async, save_data_async, initialize_data_async): Used by FastAPI routes
+This separation follows CLAUDE.md guidelines for hybrid CLI+API projects, where CLI operations
+use synchronous I/O for simplicity, while FastAPI routes use async/await for proper concurrent
+request handling.
 """
 
 from typing import Dict, Any, Optional, List, Union
@@ -78,8 +87,12 @@ DOWNTIME_REASONS = {
 def get_data_path() -> Path:
     """Get path to data file, creating directory if needed."""
     path = Path(DATA_FILE)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    except (IOError, OSError, PermissionError) as e:
+        logger.error(f"Failed to create data directory {path.parent}: {e}")
+        raise RuntimeError(f"Failed to create data directory {path.parent}: {e}")
 
 
 def save_data(data: Dict[str, Any]) -> None:
@@ -88,7 +101,9 @@ def save_data(data: Dict[str, Any]) -> None:
     try:
         with open(path, "w") as f:
             json.dump(data, f, indent=2, default=str)
+        logger.info(f"Successfully saved data to {path}")
     except (IOError, OSError) as e:
+        logger.error(f"Failed to save data to {path}: {e}")
         raise RuntimeError(f"Failed to save data to {path}: {e}")
 
 
@@ -101,13 +116,18 @@ def load_data() -> Optional[Dict[str, Any]]:
     """
     path = get_data_path()
     if not path.exists():
+        logger.info(f"No data file found at {path}")
         return None
     try:
         with open(path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+        logger.info(f"Successfully loaded data from {path}")
+        return data
     except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse JSON from {path}: {e}")
         raise RuntimeError(f"Failed to parse JSON from {path}: {e}")
     except (IOError, OSError) as e:
+        logger.error(f"Failed to read data from {path}: {e}")
         raise RuntimeError(f"Failed to read data from {path}: {e}")
 
 
@@ -226,6 +246,7 @@ def aggregate_batches_to_production(
     production_batches: List[Union["ProductionBatch", Dict[str, Any]]],
     machines: List[Dict[str, Any]],
     shifts: List[Dict[str, Any]],
+    original_production_data: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Aggregate production batches into production[date][machine] structure.
@@ -375,8 +396,14 @@ def aggregate_batches_to_production(
                 shift_planned = 8.0
                 shift_data["downtime_hours"] = max(0.0, shift_planned - shift_uptime)
 
-            # Create downtime events (simplified for demo - empty list for now)
+            # Preserve downtime events from original production data if available
             downtime_events: List[Dict[str, Any]] = []
+            if original_production_data and date_str in original_production_data:
+                if machine_name in original_production_data[date_str]:
+                    original_events = original_production_data[date_str][machine_name].get(
+                        "downtime_events", []
+                    )
+                    downtime_events = original_events if original_events else []
 
             # Build aggregated machine data for this date
             production[date_str][machine_name] = {
@@ -589,7 +616,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
     try:
         logger.info("Aggregating batches to production structure (PR15)...")
         aggregated_production = aggregate_batches_to_production(
-            production_batches, MACHINES, SHIFTS
+            production_batches, MACHINES, SHIFTS, production_data
         )
         logger.info(
             f"Aggregation complete: replaced original production data with aggregated version"

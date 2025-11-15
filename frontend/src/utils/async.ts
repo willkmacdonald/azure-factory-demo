@@ -9,8 +9,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { FormattedApiError } from '../services/api';
-import { getErrorMessage } from '../services/api';
+import type { FormattedApiError } from '../api/client';
+import { getErrorMessage } from '../api/client';
 
 // ============================================================================
 // Types
