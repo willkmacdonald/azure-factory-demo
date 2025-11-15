@@ -3,7 +3,7 @@
 import logging
 import uuid
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field, field_validator
 from openai import AsyncAzureOpenAI
@@ -27,8 +27,9 @@ class ChatMessage(BaseModel):
     """Individual chat message model with strict role enforcement."""
 
     role: str = Field(description="Message role: user or assistant only")
-    content: str = Field(
-        description="Message content",
+    content: Optional[str] = Field(
+        default=None,
+        description="Message content (can be None for tool calls)",
         max_length=2000,
         min_length=1
     )
@@ -60,19 +61,23 @@ class ChatMessage(BaseModel):
 
     @field_validator('content')
     @classmethod
-    def validate_content(cls, v: str) -> str:
-        """Ensure content is non-empty after stripping whitespace.
+    def validate_content(cls, v: Optional[str]) -> Optional[str]:
+        """Ensure content is non-empty after stripping whitespace (or None for tool calls).
 
         Args:
             v: Content value to validate
 
         Returns:
-            str: Validated content value
+            Optional[str]: Validated content value or None
 
         Raises:
-            ValueError: If content is empty or whitespace-only
+            ValueError: If content is empty or whitespace-only (but None is allowed)
         """
-        if not v or not v.strip():
+        # Allow None for tool calls
+        if v is None:
+            return v
+        # If not None, ensure it's not empty/whitespace
+        if not v.strip():
             raise ValueError("Message content cannot be empty or whitespace-only")
         return v
 
@@ -221,8 +226,13 @@ async def chat(
             user_message=chat_request.message,
         )
 
-        # Convert updated history dictionaries back to ChatMessage objects
-        updated_history = [ChatMessage(**msg) for msg in updated_history_dicts]
+        # Filter out tool messages and convert back to ChatMessage objects
+        # Only keep user and assistant messages with content for the UI
+        updated_history = [
+            ChatMessage(**msg)
+            for msg in updated_history_dicts
+            if msg.get("role") in ["user", "assistant"] and msg.get("content")
+        ]
 
         # Log completion with timing
         elapsed_time = time.time() - start_time

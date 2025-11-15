@@ -241,12 +241,14 @@ Complete all React pages with integrated monitoring + traceability features. Das
    - Tab 3: Verify orders table loads and pagination works
 3. **MERGE**: Merge to main branch
 
-### PR16: AI Chat Interface (3-4 hours)
+### PR16: AI Chat Interface & Traceability Tool Integration (5-6 hours)
 
-**Status**: Skeleton page exists, needs implementation
+**Status**: Skeleton page exists, needs implementation + backend tool enhancement
 **Priority**: Medium
 **Files**:
 - `frontend/src/pages/ChatPage.tsx` (skeleton with placeholder)
+- `shared/chat_service.py` (backend chat service)
+- `backend/src/api/routes/data.py` (data access layer)
 
 #### Tasks
 - [ ] Implement ChatPage UI with message history (1.5-2 hours)
@@ -266,6 +268,29 @@ Complete all React pages with integrated monitoring + traceability features. Das
   - Display error messages in chat UI
   - Track loading state for send button
 
+- [ ] Add supplier tools to chat service (1-1.5 hours)
+  - **File**: `shared/chat_service.py` - TOOLS array
+  - **Priority**: High
+  - **Effort**: Medium (1-1.5hrs)
+  - **Context**: Phase 2 traceability endpoints exist but LLM cannot access them; AI cannot answer "Which supplier has the best quality rating?" or similar
+  - Add tool definition: `get_supplier_data` with parameters (supplier_id optional, quality_filter optional)
+  - Add tool definition: `search_suppliers` with parameters (quality_min, quality_max, status)
+  - Implement execution handlers calling `/api/suppliers` and related endpoints
+  - Return structured supplier info: name, quality_rating, on_time_delivery_rate, defect_rate, status, certifications
+  - Update suggested prompts to include supplier queries: "Which suppliers have quality problems?", "What's our best supplier by quality?"
+
+- [ ] Add batch/order tools to chat service (1-1.5 hours)
+  - **File**: `shared/chat_service.py` - TOOLS array
+  - **Priority**: High
+  - **Effort**: Medium (1-1.5hrs)
+  - **Context**: Phase 2 traceability endpoints exist but LLM cannot access them; AI cannot answer "Show me the order status for customer X" or production traceability questions
+  - Add tool definition: `get_batch_traceability` with parameters (batch_id required)
+  - Add tool definition: `get_order_status` with parameters (order_id required)
+  - Add tool definition: `list_production_batches` with parameters (date_range optional, machine_id optional, status optional)
+  - Implement execution handlers calling `/api/batches`, `/api/orders`, `/api/traceability/backward`, `/api/traceability/forward`
+  - Return structured batch/order info: batch_id, date, machine, shift, quality_metrics, materials, suppliers, order_status, fulfillment_progress
+  - Update suggested prompts to include production queries: "Show me the order status for customer X", "Which orders are delayed?"
+
 - [ ] Add suggested prompts (45 min - optional)
   - Show prompt suggestions when chat is empty
   - Example prompts:
@@ -273,6 +298,8 @@ Complete all React pages with integrated monitoring + traceability features. Das
     - "Which suppliers have quality problems?"
     - "Show me the order status for customer X"
     - "What caused the downtime on day 15?"
+    - "Which supplier provides the best quality parts?"
+    - "What's the backward trace for batch [id]?"
   - Click suggestions to auto-fill input and send
 
 ### PR17: Complete DashboardPage (3-4 hours)
@@ -436,12 +463,14 @@ Complete all React pages with integrated monitoring + traceability features. Das
    - All three tabs fully implemented and tested
    - Ready to commit to main branch
 
-3. **PR16: AI Chat Interface** (3-4 hours) - READY TO START
+3. **PR16: AI Chat Interface & Traceability Tool Integration** (5-6 hours) - READY TO START
    - Implement ChatPage UI with message history
    - Create useChat hook
+   - Add supplier tools to chat service (leverage Phase 2 endpoints)
+   - Add batch/order tools to chat service (leverage Phase 2 endpoints)
    - Optional: suggested prompts
-   - Priority: Medium - nice-to-have feature
-   - Files: `frontend/src/pages/ChatPage.tsx`, `frontend/src/hooks/useChat.ts`
+   - Priority: High - enables full chat functionality with traceability questions
+   - Files: `frontend/src/pages/ChatPage.tsx`, `frontend/src/hooks/useChat.ts`, `shared/chat_service.py`
 
 4. **PR17: Dashboard Enhancements** (3-4 hours) - READY TO START
    - Add Supplier Quality Scorecard to DashboardPage
@@ -605,10 +634,10 @@ Only pursue if demo requires multi-user access or enterprise showcase.
 | **Frontend Implementation** | | |
 | - PR14: Machines & Alerts | 3-4 | COMPLETED ✅ |
 | - PR15: Traceability Page | 5.75 | COMPLETED ✅ |
-| - PR16: Chat Interface | 3-4 | Ready to start |
+| - PR16: Chat Interface & Traceability Tools | 5-6 | Ready to start |
 | - PR17: Dashboard Enhancements | 3-4 | Ready to start |
 | - PR18: Polish UI | 2-3 | Low priority |
-| **Phase 3 Subtotal** | **22-28 hours** | ~8-11 hrs remaining (66% done!) |
+| **Phase 3 Subtotal** | **24-30 hours** | ~10-13 hrs remaining (65% done!) |
 
 ### Full Project Timeline
 
@@ -622,10 +651,11 @@ Only pursue if demo requires multi-user access or enterprise showcase.
 | **Total** | **56-76 hours** | - |
 
 **Current Status**:
-- Completed: ~32-40 hours (58% of total project)
-- Remaining: ~24-36 hours (42% remaining)
-- Timeline: 3-4 weeks at 8 hours/week (Phase 3 = 1-1.5 weeks remaining at 8 hrs/week)
-- **MAJOR MILESTONE**: All critical frontend blockers resolved! 🎉
+- Completed: ~32-40 hours (57% of total project)
+- Remaining: ~26-38 hours (43% remaining)
+- Timeline: 3-4 weeks at 8 hours/week (Phase 3 = 1.5-2 weeks remaining at 8 hrs/week)
+- **MAJOR MILESTONE**: All critical frontend blockers resolved! PR15 ready to commit!
+- **NEW FOCUS**: PR16 now enhanced with supplier/batch tools to unlock full chat capabilities
 
 ---
 
@@ -696,4 +726,7 @@ Phase 1 complete. Includes:
 **Immediate Actions**:
 1. **COMMIT PR15**: `git commit -m "feat(ui): Add Traceability Page with 3-tab interface"`
 2. **TEST PR15**: Verify all three tabs work in the running app
-3. **START PR16**: Begin AI Chat Interface implementation
+3. **START PR16**: Begin AI Chat Interface implementation with two-phase approach:
+   - Phase A (1.5-2 hrs): Implement ChatPage UI + useChat hook
+   - Phase B (3-4 hrs): Add supplier & batch tools to chat_service.py
+   - This unlocks all traceability questions in the AI chat assistant
