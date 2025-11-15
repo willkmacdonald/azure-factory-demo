@@ -32,7 +32,7 @@ class ScrapMetrics(BaseModel):
 
 
 class QualityIssue(BaseModel):
-    """Individual quality issue record."""
+    """Individual quality issue record with optional material-supplier root cause linkage."""
 
     type: str = Field(description="Type of defect")
     description: str = Field(description="Issue description")
@@ -40,6 +40,24 @@ class QualityIssue(BaseModel):
     severity: str = Field(description="Severity level (Low, Medium, High)")
     date: str = Field(description="Date of issue (YYYY-MM-DD)")
     machine: str = Field(description="Machine name")
+
+    # Material-Supplier Root Cause Linkage (PR19)
+    material_id: Optional[str] = Field(
+        default=None, description="Material ID if issue is material-related"
+    )
+    lot_number: Optional[str] = Field(
+        default=None, description="Specific material lot number that caused the issue"
+    )
+    supplier_id: Optional[str] = Field(
+        default=None, description="Supplier ID if issue is traced to supplier quality"
+    )
+    supplier_name: Optional[str] = Field(
+        default=None, description="Supplier name for readability"
+    )
+    root_cause: Optional[str] = Field(
+        default="unknown",
+        description="Root cause category (material_defect, supplier_quality, process_issue, machine_issue, unknown)"
+    )
 
 
 class QualityIssues(BaseModel):

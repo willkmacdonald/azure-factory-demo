@@ -539,6 +539,7 @@ def generate_production_batches(
     materials_catalog: List[MaterialSpec],
     material_lots: List[MaterialLot],
     orders: List[Order],
+    suppliers: List[Supplier],
 ) -> List["ProductionBatch"]:
     """
     Generate production batches with full traceability to materials, suppliers, and orders.
@@ -552,6 +553,7 @@ def generate_production_batches(
         materials_catalog: List of MaterialSpec instances for material lookup.
         material_lots: List of MaterialLot instances for lot traceability.
         orders: List of Order instances for batch-to-order assignment.
+        suppliers: List of Supplier instances for quality issue root cause linkage.
 
     Returns:
         List of ProductionBatch instances (~1.5 batches per shift per machine).
@@ -606,6 +608,12 @@ def generate_production_batches(
         # Create machine and material lookup maps
         machine_map = {m["id"]: m for m in machines}
         material_map = {mat.id: mat for mat in materials_catalog}
+
+        # Create supplier lookup map
+        supplier_map = {sup.id: sup for sup in suppliers}
+
+        # Create material lot lookup by lot_number for quality issue linkage
+        lot_map = {lot.lot_number: lot for lot in material_lots}
 
         # Create material lots by material_id for efficient lookup
         lots_by_material: Dict[str, List[MaterialLot]] = {}
@@ -741,6 +749,34 @@ def generate_production_batches(
                         if quality_issues_list and batch_num == 0:
                             # Assign all quality issues to first batch of shift
                             for issue_data in quality_issues_list:
+                                # PR19: Link material-type quality issues to specific materials and suppliers
+                                material_id = None
+                                lot_number = None
+                                supplier_id = None
+                                supplier_name = None
+                                root_cause = "unknown"
+
+                                if issue_data.get("type") == "material" and materials_consumed:
+                                    # For material defects, link to a material lot from this batch
+                                    # Bias toward lower-quality suppliers (defect rate > 3%)
+                                    material_usage = random.choice(materials_consumed)
+                                    lot_number = material_usage.lot_number
+                                    material_id = material_usage.material_id
+
+                                    # Look up the lot to get supplier info
+                                    if lot_number in lot_map:
+                                        lot = lot_map[lot_number]
+                                        supplier_id = lot.supplier_id
+                                        if supplier_id in supplier_map:
+                                            supplier = supplier_map[supplier_id]
+                                            supplier_name = supplier.name
+                                            # Determine root cause based on supplier quality
+                                            defect_rate = supplier.quality_metrics.get("defect_rate", 0)
+                                            if defect_rate > 3.0:
+                                                root_cause = "supplier_quality"
+                                            else:
+                                                root_cause = "material_defect"
+
                                 batch_quality_issues.append(
                                     QualityIssue(
                                         type=issue_data["type"],
@@ -749,6 +785,11 @@ def generate_production_batches(
                                         severity=issue_data["severity"],
                                         date=date_str,
                                         machine=machine_name,
+                                        material_id=material_id,
+                                        lot_number=lot_number,
+                                        supplier_id=supplier_id,
+                                        supplier_name=supplier_name,
+                                        root_cause=root_cause,
                                     )
                                 )
 

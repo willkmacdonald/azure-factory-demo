@@ -320,7 +320,7 @@ class TestGenerateProductionBatches:
 
         # Generate batches
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Verify batches were created
@@ -349,7 +349,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=2)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Check first batch has all required fields
@@ -387,7 +387,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=2)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Collect all serial ranges
@@ -425,7 +425,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=2)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Get all material and lot IDs for validation
@@ -468,7 +468,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=2)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         order_ids = {order.id for order in orders}
@@ -503,7 +503,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=30)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Check if quality issues were moved to batches
@@ -541,7 +541,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=5)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Expected: ~1.5 batches per shift per machine
@@ -571,7 +571,7 @@ class TestGenerateProductionBatches:
         orders = []  # Empty orders list
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Should still generate batches, but with order_id=None
@@ -596,7 +596,7 @@ class TestGenerateProductionBatches:
         orders = generate_orders(start_date, days=2)
 
         batches = generate_production_batches(
-            production_data, materials_catalog, material_lots, orders
+            production_data, materials_catalog, material_lots, orders, suppliers
         )
 
         # Should still generate batches, but with empty materials_consumed
@@ -630,7 +630,7 @@ class TestGenerateProductionBatches:
 
         with pytest.raises(ValueError) as exc_info:
             generate_production_batches(
-                invalid_data, materials_catalog, material_lots, orders
+                invalid_data, materials_catalog, material_lots, orders, suppliers
             )
 
         assert "shifts" in str(exc_info.value).lower()
@@ -662,7 +662,7 @@ class TestGenerateProductionBatches:
 
         with pytest.raises(ValueError) as exc_info:
             generate_production_batches(
-                invalid_data, materials_catalog, material_lots, orders
+                invalid_data, materials_catalog, material_lots, orders, suppliers
             )
 
         assert "shifts" in str(exc_info.value).lower()
@@ -694,7 +694,7 @@ class TestGenerateProductionBatches:
         }
 
         batches = generate_production_batches(
-            data_with_no_machines, materials_catalog, material_lots, orders
+            data_with_no_machines, materials_catalog, material_lots, orders, suppliers
         )
 
         # Should return empty list (not crash)

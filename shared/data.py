@@ -477,16 +477,34 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
             parts_produced = int(base_parts * improvement_factor)
 
             # Scenario 1: Quality spike on day 15 for Assembly-001
+            # PR19: Changed to material defects to enable supplier root cause traceability
             if day_num == 14 and machine_name == "Assembly-001":
                 scrap_rate = 0.12  # 12% defect rate (vs normal 3%)
                 quality_issues = [
                     {
-                        "type": "assembly",
-                        "description": "Loose fastener issue - tooling calibration required",
-                        "parts_affected": random.randint(5, 15),
+                        "type": "material",  # Changed from "assembly" to enable supplier linkage
+                        "description": "Defective fasteners causing assembly failures",
+                        "parts_affected": random.randint(8, 15),
                         "severity": "High",
-                    }
-                    for _ in range(4)  # Multiple incidents
+                    },
+                    {
+                        "type": "material",
+                        "description": "Poor material quality in fastener batch",
+                        "parts_affected": random.randint(6, 12),
+                        "severity": "High",
+                    },
+                    {
+                        "type": "material",
+                        "description": "Material spec deviation - fastener hardness out of range",
+                        "parts_affected": random.randint(5, 10),
+                        "severity": "Medium",
+                    },
+                    {
+                        "type": "assembly",  # Keep one assembly issue for variety
+                        "description": "Assembly tooling misalignment",
+                        "parts_affected": random.randint(3, 8),
+                        "severity": "Medium",
+                    },
                 ]
             else:
                 scrap_rate = 0.03  # Normal 3% defect rate
@@ -617,6 +635,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
             materials_catalog,
             material_lots,
             orders,
+            suppliers,
         )
         logger.info(f"Generated {len(production_batches)} production batches")
     except (ValueError, RuntimeError, KeyError, TypeError) as e:
