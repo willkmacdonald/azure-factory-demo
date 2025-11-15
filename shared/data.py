@@ -395,8 +395,27 @@ def aggregate_batches_to_production(
                 shift_planned = 8.0  # Standard shift duration
                 shift_data["downtime_hours"] = max(0.0, shift_planned - shift_uptime)
 
-            # Downtime events are not tracked at batch level, so initialize as empty
+            # Generate downtime events to match total downtime hours
+            # Distribute downtime across 1-2 reasons for realistic categorization
             downtime_events: List[Dict[str, Any]] = []
+            if total_downtime > 0:
+                num_events = random.randint(1, 2)
+                remaining_hours = total_downtime
+
+                for i in range(num_events):
+                    reason = random.choice(list(DOWNTIME_REASONS.keys()))
+                    # Last event gets remaining hours, others get random split
+                    if i == num_events - 1:
+                        event_hours = remaining_hours
+                    else:
+                        event_hours = remaining_hours * random.uniform(0.3, 0.7)
+                        remaining_hours -= event_hours
+
+                    downtime_events.append({
+                        "reason": reason,
+                        "description": DOWNTIME_REASONS[reason],
+                        "duration_hours": round(event_hours, 2),
+                    })
 
             # Build aggregated machine data for this date
             production[date_str][machine_name] = {
