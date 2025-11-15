@@ -246,7 +246,6 @@ def aggregate_batches_to_production(
     production_batches: List[Union["ProductionBatch", Dict[str, Any]]],
     machines: List[Dict[str, Any]],
     shifts: List[Dict[str, Any]],
-    original_production_data: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Aggregate production batches into production[date][machine] structure.
@@ -393,17 +392,11 @@ def aggregate_batches_to_production(
             # Distribute downtime across shifts proportionally
             for shift_name, shift_data in shift_metrics.items():
                 shift_uptime = shift_data["uptime_hours"]
-                shift_planned = 8.0
+                shift_planned = 8.0  # Standard shift duration
                 shift_data["downtime_hours"] = max(0.0, shift_planned - shift_uptime)
 
-            # Preserve downtime events from original production data if available
+            # Downtime events are not tracked at batch level, so initialize as empty
             downtime_events: List[Dict[str, Any]] = []
-            if original_production_data and date_str in original_production_data:
-                if machine_name in original_production_data[date_str]:
-                    original_events = original_production_data[date_str][machine_name].get(
-                        "downtime_events", []
-                    )
-                    downtime_events = original_events if original_events else []
 
             # Build aggregated machine data for this date
             production[date_str][machine_name] = {
@@ -616,7 +609,7 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
     try:
         logger.info("Aggregating batches to production structure (PR15)...")
         aggregated_production = aggregate_batches_to_production(
-            production_batches, MACHINES, SHIFTS, production_data
+            production_batches, MACHINES, SHIFTS
         )
         logger.info(
             f"Aggregation complete: replaced original production data with aggregated version"

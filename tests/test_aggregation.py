@@ -338,3 +338,37 @@ def test_aggregate_batches_handles_dict_input(
     assert "2024-01-15" in result
     assert "CNC-001" in result["2024-01-15"]
     assert result["2024-01-15"]["CNC-001"]["parts_produced"] == 330
+
+
+def test_aggregate_batches_missing_duration(sample_machines, sample_shifts):
+    """Test that batches without duration fall back to 3-hour estimate."""
+    batch = ProductionBatch(
+        batch_id="BATCH-001",
+        date="2024-01-15",
+        machine_id=1,
+        machine_name="CNC-001",
+        shift_id=1,
+        shift_name="Day",
+        order_id="ORD-001",
+        part_number="PART-001",
+        operator="John Smith",
+        parts_produced=100,
+        good_parts=95,
+        scrap_parts=5,
+        serial_start=1000,
+        serial_end=1099,
+        materials_consumed=[],
+        quality_issues=[],
+        start_time="06:00",
+        end_time="09:00",
+        duration_hours=0.0,  # Missing/zero duration
+    )
+
+    result = aggregate_batches_to_production([batch], sample_machines, sample_shifts)
+
+    # Should use 3-hour fallback
+    assert "2024-01-15" in result
+    assert "CNC-001" in result["2024-01-15"]
+    assert result["2024-01-15"]["CNC-001"]["uptime_hours"] == 3.0
+    # Downtime should be calculated as planned_hours (16) - uptime (3) = 13
+    assert result["2024-01-15"]["CNC-001"]["downtime_hours"] == 13.0

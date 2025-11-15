@@ -21,6 +21,7 @@ import {
   Dashboard as DashboardIcon,
   Settings as MachinesIcon,
   Warning as AlertsIcon,
+  LocalShipping as TraceabilityIcon,
   Chat as ChatIcon,
 } from '@mui/icons-material';
 
@@ -36,6 +37,7 @@ const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
   { label: 'Machines', path: '/machines', icon: <MachinesIcon /> },
   { label: 'Alerts', path: '/alerts', icon: <AlertsIcon /> },
+  { label: 'Traceability', path: '/traceability', icon: <TraceabilityIcon /> },
   { label: 'AI Chat', path: '/chat', icon: <ChatIcon /> },
 ];
 

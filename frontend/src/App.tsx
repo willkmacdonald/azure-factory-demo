@@ -3,6 +3,7 @@ import MainLayout from './components/layout/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import MachinesPage from './pages/MachinesPage';
 import AlertsPage from './pages/AlertsPage';
+import TraceabilityPage from './pages/TraceabilityPage';
 import ChatPage from './pages/ChatPage';
 import './App.css';
 
@@ -35,6 +36,9 @@ function App() {
 
         {/* Alerts route */}
         <Route path="alerts" element={<AlertsPage />} />
+
+        {/* Traceability route */}
+        <Route path="traceability" element={<TraceabilityPage />} />
 
         {/* AI Chat route */}
         <Route path="chat" element={<ChatPage />} />
