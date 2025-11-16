@@ -97,7 +97,18 @@ async def calculate_oee(
         availability = total_uptime / total_planned_time if total_planned_time > 0 else 0
         quality = total_good / total_parts if total_parts > 0 else 0
 
-        # Performance (simplified - assume running at 95% of ideal when uptime)
+        # Performance (simplified for demo - assume running at 95% of ideal when uptime)
+        # DEMO SIMPLIFICATION: In production, performance should be calculated as:
+        #   performance = (actual_output / theoretical_maximum_output)
+        # where theoretical_maximum_output = ideal_cycle_time * uptime
+        #
+        # To implement proper performance calculation:
+        # 1. Add ideal_cycle_time to machine configuration (e.g., 60 seconds per part)
+        # 2. Calculate: theoretical_output = uptime_hours * (3600 / ideal_cycle_time)
+        # 3. Calculate: performance = total_parts / theoretical_output
+        #
+        # For now, we use 0.95 (95%) as a reasonable assumption for factory equipment
+        # that's well-maintained but not running at absolute maximum speed.
         performance = 0.95
 
         oee = availability * performance * quality

@@ -166,6 +166,7 @@ async def load_data_async() -> Optional[Dict[str, Any]]:
 
             # Download from blob
             data = await blob_client.download_blob()
+            logger.info("Successfully loaded data from Azure Blob Storage")
             return data
         except RuntimeError:
             # Re-raise RuntimeErrors from blob_storage (already have context)

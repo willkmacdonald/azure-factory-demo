@@ -30,6 +30,14 @@ router = APIRouter(prefix="/api/metrics", tags=["Metrics"])
 
 # Initialize rate limiter for metrics endpoints
 # Limits: 100 requests per minute per IP address
+#
+# Note: This local limiter instance is used for decorator-based rate limiting
+# on individual routes. The main application limiter is registered in main.py
+# (app.state.limiter) for global configuration. Both approaches are valid in SlowAPI:
+# - app.state.limiter: Global instance for middleware and shared config
+# - Local limiter: Used with @limiter.limit() decorators on routes
+#
+# This pattern allows per-route customization while maintaining centralized config.
 limiter = Limiter(key_func=get_remote_address)
 
 

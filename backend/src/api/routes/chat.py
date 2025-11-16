@@ -182,9 +182,24 @@ async def chat(
     This endpoint allows users to send messages to the AI assistant and receive
     responses. The AI can call tools to fetch factory metrics and data.
 
-    Rate limiting (PR7): This endpoint is rate-limited to prevent abuse.
-    Default limit is 10 requests per minute per IP address (configurable via
-    RATE_LIMIT_CHAT environment variable). Exceeded requests receive 429 error.
+    Security Considerations:
+    - Rate limiting (PR7): Limited to 10 requests/minute per IP to prevent abuse
+    - Input validation: Message length capped at 2000 chars, history at 50 messages
+    - Prompt injection mitigation:
+      * System prompt is controlled server-side and not user-modifiable
+      * Tool calling is restricted to predefined functions only (no arbitrary code)
+      * User messages are validated via Pydantic models before processing
+      * History size limits prevent token exhaustion attacks
+      * No user input is directly concatenated into system prompts
+    - Data isolation: Tools only access factory data, no system-level operations
+    - Error handling: Production mode hides internal errors (DEBUG=false)
+
+    Note: While these measures reduce prompt injection risk, LLM applications remain
+    vulnerable to social engineering attacks. For production use, consider:
+    - Content filtering on user inputs (Azure Content Safety API)
+    - Monitoring for unusual tool calling patterns
+    - User authentication and per-user rate limits
+    - Audit logging of all chat interactions
 
     Args:
         request: FastAPI Request object (required for rate limiting - slowapi)
