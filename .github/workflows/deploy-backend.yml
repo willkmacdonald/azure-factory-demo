@@ -228,9 +228,9 @@ jobs:
           parameters: >
             containerRegistryName=${{ env.AZURE_CONTAINER_REGISTRY }}
             imageTag=${{ needs.push.outputs.image-tag }}
-            azureOpenAiEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
-            azureOpenAiKey=${{ secrets.AZURE_OPENAI_KEY }}
-            azureOpenAiDeployment=gpt-4o
+            azureAiEndpoint=${{ secrets.AZURE_ENDPOINT }}
+            azureAiKey=${{ secrets.AZURE_API_KEY }}
+            azureAiDeployment=gpt-4o
             storageMode=local
             environmentName=${{ github.event.inputs.environment || 'dev' }}
           failOnStdErr: false

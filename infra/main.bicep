@@ -55,17 +55,17 @@ param containerRegistryName string = 'factoryagent4u4zqkacr'
 
 @description('Azure AI Foundry endpoint URL (e.g., https://xxx.cognitiveservices.azure.com/)')
 @secure()
-param azureOpenAiEndpoint string
+param azureAiEndpoint string
 
 @description('Azure AI Foundry API key')
 @secure()
-param azureOpenAiKey string
+param azureAiKey string
 
 @description('Azure AI Foundry model deployment name (e.g., gpt-4o, gpt-4, gpt-35-turbo)')
-param azureOpenAiDeployment string = 'gpt-4o'
+param azureAiDeployment string = 'gpt-4o'
 
 @description('Azure AI Foundry API version')
-param azureOpenAiApiVersion string = '2024-08-01-preview'
+param azureAiApiVersion string = '2024-08-01-preview'
 
 @description('Storage mode: local or blob')
 @allowed([
@@ -284,8 +284,8 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
       // Secrets (stored securely, referenced by environment variables)
       secrets: concat([
         {
-          name: 'azure-openai-key'
-          value: azureOpenAiKey
+          name: 'azure-ai-key'
+          value: azureAiKey
         }
       ], storageMode == 'blob' ? [
         {
@@ -339,19 +339,19 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
             }
             {
               name: 'AZURE_ENDPOINT'
-              value: azureOpenAiEndpoint
+              value: azureAiEndpoint
             }
             {
               name: 'AZURE_API_KEY'
-              secretRef: 'azure-openai-key'
+              secretRef: 'azure-ai-key'
             }
             {
               name: 'AZURE_DEPLOYMENT_NAME'
-              value: azureOpenAiDeployment
+              value: azureAiDeployment
             }
             {
               name: 'AZURE_API_VERSION'
-              value: azureOpenAiApiVersion
+              value: azureAiApiVersion
             }
           ] @ (storageMode == 'blob' ? [
             {
