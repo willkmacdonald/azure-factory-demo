@@ -282,16 +282,17 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
       ]
 
       // Secrets (stored securely, referenced by environment variables)
-      secrets: [
+      secrets: concat([
         {
           name: 'azure-openai-key'
           value: azureOpenAiKey
         }
+      ], storageMode == 'blob' ? [
         {
           name: 'azure-storage-connection-string'
           value: azureStorageConnectionString
         }
-      ]
+      ] : [])
 
       // Active revisions mode (single revision active at a time)
       activeRevisionsMode: 'Single'
@@ -352,6 +353,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'AZURE_API_VERSION'
               value: azureOpenAiApiVersion
             }
+          ] @ (storageMode == 'blob' ? [
             {
               name: 'AZURE_STORAGE_CONNECTION_STRING'
               secretRef: 'azure-storage-connection-string'
@@ -360,6 +362,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'AZURE_STORAGE_CONTAINER_NAME'
               value: azureStorageContainerName
             }
+          ] : []) @ [
             {
               name: 'ALLOWED_ORIGINS'
               value: allowedOrigins
