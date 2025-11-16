@@ -324,7 +324,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
             cpu: json(cpuCores)      // CPU cores (0.5 = half a core)
             memory: '${memorySize}Gi' // Memory in GB
           }
-          env: [
+          env: concat([
             {
               name: 'DEBUG'
               value: environmentName == 'dev' ? 'true' : 'false'
@@ -353,7 +353,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'AZURE_API_VERSION'
               value: azureAiApiVersion
             }
-          ] @ (storageMode == 'blob' ? [
+          ], storageMode == 'blob' ? [
             {
               name: 'AZURE_STORAGE_CONNECTION_STRING'
               secretRef: 'azure-storage-connection-string'
@@ -362,12 +362,12 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'AZURE_STORAGE_CONTAINER_NAME'
               value: azureStorageContainerName
             }
-          ] : []) @ [
+          ] : [], [
             {
               name: 'ALLOWED_ORIGINS'
               value: allowedOrigins
             }
-          ]
+          ])
           probes: [
             {
               type: 'Liveness'
