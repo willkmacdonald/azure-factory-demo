@@ -230,7 +230,7 @@ jobs:
             imageTag=${{ needs.push.outputs.image-tag }}
             azureOpenAiEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
             azureOpenAiKey=${{ secrets.AZURE_OPENAI_KEY }}
-            azureOpenAiDeployment=gpt-4
+            azureOpenAiDeployment=gpt-4o
             storageMode=blob
             azureStorageConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
             azureStorageContainerName=factory-data
