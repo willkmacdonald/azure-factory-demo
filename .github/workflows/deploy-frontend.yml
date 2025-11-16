@@ -50,11 +50,13 @@ on:
           - prod
 
 # Environment variables used across all jobs
+# Use repository variables with fallback to default values for backward compatibility
+# To set repository variables: GitHub Settings > Secrets and variables > Actions > Variables
 env:
-  AZURE_CONTAINER_REGISTRY: factoryagent4u4zqkacr  # ACR name (actual deployed registry)
+  AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY || 'factoryagent4u4zqkacr' }}
   FRONTEND_IMAGE_NAME: factory-agent/frontend
-  AZURE_RESOURCE_GROUP: factory-agent-dev-rg
-  CONTAINER_APP_NAME: factory-agent-dev-frontend
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'factory-agent-dev-rg' }}
+  CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'factory-agent-dev-frontend' }}
 
 # Permissions required for OIDC authentication (alternative to service principal)
 permissions:

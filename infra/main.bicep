@@ -48,7 +48,9 @@ var acrSuffix = substring(uniqueString(resourceGroup().id), 0, 6)
 @description('Container image tag (e.g., latest, v1.0.0, or commit SHA)')
 param imageTag string = 'latest'
 
-@description('Existing Azure Container Registry name (without .azurecr.io)')
+@description('Existing Azure Container Registry name (without .azurecr.io). Must be 5-50 characters, alphanumeric only (no hyphens).')
+@minLength(5)
+@maxLength(50)
 param containerRegistryName string = 'factoryagent4u4zqkacr'
 
 @description('Azure OpenAI endpoint URL')
@@ -181,24 +183,11 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 // -----------------------------------------------------------------------------
 // Azure Container Registry (ACR)
 // -----------------------------------------------------------------------------
-// Private Docker registry for storing container images.
-// CI/CD pipeline pushes built images here, Container Apps pulls from here.
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+// Reference to existing Container Registry.
+// The ACR is created separately (via CLI or Azure Portal) before running this template.
+// This template only references it to configure role assignments and image pulls.
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: containerRegistryName
-  location: location
-  sku: {
-    name: 'Standard'                 // Standard tier (created via CLI in deploy.sh, Bicep just validates)
-  }
-  properties: {
-    adminUserEnabled: false          // Use Managed Identity instead (more secure)
-    publicNetworkAccess: 'Enabled'   // Allow access from internet (fine for demo)
-    // Note: anonymousPullEnabled not supported in API 2023-07-01
-    // Authentication required by default (adminUserEnabled: false enforces this)
-  }
-  tags: {
-    environment: environmentName
-    application: appName
-  }
 }
 
 // Grant Managed Identity permission to pull images from ACR

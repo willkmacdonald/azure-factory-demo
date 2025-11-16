@@ -66,11 +66,22 @@ cat /usr/share/nginx/html/config/env.js
 if ! grep -q "/config/env.js" /usr/share/nginx/html/index.html; then
     echo "📝 Updating index.html to load runtime configuration..."
 
+    # Verify index.html exists
+    if [ ! -f /usr/share/nginx/html/index.html ]; then
+        echo "❌ ERROR: index.html not found at /usr/share/nginx/html/index.html"
+        echo "This usually means the Docker build failed to copy the React build output."
+        exit 1
+    fi
+
     # Insert script tag before closing </head> tag
     # This ensures env.js is loaded before the React app bundle
-    sed -i 's|</head>|  <script src="/config/env.js"></script>\n  </head>|' /usr/share/nginx/html/index.html
-
-    echo "✅ index.html updated with runtime config script"
+    if sed -i 's|</head>|  <script src="/config/env.js"></script>\n  </head>|' /usr/share/nginx/html/index.html; then
+        echo "✅ index.html updated with runtime config script"
+    else
+        echo "❌ ERROR: Failed to update index.html with runtime config script"
+        echo "This could be due to file permissions or an unexpected file format."
+        exit 1
+    fi
 else
     echo "✅ index.html already configured for runtime config"
 fi
