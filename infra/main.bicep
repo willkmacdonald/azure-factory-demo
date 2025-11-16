@@ -79,8 +79,8 @@ param azureStorageConnectionString string = ''
 @description('Azure Storage container name (required if storageMode=blob)')
 param azureStorageContainerName string = 'factory-data'
 
-@description('Allowed CORS origins (comma-separated)')
-param allowedOrigins string = '*'
+@description('Allowed CORS origins (comma-separated) - will be auto-configured with frontend URL')
+param allowedOrigins string = ''
 
 @description('Minimum number of container instances (0 for scale-to-zero)')
 @minValue(0)
@@ -127,10 +127,12 @@ var resourceNamePrefix = '${appName}-${environmentName}'
 var logAnalyticsName = '${resourceNamePrefix}-logs'
 var containerEnvName = '${resourceNamePrefix}-env'
 var backendAppName = '${resourceNamePrefix}-backend'
+var frontendAppName = '${resourceNamePrefix}-frontend'
 var managedIdentityName = '${resourceNamePrefix}-identity'
 
-// Container image name (will be pushed to ACR by CI/CD)
+// Container image names (will be pushed to ACR by CI/CD)
 var backendImageName = '${containerRegistryName}.azurecr.io/${appName}/backend:${imageTag}'
+var frontendImageName = '${containerRegistryName}.azurecr.io/${appName}/frontend:${imageTag}'
 
 // =============================================================================
 // RESOURCES
@@ -273,7 +275,9 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
         corsPolicy: {
-          allowedOrigins: split(allowedOrigins, ',')
+          // Allow frontend origin + development origins
+          // In production, set allowedOrigins parameter to specific frontend URL
+          allowedOrigins: allowedOrigins != '' ? split(allowedOrigins, ',') : ['*']
           allowedMethods: ['GET', 'POST', 'OPTIONS']
           allowedHeaders: ['*']
           allowCredentials: true
@@ -413,6 +417,134 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
   ]
 }
 
+// -----------------------------------------------------------------------------
+// Container App - Frontend (React + Nginx)
+// -----------------------------------------------------------------------------
+// The React frontend application served by Nginx.
+// Configured with runtime environment variables to connect to backend API.
+resource frontendApp 'Microsoft.App/containerApps@2023-05-01' = {
+  name: frontendAppName
+  location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: containerEnv.id
+    workloadProfileName: 'Consumption'
+
+    configuration: {
+      // Ingress configuration (HTTP/HTTPS traffic)
+      ingress: {
+        external: true               // Accessible from internet
+        targetPort: 80               // Nginx listens on port 80
+        transport: 'http'            // HTTP protocol (HTTPS handled by Azure)
+        allowInsecure: false         // Require HTTPS from clients
+        traffic: [
+          {
+            latestRevision: true     // Route 100% traffic to latest revision
+            weight: 100
+          }
+        ]
+      }
+
+      // Container registry configuration
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          identity: managedIdentity.id
+        }
+      ]
+
+      // Active revisions mode (single revision active at a time)
+      activeRevisionsMode: 'Single'
+    }
+
+    template: {
+      // Auto-scaling configuration
+      scale: {
+        minReplicas: minReplicas     // Scale to zero when idle (cost savings)
+        maxReplicas: maxReplicas     // Max instances under load
+        rules: [
+          {
+            name: 'http-scaling-rule'
+            http: {
+              metadata: {
+                concurrentRequests: '20'  // Scale up when > 20 concurrent requests
+              }
+            }
+          }
+        ]
+      }
+
+      // Container configuration
+      containers: [
+        {
+          name: 'frontend'
+          image: frontendImageName
+          resources: {
+            cpu: json('0.25')         // 0.25 CPU cores (frontend is lightweight)
+            memory: '0.5Gi'           // 0.5 GB memory
+          }
+          env: [
+            {
+              name: 'NODE_ENV'
+              value: 'production'
+            }
+            {
+              name: 'VITE_API_BASE_URL'
+              // Point to backend Container App URL
+              value: 'https://${backendApp.properties.configuration.ingress.fqdn}'
+            }
+            {
+              name: 'APP_VERSION'
+              value: imageTag
+            }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: '/health'
+                port: 80
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+              timeoutSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/health'
+                port: 80
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              timeoutSeconds: 5
+              successThreshold: 1
+              failureThreshold: 3
+            }
+          ]
+        }
+      ]
+    }
+  }
+  tags: {
+    environment: environmentName
+    application: appName
+  }
+  dependsOn: [
+    acrPullRoleAssignment
+    backendApp  // Deploy frontend after backend so we can get backend URL
+  ]
+}
+
 // =============================================================================
 // OUTPUTS
 // =============================================================================
@@ -443,3 +575,9 @@ output backendAppName string = backendApp.name
 
 @description('Resource group name')
 output resourceGroupName string = resourceGroup().name
+
+@description('URL of the deployed frontend application')
+output frontendUrl string = 'https://${frontendApp.properties.configuration.ingress.fqdn}'
+
+@description('Frontend app name')
+output frontendAppName string = frontendApp.name

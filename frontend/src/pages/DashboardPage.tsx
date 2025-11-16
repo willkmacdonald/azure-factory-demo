@@ -198,7 +198,7 @@ const DashboardPage: React.FC = () => {
       {/* Key Metrics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Overall Equipment Effectiveness (OEE) */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom variant="body2">
@@ -215,7 +215,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Availability */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom variant="body2">
@@ -232,7 +232,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Performance */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom variant="body2">
@@ -249,7 +249,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Quality */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom variant="body2">
@@ -269,7 +269,7 @@ const DashboardPage: React.FC = () => {
       {/* Charts Grid */}
       <Grid container spacing={3}>
         {/* OEE Components Bar Chart */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               OEE Components
@@ -290,7 +290,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Downtime Analysis Bar Chart */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Downtime Analysis
@@ -313,7 +313,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Scrap Rate Card with Production Stats */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Production Quality
@@ -322,7 +322,7 @@ const DashboardPage: React.FC = () => {
               Parts production and scrap statistics
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h4" color="primary">
                     {oee?.total_parts.toLocaleString() ?? '—'}
@@ -332,7 +332,7 @@ const DashboardPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h4" color="success.main">
                     {oee?.good_parts.toLocaleString() ?? '—'}
@@ -342,7 +342,7 @@ const DashboardPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h4" color="error.main">
                     {scrap?.total_scrap.toLocaleString() ?? '—'}
@@ -352,7 +352,7 @@ const DashboardPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h4" color="warning.main">
                     {scrap ? `${scrap.scrap_rate.toFixed(1)}%` : '—'}

@@ -21,9 +21,6 @@ import {
   Chip,
   Stack,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
   Grid,
   FormControl,
   InputLabel,
@@ -35,7 +32,6 @@ import {
   Inventory as InventoryIcon,
   LocalShipping as SupplierIcon,
   ShoppingCart as OrderIcon,
-  Error as ErrorIcon,
   CheckCircle,
   Warning,
   ArrowForward as ArrowForwardIcon,
@@ -46,7 +42,6 @@ import type {
   ProductionBatch,
   Supplier,
   BackwardTrace,
-  ForwardTrace,
   SupplierImpact,
   Order,
   OrderBatches,
@@ -354,25 +349,25 @@ const TraceabilityPage: React.FC = () => {
                     Batch Information
                   </Typography>
                   <Grid container spacing={2} sx={{ mb: 3 }}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Batch ID
                       </Typography>
                       <Typography variant="body1">{backwardTrace.batch.batch_id}</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Machine
                       </Typography>
                       <Typography variant="body1">{backwardTrace.batch.machine_name}</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Date
                       </Typography>
                       <Typography variant="body1">{formatDate(backwardTrace.batch.date)}</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Production
                       </Typography>
@@ -466,7 +461,7 @@ const TraceabilityPage: React.FC = () => {
                   </Typography>
                   <Grid container spacing={2}>
                     {backwardTrace.suppliers.map((supplier) => (
-                      <Grid item xs={12} md={6} key={supplier.id}>
+                      <Grid size={{ xs: 12, md: 6 }} key={supplier.id}>
                         <Card variant="outlined">
                           <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="start">
@@ -484,7 +479,7 @@ const TraceabilityPage: React.FC = () => {
                             </Stack>
                             <Divider sx={{ my: 1.5 }} />
                             <Grid container spacing={1}>
-                              <Grid item xs={6}>
+                              <Grid size={{ xs: 6 }}>
                                 <Typography variant="caption" color="text.secondary">
                                   Quality Rating
                                 </Typography>
@@ -492,7 +487,7 @@ const TraceabilityPage: React.FC = () => {
                                   {supplier.quality_metrics.quality_rating?.toFixed(1) || 'N/A'}%
                                 </Typography>
                               </Grid>
-                              <Grid item xs={6}>
+                              <Grid size={{ xs: 6 }}>
                                 <Typography variant="caption" color="text.secondary">
                                   Defect Rate
                                 </Typography>
@@ -562,7 +557,7 @@ const TraceabilityPage: React.FC = () => {
 
                   {/* Supplier Summary Cards */}
                   <Grid container spacing={2} sx={{ mb: 3 }}>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h4" color="primary">
                           {supplierImpact.material_lots_supplied}
@@ -572,7 +567,7 @@ const TraceabilityPage: React.FC = () => {
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h4" color="info.main">
                           {supplierImpact.affected_batches_count}
@@ -582,7 +577,7 @@ const TraceabilityPage: React.FC = () => {
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h4" color="warning.main">
                           {supplierImpact.quality_issues_count}
@@ -592,7 +587,7 @@ const TraceabilityPage: React.FC = () => {
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h4" color="error.main">
                           {formatCurrency(supplierImpact.estimated_cost_impact)}
@@ -620,7 +615,7 @@ const TraceabilityPage: React.FC = () => {
                         />
                       </Stack>
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                           <Typography variant="caption" color="text.secondary">
                             Quality Rating
                           </Typography>
@@ -628,7 +623,7 @@ const TraceabilityPage: React.FC = () => {
                             {supplierImpact.supplier.quality_metrics.quality_rating?.toFixed(1)}%
                           </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                           <Typography variant="caption" color="text.secondary">
                             On-Time Delivery
                           </Typography>
@@ -636,7 +631,7 @@ const TraceabilityPage: React.FC = () => {
                             {supplierImpact.supplier.quality_metrics.on_time_delivery_rate?.toFixed(1)}%
                           </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                           <Typography variant="caption" color="text.secondary">
                             Defect Rate
                           </Typography>
@@ -778,7 +773,7 @@ const TraceabilityPage: React.FC = () => {
 
               {/* Orders Summary */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="primary">
                       {filteredOrders.length}
@@ -788,7 +783,7 @@ const TraceabilityPage: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="success.main">
                       {orders.filter((o) => o.status === 'Completed' || o.status === 'Shipped').length}
@@ -798,7 +793,7 @@ const TraceabilityPage: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="info.main">
                       {orders.filter((o) => o.status === 'InProgress').length}
@@ -808,7 +803,7 @@ const TraceabilityPage: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="h4" color="error.main">
                       {orders.filter((o) => o.status === 'Delayed').length}
@@ -895,25 +890,25 @@ const TraceabilityPage: React.FC = () => {
                   </Typography>
 
                   <Grid container spacing={2} sx={{ mb: 3 }}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Customer
                       </Typography>
                       <Typography variant="body1">{selectedOrder.customer}</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Status
                       </Typography>
                       <Chip label={selectedOrder.status} color={getOrderStatusColor(selectedOrder.status)} />
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Due Date
                       </Typography>
                       <Typography variant="body1">{formatDate(selectedOrder.due_date)}</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="body2" color="text.secondary">
                         Total Value
                       </Typography>
@@ -1009,13 +1004,13 @@ const TraceabilityPage: React.FC = () => {
                           Production Summary
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Typography variant="caption" color="text.secondary">
                               Total Parts Produced
                             </Typography>
                             <Typography variant="h6">{orderBatches.production_summary.total_produced}</Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Typography variant="caption" color="text.secondary">
                               Good Parts
                             </Typography>
@@ -1023,7 +1018,7 @@ const TraceabilityPage: React.FC = () => {
                               {orderBatches.production_summary.total_good_parts}
                             </Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Typography variant="caption" color="text.secondary">
                               Scrap Parts
                             </Typography>
