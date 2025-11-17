@@ -37,9 +37,43 @@ def sanitize_user_input(user_message: str) -> str:
     Returns:
         Sanitized message safe for LLM processing
 
+    Security Considerations (PR20B):
+        This function provides BASIC protection against prompt injection attacks,
+        which is sufficient for demo/prototype environments. It includes:
+
+        ✅ Detection of common prompt injection patterns
+        ✅ Logging of suspicious inputs for security monitoring
+        ✅ Removal of null bytes and excessive newlines
+        ✅ Whitespace normalization
+
+        ⚠️  LIMITATIONS (Not suitable for production as-is):
+        - Does NOT block detected injection attempts (only logs warnings)
+        - Pattern matching is basic and can be bypassed with creative encoding
+        - No defense against adversarial prompts or jailbreak techniques
+        - No semantic analysis of potentially malicious instructions
+        - No user reputation or rate limiting integration
+
+        🔒 PRODUCTION RECOMMENDATIONS:
+        1. Implement strict input validation with length limits (already done: 2000 chars)
+        2. Use LLM-based content filtering (Azure Content Safety API)
+        3. Implement semantic analysis for malicious intent detection
+        4. Add user authentication and rate limiting per user (not just IP)
+        5. Consider rejecting (not just logging) messages with injection patterns
+        6. Implement output filtering to prevent data exfiltration
+        7. Use separate system prompts with strong delimiter tokens
+        8. Monitor and alert on repeated injection attempts
+        9. Consider using Azure OpenAI's content filtering features
+        10. Regular security audits and red team testing
+
+        📚 REFERENCES:
+        - OWASP LLM Top 10 (LLM01: Prompt Injection)
+        - Azure OpenAI Content Safety: https://learn.microsoft.com/azure/ai-services/openai/concepts/content-filter
+        - Prompt Injection Primer: https://simonwillison.net/2023/Apr/14/worst-that-can-happen/
+
     Note:
         This is a basic sanitization approach suitable for demo purposes.
-        Production systems should implement more comprehensive security measures.
+        Production systems should implement more comprehensive security measures
+        as outlined above.
     """
     # Strip leading/trailing whitespace
     sanitized = user_message.strip()

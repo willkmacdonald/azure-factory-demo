@@ -9,7 +9,10 @@ import {
   CardContent,
   CircularProgress,
   Alert,
+  Button,
+  Snackbar,
 } from '@mui/material';
+import { Add as AddIcon, Login as LoginIcon } from '@mui/icons-material';
 import {
   BarChart,
   Bar,
@@ -20,7 +23,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useMsal } from '@azure/msal-react';
 import { apiService, getErrorMessage } from '../api/client';
+import { loginRequest, isAzureAdConfigured } from '../auth/authConfig';
 import type { OEEMetrics, ScrapMetrics, DowntimeAnalysis, StatsResponse } from '../types/api';
 
 /**
@@ -34,6 +39,11 @@ import type { OEEMetrics, ScrapMetrics, DowntimeAnalysis, StatsResponse } from '
  * - Real-time data from backend API
  */
 const DashboardPage: React.FC = () => {
+  // Azure AD authentication
+  const { instance, accounts } = useMsal();
+  const isAuthenticated = accounts.length > 0;
+  const azureAdConfigured = isAzureAdConfigured();
+
   // State for metrics data
   const [oee, setOee] = useState<OEEMetrics | null>(null);
   const [scrap, setScrap] = useState<ScrapMetrics | null>(null);
@@ -43,6 +53,10 @@ const DashboardPage: React.FC = () => {
   // Loading and error states
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Data generation states
+  const [generating, setGenerating] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /**
    * Fetch all dashboard metrics on component mount
@@ -94,6 +108,50 @@ const DashboardPage: React.FC = () => {
   }, []); // Run once on mount
 
   /**
+   * Handle user sign-in with Azure AD
+   */
+  const handleSignIn = async (): Promise<void> => {
+    try {
+      await instance.loginPopup(loginRequest);
+    } catch (err) {
+      console.error('Failed to sign in:', err);
+      setError('Failed to sign in with Microsoft account');
+    }
+  };
+
+  /**
+   * Handle data generation
+   * - Requires user authentication
+   * - Calls backend API to generate synthetic data
+   * - Refreshes dashboard after success
+   */
+  const handleGenerateData = async (): Promise<void> => {
+    try {
+      setGenerating(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      // Generate data (default 30 days)
+      const response = await apiService.generateData({ days: 30 });
+
+      // Show success message
+      setSuccessMessage(
+        `Successfully generated ${response.days} days of production data for ${response.machines} machines!`
+      );
+
+      // Refresh dashboard after 1 second to allow data to settle
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      setError(getErrorMessage(err));
+      console.error('Failed to generate data:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  /**
    * Format numbers as percentages
    */
   const formatPercent = (value: number): string => {
@@ -130,6 +188,10 @@ const DashboardPage: React.FC = () => {
    * Render empty state if no data exists
    */
   if (!stats?.exists) {
+    // Determine which button to show based on Azure AD configuration and auth state
+    const showSignInButton = azureAdConfigured && !isAuthenticated;
+    const showGenerateButton = !azureAdConfigured || isAuthenticated;
+
     return (
       <Container maxWidth="xl">
         <Box sx={{ mb: 4 }}>
@@ -140,9 +202,48 @@ const DashboardPage: React.FC = () => {
             Production metrics and performance overview
           </Typography>
         </Box>
-        <Alert severity="info">
-          No production data available. Please generate data using the setup endpoint.
+        <Alert severity="info" sx={{ mb: 3 }}>
+          No production data available.
+          {azureAdConfigured && !isAuthenticated
+            ? ' Please sign in with your Microsoft account to generate demo data.'
+            : ' Click the button below to generate synthetic production data for testing.'}
         </Alert>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {/* Sign-in button (only if Azure AD is configured and user is not authenticated) */}
+          {showSignInButton && (
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<LoginIcon />}
+              onClick={handleSignIn}
+              size="large"
+            >
+              Sign in with Microsoft
+            </Button>
+          )}
+
+          {/* Generate Data button (only if not Azure AD or user is authenticated) */}
+          {showGenerateButton && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={handleGenerateData}
+              disabled={generating}
+              size="large"
+            >
+              {generating ? 'Generating Data...' : 'Generate Demo Data (30 days)'}
+            </Button>
+          )}
+        </Box>
+
+        {/* Success message snackbar */}
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={6000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+        />
       </Container>
     );
   }

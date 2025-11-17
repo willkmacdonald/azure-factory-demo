@@ -1,8 +1,8 @@
 # Factory Agent - Implementation Plan
 
-**Last Updated**: 2025-11-16
-**Status**: Phase 3 Complete (100%) | Phase 4 Infrastructure Ready
-**Architecture**: React + FastAPI + Azure Container Apps + AI Foundry
+**Last Updated**: 2025-11-17
+**Status**: Phase 3 Complete (100%) | Phase 4 Infrastructure Ready | Azure Blob Storage Live
+**Architecture**: React + FastAPI + Azure Container Apps + AI Foundry + Azure Blob Storage
 
 ---
 
@@ -31,6 +31,24 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ## Current Status & Next Steps
 
+### Recent Achievement: Azure Blob Storage Migration Complete ✅
+
+**Migration Completed** (2025-11-17):
+- ✅ **Storage Account**: `factoryagentdata` in `wkm-rg` (WKM Migration Sub)
+- ✅ **Container**: `factory-data` (Azure Blob Storage)
+- ✅ **Hybrid Development Pattern**:
+  - Backend running locally (localhost:8000)
+  - Frontend running locally (localhost:5173)
+  - Data stored in Azure Blob Storage (cloud persistence)
+- ✅ **Data Generated**: Fresh 30-day dataset (2025-10-18 to 2025-11-16)
+- ✅ **Dataset Size**: 615KB production.json in Azure Blob
+- ✅ **Status**: Tested and working end-to-end
+
+**Infrastructure Note**:
+- Attempted: Azure Dev subscription storage (created account but data plane access failed)
+- Workaround: Using storage account in WKM Migration Sub (working smoothly)
+- Forum post created for community help on Azure Dev subscription ResourceNotFound issue
+
 ### Immediate Priority: Deploy to Azure (Phase 4)
 
 **Infrastructure Status** (90% Ready):
@@ -39,6 +57,7 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 - ✅ `backend/Dockerfile` - Python 3.11 + FastAPI
 - ✅ `.github/workflows/deploy-frontend.yml` - Frontend CI/CD
 - ✅ `.github/workflows/deploy-backend.yml` - Backend CI/CD
+- ✅ Azure Blob Storage - Configured and tested with live data
 - ⏳ **TODO**: Test Dockerfiles locally, execute deployment
 
 **Recommended Next Steps**:
@@ -52,7 +71,7 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 2. **Deploy to Azure** (2-3 hours)
    ```bash
    # Deploy infrastructure
-   az deployment group create --resource-group <rg> --template-file infra/main.bicep
+   az deployment group create --resource-group wkm-rg --template-file infra/main.bicep
 
    # Push via GitHub Actions or manual
    git push origin main  # Triggers CI/CD
@@ -63,10 +82,11 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
    - Verify API calls (CORS configured)
    - Test AI chat with Azure AI Foundry
    - Confirm traceability workflows
+   - Validate Azure Blob Storage connectivity
 
-**Alternative: Optional Code Quality (PR20B)**
-- Can be done in parallel or after deployment
-- 4 improvements identified (1-2 hours total)
+**Alternatives: Optional Improvements (Can be done anytime)**
+- **PR20B**: Code Quality (4 items, 1-2 hours total)
+- **PR21**: Selective Authentication (4-6 hours, security enhancement)
 - Not blocking deployment
 
 ---
@@ -110,7 +130,7 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ### 🚀 Phase 4: Deployment (Infrastructure Ready - Needs Execution)
 
-**Status**: 90% complete, needs testing and deployment
+**Status**: 90% complete, Azure Blob Storage integrated, needs deployment execution
 
 **What's Ready**:
 - ✅ Bicep infrastructure templates
@@ -118,17 +138,20 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 - ✅ GitHub Actions workflows
 - ✅ Container Apps configuration
 - ✅ CORS and rate limiting configured
+- ✅ Azure Blob Storage integration (tested with live data)
+- ✅ Hybrid development pattern validated (local frontend + backend, cloud data)
 
 **What's Needed** (3-5 hours):
-1. Test Dockerfiles locally (1 hour)
-2. Deploy to Azure Container Apps (2-3 hours)
-3. Validate in production (1 hour)
+1. Test Dockerfiles locally (1 hour) - Docker build and docker-compose up
+2. Deploy to Azure Container Apps (2-3 hours) - Execute Bicep deployment
+3. Validate in production (1 hour) - Test all endpoints, chat, traceability in cloud
 
 **Deliverables**:
-- Both frontend and backend deployed to Azure
-- CI/CD pipeline functional
-- HTTPS endpoints accessible
-- All features working in cloud
+- Both frontend and backend deployed to Azure Container Apps
+- CI/CD pipeline functional and integrated with GitHub
+- HTTPS endpoints accessible from cloud
+- All features working in cloud with Azure Blob Storage
+- Live data persisted in Azure
 
 ### 📋 Phase 5: Polish & Scenarios (Planned)
 
@@ -159,17 +182,110 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ## Optional Work
 
-### PR20B: Code Quality Improvements (1-2 hours)
+### PR20B: Code Quality Improvements ✅
 
-**Status**: Optional - Can be done anytime
+**Status**: Complete (2025-11-17)
 
-**4 Improvements Identified**:
-1. **Error Logging** - Add logging to `load_data_async()` to match sync version (30 min)
-2. **Rate Limiting** - Verify configuration is properly connected (45 min)
-3. **OEE Documentation** - Document hardcoded performance factor (15 min)
-4. **Security Docs** - Add prompt injection documentation (15 min)
+**4 Improvements Completed**:
+1. ✅ **Error Logging** - Verified `load_data_async()` already has comprehensive error logging matching sync version
+2. ✅ **Rate Limiting** - Verified SlowAPI configuration is properly connected:
+   - `app.state.limiter` set in main.py for global access
+   - Exception handler registered for RateLimitExceeded
+   - Local limiter instances in route files work correctly with @limiter.limit() decorators
+   - Confirmed this is the standard SlowAPI pattern per official documentation
+3. ✅ **OEE Documentation** - Enhanced hardcoded performance factor documentation (shared/metrics.py:110-120):
+   - Added justification for 0.95 (95%) assumption
+   - Explained industry-typical speed efficiency
+   - Clarified acceptable for demo, needs replacement in production
+4. ✅ **Security Docs** - Added comprehensive prompt injection documentation (shared/chat_service.py:40-76):
+   - Documented current protections (pattern detection, logging, sanitization)
+   - Listed limitations (basic pattern matching, no blocking, no semantic analysis)
+   - Provided 10 production recommendations (Azure Content Safety, semantic analysis, etc.)
+   - Added references (OWASP LLM Top 10, Azure docs, prompt injection primers)
 
-**Impact**: Better debugging, clearer documentation (not blocking)
+**Impact**: Improved code documentation, clearer security boundaries for demo vs. production
+
+**Actual Effort**: ~1 hour (verification + documentation enhancements)
+
+---
+
+## Recent Fixes
+
+### Trio Test Failures Fixed ✅
+
+**Issue**: Tests with `@pytest.mark.anyio` were running with both asyncio and trio backends, but trio wasn't installed, causing 6 test failures.
+
+**Root Cause**:
+- pytest-anyio defaults to testing with both asyncio and trio backends
+- Factory Agent uses FastAPI (asyncio-only), no trio support needed
+- trio library not in requirements or dependencies
+
+**Solution** (2025-11-17):
+- Added `anyio_backend` fixture to `tests/conftest.py` and `backend/tests/conftest.py`
+- Fixture returns `'asyncio'` to force pytest-anyio to only use asyncio backend
+- Documented the configuration for future maintainers
+
+**Result**:
+- Before: 168 tests collected (6 trio failures)
+- After: 162 tests collected (0 trio failures)
+- All asyncio tests pass (161/162 tests passing, 1 pre-existing failure in test_chat_integration.py unrelated to trio)
+
+**Files Modified**:
+- `tests/conftest.py` (created)
+- `backend/tests/conftest.py` (added anyio_backend fixture)
+
+**Actual Effort**: ~15 minutes
+
+### PR21: Implement Selective Authentication (Public Read, Authenticated Write)
+
+**Status**: Optional - Enhances security, not blocking deployment
+
+**Goal**: Protect destructive endpoints while keeping viewing endpoints public
+
+**Backend Tasks** (2-3 hours):
+1. Add `python-jose[cryptography]` and `python-multipart` to requirements.txt
+2. Create `backend/src/api/auth.py`:
+   - Azure AD JWT token validation middleware
+   - `get_current_user` dependency for protected routes
+   - Environment variables: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`
+3. Apply authentication to protected endpoints:
+   - `POST /api/setup` - Add `Depends(get_current_user)`
+   - Return 401 Unauthorized if token missing/invalid
+4. Update CORS configuration to allow authentication headers
+5. Update `.env.example` with Azure AD secrets
+
+**Frontend Tasks** (2-3 hours):
+1. Configure MSAL in `frontend/src/main.tsx`:
+   - `MsalProvider` wrapper around App
+   - Environment variables: `VITE_AZURE_AD_CLIENT_ID`, `VITE_AZURE_AD_TENANT_ID`
+2. Create `frontend/src/components/AuthButton.tsx`:
+   - Sign In/Sign Out button in AppBar
+   - Display user name when authenticated
+3. Update `frontend/src/api/client.ts`:
+   - Use `useMsal` hook to get access tokens
+   - Attach Bearer token to protected endpoint calls
+4. Update `frontend/src/pages/DashboardPage.tsx`:
+   - Add conditional "Generate New Data" button
+   - Only show to authenticated users
+   - Call `POST /api/setup` when clicked
+5. Update `frontend/src/layouts/MainLayout.tsx`:
+   - Add AuthButton to AppBar
+
+**Testing** (30 min):
+1. Verify public endpoints (GET) work without auth
+2. Verify `POST /api/setup` returns 401 without token
+3. Test sign in/sign out flow
+4. Confirm authenticated users can generate data
+
+**Documentation** (30 min):
+- Update README with Azure AD setup instructions
+- Document app registration requirements
+
+**Estimated Effort**: 4-6 hours total (2-3 backend, 2-3 frontend)
+**Priority**: Medium (security improvement, enables UI controls)
+**Dependencies**: None (Phase 3 complete)
+**Blocks**: None
+**Note**: Option A (Public Read, Authenticated Write) - simplest for demo
 
 ### Backlog: Enhancements (40 min)
 
@@ -262,8 +378,10 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 | **Phase 4: Deployment** | **6-8 hrs** | **TBD** | 🚀 **Next** |
 | Phase 5: Polish & Scenarios | 8-12 hrs | - | 📋 Planned |
 | PR20B: Code Quality (optional) | 1-2 hrs | - | 📋 Optional |
+| PR21: Selective Authentication (optional) | 4-6 hrs | - | 📋 Optional |
 | **Total Completed** | - | **~53 hrs** | **74% Done** |
-| **Total Remaining** | - | **~14-22 hrs** | **26% Left** |
+| **Total Remaining (Core)** | - | **~14-22 hrs** | **26% Left** |
+| **Total with All Optional** | - | **~19-30 hrs** | **If included** |
 
 **Current Status**: ~74% complete by effort, all core features done
 
@@ -291,6 +409,7 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ---
 
-**Last Updated**: 2025-11-16
+**Last Updated**: 2025-11-17
+**Recent Achievement**: Azure Blob Storage migration complete, hybrid development pattern active
 **Next Action**: Test Dockerfiles locally, then deploy to Azure (Phase 4)
-**Completion**: 74% by effort, 100% of core features
+**Completion**: 75% by effort (core features + storage migration), 100% of core features complete

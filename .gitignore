@@ -34,3 +34,5 @@ htmlcov/
 .claude/
 /infra/main-deploy.bicepparam
 /DEPLOYMENT-SECRETS.md
+DEPLOYMENT-NEXT-STEPS.md
+DEPLOYMENT-RESUME.md

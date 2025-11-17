@@ -107,8 +107,16 @@ async def calculate_oee(
         # 2. Calculate: theoretical_output = uptime_hours * (3600 / ideal_cycle_time)
         # 3. Calculate: performance = total_parts / theoretical_output
         #
-        # For now, we use 0.95 (95%) as a reasonable assumption for factory equipment
+        # HARDCODED VALUE JUSTIFICATION (PR20B):
+        # We use 0.95 (95%) as a reasonable assumption for factory equipment
         # that's well-maintained but not running at absolute maximum speed.
+        # This represents typical speed efficiency in manufacturing:
+        # - Equipment rarely runs at 100% theoretical speed due to minor slowdowns
+        # - 95% is industry-typical for well-maintained equipment
+        # - Accounts for micro-stops, reduced speed periods, and quality checks
+        #
+        # This hardcoded value is acceptable for demo/prototype purposes but should
+        # be replaced with actual cycle time measurements in production deployments.
         performance = 0.95
 
         oee = availability * performance * quality

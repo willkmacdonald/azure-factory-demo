@@ -25,7 +25,7 @@ ALLOWED_ORIGINS: List[str] = [
     origin.strip()
     for origin in os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:3000,http://localhost:5173"
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174"
     ).split(",")
 ]
 RATE_LIMIT_CHAT: str = os.getenv("RATE_LIMIT_CHAT", "10/minute")

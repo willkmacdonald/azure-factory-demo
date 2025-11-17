@@ -80,12 +80,40 @@ const apiClient: AxiosInstance = axios.create({
 // ============================================================================
 
 /**
+ * Set the MSAL instance for auth token acquisition
+ * This is called from the main app after MSAL is initialized
+ */
+let msalInstance: any = null;
+
+export function setMsalInstance(instance: any): void {
+  msalInstance = instance;
+}
+
+/**
  * Request interceptor
+ * - Adds Azure AD auth token to requests
  * - Logs outgoing requests in development mode
- * - Can be extended to add auth tokens
  */
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Add Azure AD bearer token if MSAL is configured
+    if (msalInstance) {
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          const request = {
+            scopes: ['User.Read'],
+            account: accounts[0],
+          };
+          const response = await msalInstance.acquireTokenSilent(request);
+          config.headers.Authorization = `Bearer ${response.accessToken}`;
+        }
+      } catch (error) {
+        // Silent token acquisition failed, user may need to sign in again
+        console.warn('[API] Failed to acquire access token:', error);
+      }
+    }
+
     // Log requests in development
     if (import.meta.env.DEV) {
       console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.params || '');

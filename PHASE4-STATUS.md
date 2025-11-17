@@ -64,7 +64,7 @@ for registry factoryagentdevacr.azurecr.io'
 ```
 
 ### Root Cause
-This is a **known Azure issue** with managed identity permission propagation. Even though:
+This is a **known Azure platform issue** with data plane permission propagation affecting multiple services. Even though:
 - ✅ AcrPull role is assigned to the managed identity
 - ✅ Role assignment shows in `az role assignment list`
 - ✅ Images exist in ACR
@@ -77,6 +77,17 @@ The permissions take **24-48 hours to fully propagate** across Azure's distribut
 - Verified permissions with `az role assignment list` - correct
 - Deleted and recreated container apps - no change
 - Researched via Brave Search - confirmed as common issue
+
+### Common Azure Pattern
+This **same propagation delay** affects multiple Azure services:
+- **ACR**: Managed identity cannot pull images despite AcrPull role assigned
+- **Blob Storage**: Data plane operations fail with "ResourceNotFound" despite correct permissions
+- **Key Vault**: Access policies can take time to become effective
+- **Pattern**: Management plane (ARM) shows resource exists, but data plane operations fail
+
+**Reference**: Similar blob storage issue documented at https://learn.microsoft.com/en-us/answers/questions/5624656/blob-storage-data-plane-operations-fail-with-resou
+
+**Why this happens**: Azure's control plane (ARM) and data plane are separate distributed systems. Role assignments are immediately visible in ARM but take time to replicate to all data plane nodes globally.
 
 ---
 
