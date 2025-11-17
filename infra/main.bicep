@@ -181,20 +181,14 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 }
 
 // -----------------------------------------------------------------------------
-// Azure Container Registry (ACR)
+// Azure Container Registry (ACR) - Role Assignment
 // -----------------------------------------------------------------------------
-// Reference to existing Container Registry.
-// The ACR is created separately (via CLI or Azure Portal) before running this template.
-// This template only references it to configure role assignments and image pulls.
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
-  name: containerRegistryName
-}
-
-// Grant Managed Identity permission to pull images from ACR
-// Role: AcrPull (7f951dda-4ed3-4680-a7ca-43fe172d538d)
+// Grant Managed Identity permission to pull images from ACR.
+// Note: We use the full resource ID instead of referencing the existing resource
+// to avoid deployment scope issues.
 resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, managedIdentity.id, 'AcrPull')
-  scope: containerRegistry
+  name: guid(resourceGroup().id, containerRegistryName, managedIdentity.id, 'AcrPull')
+  scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
     principalId: managedIdentity.properties.principalId
@@ -276,7 +270,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
       // Container registry configuration
       registries: [
         {
-          server: containerRegistry.properties.loginServer
+          server: '${containerRegistryName}.azurecr.io'
           identity: managedIdentity.id
         }
       ]
@@ -445,7 +439,7 @@ resource frontendApp 'Microsoft.App/containerApps@2023-05-01' = {
       // Container registry configuration
       registries: [
         {
-          server: containerRegistry.properties.loginServer
+          server: '${containerRegistryName}.azurecr.io'
           identity: managedIdentity.id
         }
       ]
@@ -545,10 +539,10 @@ resource frontendApp 'Microsoft.App/containerApps@2023-05-01' = {
 output backendUrl string = 'https://${backendApp.properties.configuration.ingress.fqdn}'
 
 @description('Container Registry login server')
-output containerRegistryLoginServer string = containerRegistry.properties.loginServer
+output containerRegistryLoginServer string = '${containerRegistryName}.azurecr.io'
 
 @description('Container Registry name')
-output containerRegistryName string = containerRegistry.name
+output containerRegistryName string = containerRegistryName
 
 @description('Managed Identity client ID')
 output managedIdentityClientId string = managedIdentity.properties.clientId
