@@ -2,24 +2,25 @@
 
 A production-ready cloud-native application for factory operations monitoring and AI-powered insights, featuring comprehensive supply chain traceability, real-time metrics, and an intelligent chatbot. Built with React, FastAPI, and deployed on Azure Container Apps.
 
-## 🎉 Project Status: Feature Complete & Ready for Deployment
+## 🎉 Project Status: Feature Complete & Infrastructure Ready
 
 **All core features are implemented and functional!**
 
-- ✅ **Backend API**: 21 REST endpoints (monitoring + traceability)
+- ✅ **Backend API**: 20 REST endpoints (19 API + 1 health check)
 - ✅ **Frontend**: 5 complete pages with Material-UI
-- ✅ **AI Chat**: Azure OpenAI integration with tool calling
+- ✅ **AI Chat**: Azure AI Foundry integration with tool calling
 - ✅ **Supply Chain Traceability**: End-to-end visibility (materials → suppliers → batches → orders)
 - ✅ **Material-Supplier Root Cause Linkage**: Direct traceability from defects to suppliers (PR19)
 - ✅ **Security**: Rate limiting, CORS, input validation
 - ✅ **Testing**: 79+ backend tests (100% passing)
+- ✅ **Infrastructure**: Bicep templates, Docker, CI/CD ready
 
-**Next**: Deploy to Azure Container Apps (Phase 4)
+**Next**: Execute Azure deployment (Phase 4 - Infrastructure ready)
 
 ## Features
 
 ### Core Capabilities
-- **AI-Powered Chat**: Natural language queries with Azure OpenAI (GPT-4) and tool calling
+- **AI-Powered Chat**: Natural language queries with Azure AI Foundry (GPT-4, GPT-4o) and tool calling
 - **Real-Time Dashboards**: OEE, downtime, quality metrics with interactive charts
 - **Supply Chain Traceability**:
   - Backward trace: Batch → Materials → Suppliers
@@ -37,7 +38,7 @@ A production-ready cloud-native application for factory operations monitoring an
 
 ### Architecture Highlights
 - **Async-First Backend**: FastAPI with async/await for scalability
-- **Type-Safe Frontend**: React + TypeScript with Material-UI
+- **Type-Safe Frontend**: React 19 + TypeScript with Material-UI v7
 - **Dual Storage**: Local JSON (dev) or Azure Blob Storage (production)
 - **Functions-First**: Maintainable code with minimal class overhead
 - **Production-Ready**: Rate limiting, error handling, comprehensive logging
@@ -45,44 +46,54 @@ A production-ready cloud-native application for factory operations monitoring an
 ## Tech Stack
 
 ### Frontend
-- **React 19** + **TypeScript** - Modern UI framework
-- **Material-UI (MUI)** - Component library
-- **Recharts** - Data visualization
-- **Axios** - HTTP client with interceptors
-- **Vite** - Build tool
+- **React 19.1** + **TypeScript 5.9** - Modern UI framework
+- **Material-UI 7.3** - Component library
+- **Recharts 3.3** - Data visualization
+- **Axios 1.13** - HTTP client with interceptors
+- **Vite 7.1** - Build tool
+- **React Router 7.9** - Client-side routing
 
 ### Backend
-- **FastAPI** - Async REST API framework
+- **FastAPI 0.104+** - Async REST API framework
 - **Python 3.11+** - Modern Python with type hints
-- **Pydantic** - Data validation
-- **Azure OpenAI** - AI chat with AsyncAzureOpenAI client
+- **Pydantic 2.0+** - Data validation
+- **Azure AI Foundry** - AI chat with AsyncAzureOpenAI client
 - **Azure Blob Storage** - Cloud data persistence
+- **SlowAPI** - Rate limiting
 
-### Deployment (Phase 4 - Planned)
-- **Azure Container Apps** - Serverless container hosting
+### Deployment
+- **Azure Container Apps** - Infrastructure ready for deployment
 - **Azure Container Registry** - Docker image storage
-- **GitHub Actions** - CI/CD
+- **GitHub Actions** - CI/CD workflows configured
 - **Docker + Docker Compose** - Containerization
+- **Azure Bicep** - Infrastructure as Code
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose (Recommended for Backend)
 
 ```bash
 # 1. Clone and configure
 git clone <repository-url>
 cd factory-agent
 cp .env.example .env
-# Edit .env with your Azure OpenAI credentials
+# Edit .env with your Azure AI Foundry credentials
 
-# 2. Start everything
+# 2. Start backend
 docker-compose up --build
 
-# 3. Access the application
-# - Frontend: http://localhost:3000
+# 3. Start frontend separately (in another terminal)
+cd frontend
+npm install
+npm run dev
+
+# 4. Access the application
+# - Frontend: http://localhost:5173
 # - Backend API: http://localhost:8000
 # - API Docs: http://localhost:8000/docs
 ```
+
+**Note**: Docker Compose currently only runs the backend. Frontend must be run separately with `npm run dev`.
 
 ### Manual Setup
 
@@ -92,6 +103,11 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Generate test data
+python -c "import asyncio; from shared.data_generator import generate_production_data; asyncio.run(generate_production_data(30))"
+
+# Start server
 uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -102,15 +118,17 @@ npm install
 npm run dev  # Development server on port 5173
 ```
 
-### Azure Configuration
+### Azure AI Foundry Configuration
 
 Create a `.env` file (copy from `.env.example`):
 
 ```bash
-# Azure OpenAI (Required for AI chat)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_KEY=your-api-key
+# Azure AI Foundry (Required for AI chat)
+# Format: https://<resource>.services.ai.azure.com/api/projects/<projectName>
+AZURE_ENDPOINT=https://your-resource.services.ai.azure.com/api/projects/yourProject
+AZURE_API_KEY=your-api-key
 AZURE_DEPLOYMENT_NAME=gpt-4
+AZURE_API_VERSION=2024-08-01-preview
 
 # Storage (Optional - defaults to local JSON)
 STORAGE_MODE=local  # or 'azure' for cloud storage
@@ -119,13 +137,16 @@ AZURE_BLOB_CONTAINER=factory-data
 
 # Application
 DEBUG=false  # Set to 'true' for detailed error messages
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
-**Getting Azure credentials:**
-1. Go to [Azure Portal](https://portal.azure.com)
-2. Navigate to your Azure OpenAI resource
-3. Go to "Keys and Endpoint" section
-4. Copy endpoint URL and API key
+**Getting Azure AI Foundry credentials:**
+1. Go to [Azure AI Foundry Portal](https://ai.azure.com)
+2. Navigate to your project
+3. Go to **Project Settings**
+4. Copy **Endpoint** (format: `https://<resource>.services.ai.azure.com/api/projects/<projectName>`)
+5. Go to **Keys** section and copy an API key
+6. Set your **Deployment Name** (e.g., `gpt-4`, `gpt-4o`, `gpt-35-turbo`)
 
 ## Usage
 
@@ -145,7 +166,7 @@ This creates realistic production data with planted scenarios for demonstration.
 
 ### 2. Access the Web Interface
 
-Open your browser to **http://localhost:5173** (dev) or **http://localhost:3000** (production)
+Open your browser to **http://localhost:5173**
 
 **5 Available Pages:**
 1. **Dashboard** - OEE gauges, downtime charts, quality metrics
@@ -166,17 +187,22 @@ Open your browser to **http://localhost:5173** (dev) or **http://localhost:3000*
 - `GET /api/metrics/downtime` - Downtime analysis
 
 **Traceability:**
-- `GET /api/suppliers` - List suppliers
-- `GET /api/suppliers/{id}/impact` - Supplier quality impact
+- `GET /api/suppliers` - List suppliers with quality metrics
+- `GET /api/suppliers/{id}` - Supplier details
+- `GET /api/suppliers/{id}/impact` - Supplier quality impact analysis
 - `GET /api/batches` - List production batches
-- `GET /api/traceability/backward/{batch_id}` - Backward trace
-- `GET /api/traceability/forward/{supplier_id}` - Forward trace
+- `GET /api/batches/{id}` - Batch details with materials
+- `GET /api/traceability/backward/{batch_id}` - Backward trace (batch → suppliers)
+- `GET /api/traceability/forward/{supplier_id}` - Forward trace (supplier → orders)
 - `GET /api/orders` - List customer orders
+- `GET /api/orders/{id}` - Order details
+- `GET /api/orders/{id}/batches` - Order batches with production summary
 
 **Data Management:**
 - `POST /api/setup` - Generate synthetic data
 - `GET /api/stats` - Data statistics
 - `GET /api/machines` - List machines
+- `GET /api/date-range` - Data date range
 
 **AI Chat:**
 - `POST /api/chat` - AI-powered chat with tool calling
@@ -186,6 +212,9 @@ Open your browser to **http://localhost:5173** (dev) or **http://localhost:3000*
     "history": []
   }
   ```
+
+**System:**
+- `GET /health` - Health check endpoint
 
 **Full API documentation:** http://localhost:8000/docs
 
@@ -212,7 +241,8 @@ factory-agent/
 │   │           ├── chat.py         # AI chat with tool calling
 │   │           ├── traceability.py # Supply chain endpoints
 │   │           └── data.py         # Data management
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── Dockerfile
 │
 ├── frontend/                   # React frontend
 │   ├── src/
@@ -226,15 +256,16 @@ factory-agent/
 │   │   ├── api/
 │   │   │   └── client.ts      # Type-safe API client
 │   │   └── types/
-│   │       └── api.ts         # TypeScript interfaces
-│   └── package.json
+│   │   │       └── api.ts         # TypeScript interfaces
+│   ├── package.json
+│   └── Dockerfile
 │
 ├── shared/                     # Shared Python modules
 │   ├── models.py              # Pydantic data models
 │   ├── metrics.py             # Analysis functions
 │   ├── data.py                # Data storage (JSON + Azure Blob)
 │   ├── data_generator.py      # Synthetic data generation
-│   ├── chat_service.py        # Azure OpenAI integration
+│   ├── chat_service.py        # Azure AI Foundry integration
 │   ├── blob_storage.py        # Azure Blob Storage client
 │   └── config.py              # Environment configuration
 │
@@ -243,17 +274,19 @@ factory-agent/
 │   ├── test_blob_storage.py
 │   └── test_traceability.py
 │
+├── infra/                      # Infrastructure as Code
+│   ├── main.bicep             # Azure Container Apps template
+│   └── main.bicepparam        # Deployment parameters
+│
+├── .github/workflows/          # CI/CD automation
+│   ├── deploy-backend.yml     # Backend deployment
+│   └── deploy-frontend.yml    # Frontend deployment
+│
 ├── docs/                       # Documentation
 │   ├── DEPLOYMENT.md          # Deployment guide
 │   ├── INSTALL.md             # Installation instructions
 │   ├── ROADMAP.md             # Project roadmap
 │   └── archive/               # Historical documentation
-│
-├── scripts/                    # Utility scripts
-│   ├── build-local.sh
-│   ├── deploy.sh
-│   └── legacy/
-│       └── run_dashboard.py   # Legacy Streamlit wrapper
 │
 ├── docker-compose.yml         # Local development setup
 ├── implementation-plan.md     # Project implementation plan
@@ -281,11 +314,11 @@ React Component
 User Message
   → POST /api/chat
     → chat_service.py
-      → Azure OpenAI (AsyncAzureOpenAI)
+      → Azure AI Foundry (AsyncAzureOpenAI)
         → Tool Calling (AI selects tools)
           → execute_tool() routes to metrics functions
             → Data retrieval from storage
-              → Tool results back to Azure OpenAI
+              → Tool results back to Azure AI Foundry
                 → AI synthesizes response
                   → Updated conversation history
                     → Response to frontend
@@ -396,19 +429,25 @@ npm run build          # Type checking via TypeScript
 ## Deployment
 
 ### Current: Local Development
-- Docker Compose for local testing
-- Backend on port 8000, frontend on port 3000/5173
+- Docker Compose for backend only
+- Frontend runs separately with `npm run dev` on port 5173
+- Backend on port 8000
 - Local JSON storage or Azure Blob Storage
 
-### Phase 4 (Planned): Azure Container Apps
-- **Infrastructure**: Bicep templates for Azure resources
-- **CI/CD**: GitHub Actions for automated deployments
-- **Containers**: Separate containers for frontend + backend
-- **Scaling**: Auto-scale based on HTTP traffic
-- **Storage**: Azure Blob Storage for production data
-- **Authentication**: Azure AD with MSAL (optional)
+### Phase 4: Azure Container Apps (Infrastructure Ready)
+- ✅ **Bicep Templates**: Infrastructure defined in `infra/main.bicep`
+- ✅ **Dockerfiles**: Both frontend and backend ready
+- ✅ **CI/CD**: GitHub Actions workflows configured
+- ✅ **Container Apps**: Frontend + backend configuration complete
+- ⏳ **Needs**: Local testing, deployment execution
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deployment guide.
+**Deployment Steps**:
+1. Test Dockerfiles locally
+2. Deploy infrastructure with `az deployment group create`
+3. Push code to trigger GitHub Actions CI/CD
+4. Validate all features in cloud
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment guide.
 
 ## Documentation
 
@@ -455,4 +494,4 @@ MIT
 
 ---
 
-**Status**: Feature-complete and ready for deployment. See [implementation-plan.md](implementation-plan.md) for remaining work (Phase 4: Deployment, Phase 5: Polish).
+**Status**: Feature-complete with infrastructure ready for deployment. See [implementation-plan.md](implementation-plan.md) for deployment steps (Phase 4) and polish work (Phase 5).
