@@ -58,7 +58,7 @@ on:
 
 # Environment variables used across all jobs
 env:
-  AZURE_CONTAINER_REGISTRY: factoryagent4u4zqkacr  # ACR name (actual deployed registry)
+  AZURE_CONTAINER_REGISTRY: factoryagentdevacr  # ACR name (actual deployed registry)
   BACKEND_IMAGE_NAME: factory-agent/backend
   AZURE_RESOURCE_GROUP: factory-agent-dev-rg
   CONTAINER_APP_NAME: factory-agent-dev-backend

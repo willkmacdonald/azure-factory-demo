@@ -32,3 +32,5 @@ htmlcov/
 
 # Claude Code
 .claude/
+/infra/main-deploy.bicepparam
+/DEPLOYMENT-SECRETS.md
