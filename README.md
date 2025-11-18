@@ -2,20 +2,22 @@
 
 A production-ready cloud-native application for factory operations monitoring and AI-powered insights, featuring comprehensive supply chain traceability, real-time metrics, and an intelligent chatbot. Built with React, FastAPI, and deployed on Azure Container Apps.
 
-## 🎉 Project Status: Feature Complete & Infrastructure Ready
+## 🎉 Project Status: Deployed to Azure (Phase 4 - Reliability Work In Progress)
 
-**All core features are implemented and functional!**
+**All core features are implemented and deployed to Azure Container Apps!**
 
-- ✅ **Backend API**: 20 REST endpoints (19 API + 1 health check)
-- ✅ **Frontend**: 5 complete pages with Material-UI
+- ✅ **Backend API**: 21 REST endpoints (20 functional + 1 health check)
+- ✅ **Frontend**: 5 complete pages with Material-UI v7
 - ✅ **AI Chat**: Azure AI Foundry integration with tool calling
 - ✅ **Supply Chain Traceability**: End-to-end visibility (materials → suppliers → batches → orders)
 - ✅ **Material-Supplier Root Cause Linkage**: Direct traceability from defects to suppliers (PR19)
-- ✅ **Security**: Rate limiting, CORS, input validation
-- ✅ **Testing**: 79+ backend tests (100% passing)
-- ✅ **Infrastructure**: Bicep templates, Docker, CI/CD ready
+- ✅ **Authentication**: Azure AD JWT validation for admin endpoints (PR3 - 2025-11-17)
+- ✅ **Security**: Rate limiting, CORS, input validation, Azure AD auth, prompt injection mitigation
+- ✅ **Testing**: Comprehensive test suite (100% passing)
+- ✅ **Infrastructure**: Bicep templates, Docker, manually deployed to Azure
+- ⚠️ **Known Issue**: Intermittent Azure Blob Storage connectivity (see [Known Issues](#known-issues))
 
-**Next**: Execute Azure deployment (Phase 4 - Infrastructure ready)
+**Current Phase**: Phase 4 deployed with authentication complete. Working on reliability improvements (retry logic + timeout configuration).
 
 ## Features
 
@@ -46,27 +48,32 @@ A production-ready cloud-native application for factory operations monitoring an
 ## Tech Stack
 
 ### Frontend
-- **React 19.1** + **TypeScript 5.9** - Modern UI framework
-- **Material-UI 7.3** - Component library
-- **Recharts 3.3** - Data visualization
-- **Axios 1.13** - HTTP client with interceptors
-- **Vite 7.1** - Build tool
-- **React Router 7.9** - Client-side routing
+- **React 19.1** + **TypeScript 5.9** - Modern UI framework with strict mode
+- **Material-UI 7.3** - Comprehensive component library (beginner-friendly)
+- **Recharts 3.3** - Data visualization library
+- **Axios 1.13** - HTTP client with request/response interceptors
+- **Vite 7.1** - Lightning-fast build tool (replaces Create React App)
+- **React Router 7.9** - Client-side routing with nested routes
 
 ### Backend
-- **FastAPI 0.104+** - Async REST API framework
+- **FastAPI 0.115+** - Async REST API framework with auto-generated docs
 - **Python 3.11+** - Modern Python with type hints
-- **Pydantic 2.0+** - Data validation
-- **Azure AI Foundry** - AI chat with AsyncAzureOpenAI client
-- **Azure Blob Storage** - Cloud data persistence
-- **SlowAPI** - Rate limiting
+- **Pydantic 2.10+** - Data validation and serialization
+- **Azure OpenAI SDK 1.51+** - AI chat with AsyncAzureOpenAI client
+- **Azure Blob Storage 12.15+** - Cloud data persistence (async client)
+- **SlowAPI 0.1+** - Rate limiting middleware
+- **python-jose 3.3+** - JWT token validation for Azure AD auth
+- **httpx 0.24+** - Async HTTP client for JWKS fetching
+- **aiofiles 24.1+** - Async file I/O
+- **pytest 7.4+** - Testing framework
 
 ### Deployment
-- **Azure Container Apps** - Infrastructure ready for deployment
+- **Azure Container Apps** - Currently deployed (manual deployment)
 - **Azure Container Registry** - Docker image storage
-- **GitHub Actions** - CI/CD workflows configured
-- **Docker + Docker Compose** - Containerization
-- **Azure Bicep** - Infrastructure as Code
+- **GitHub Actions** - CI/CD workflows (configured but not active)
+- **Docker + Docker Compose** - Multi-stage containerization
+- **Azure Bicep** - Infrastructure as Code templates
+- **Nginx 1.27** - Frontend static file server (production)
 
 ## Quick Start
 
@@ -124,29 +131,47 @@ Create a `.env` file (copy from `.env.example`):
 
 ```bash
 # Azure AI Foundry (Required for AI chat)
-# Format: https://<resource>.services.ai.azure.com/api/projects/<projectName>
-AZURE_ENDPOINT=https://your-resource.services.ai.azure.com/api/projects/yourProject
+# IMPORTANT: Use .cognitiveservices.azure.com endpoint (NOT .services.ai.azure.com)
+AZURE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 AZURE_API_KEY=your-api-key
-AZURE_DEPLOYMENT_NAME=gpt-4
+AZURE_DEPLOYMENT_NAME=gpt-4o  # or gpt-4, gpt-35-turbo
 AZURE_API_VERSION=2024-08-01-preview
 
 # Storage (Optional - defaults to local JSON)
-STORAGE_MODE=local  # or 'azure' for cloud storage
+STORAGE_MODE=local  # Use 'local' for development, 'azure' for production
 AZURE_STORAGE_CONNECTION_STRING=<your-connection-string>
 AZURE_BLOB_CONTAINER=factory-data
 
+# Azure AD Authentication (Optional - for POST /api/setup endpoint)
+AZURE_AD_TENANT_ID=your-azure-ad-tenant-id
+AZURE_AD_CLIENT_ID=your-app-registration-client-id
+
 # Application
-DEBUG=false  # Set to 'true' for detailed error messages
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+DEBUG=false  # Set to 'true' for detailed error messages (development only)
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174
+RATE_LIMIT_CHAT=10/minute
+RATE_LIMIT_SETUP=5/minute
 ```
+
+**Getting Azure AD credentials (Optional):**
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to **Azure Active Directory** → **App registrations**
+3. Create a new app registration or select existing
+4. Copy **Directory (tenant) ID** → use as `AZURE_AD_TENANT_ID`
+5. Copy **Application (client) ID** → use as `AZURE_AD_CLIENT_ID`
+6. Configure **Authentication** → Add platform → Single-page application → Add `http://localhost:5173` as redirect URI
+
+**Note**: Authentication is only required for the `POST /api/setup` endpoint (data generation). All GET endpoints work without authentication.
 
 **Getting Azure AI Foundry credentials:**
 1. Go to [Azure AI Foundry Portal](https://ai.azure.com)
 2. Navigate to your project
 3. Go to **Project Settings**
-4. Copy **Endpoint** (format: `https://<resource>.services.ai.azure.com/api/projects/<projectName>`)
+4. Copy **Endpoint** - Use the `.cognitiveservices.azure.com` format (the OpenAI SDK requires Cognitive Services endpoint)
 5. Go to **Keys** section and copy an API key
-6. Set your **Deployment Name** (e.g., `gpt-4`, `gpt-4o`, `gpt-35-turbo`)
+6. Set your **Deployment Name** (e.g., `gpt-4o`, `gpt-4`, `gpt-35-turbo`)
+
+**Important**: The endpoint format should be `https://<resource>.cognitiveservices.azure.com/` (NOT the AI Foundry portal URL ending in `.services.ai.azure.com`).
 
 ## Usage
 
@@ -199,7 +224,7 @@ Open your browser to **http://localhost:5173**
 - `GET /api/orders/{id}/batches` - Order batches with production summary
 
 **Data Management:**
-- `POST /api/setup` - Generate synthetic data
+- `POST /api/setup` - Generate synthetic data (requires Azure AD authentication)
 - `GET /api/stats` - Data statistics
 - `GET /api/machines` - List machines
 - `GET /api/date-range` - Data date range
@@ -236,6 +261,7 @@ factory-agent/
 │   ├── src/
 │   │   └── api/
 │   │       ├── main.py        # App entry, CORS, rate limiting
+│   │       ├── auth.py        # Azure AD JWT validation (NEW - PR3)
 │   │       └── routes/        # API endpoints
 │   │           ├── metrics.py      # OEE, scrap, quality, downtime
 │   │           ├── chat.py         # AI chat with tool calling
@@ -394,15 +420,21 @@ The synthetic data includes demonstration scenarios:
 **Backend:**
 ```bash
 cd backend
-pytest tests/ -v
-pytest --cov=src --cov-report=html  # With coverage
+pytest tests/ -v                      # Run all 164 test functions
+pytest --cov=src --cov-report=html    # With coverage report
+pytest tests/test_traceability.py -v  # Run specific test file
 ```
+
+**Test Coverage:**
+- 164 test functions across 9 test files
+- 3,331 lines of test code
+- 100% passing
 
 **Frontend:**
 ```bash
 cd frontend
-npm run test
-npm run lint
+npm run lint           # ESLint type checking
+npm run build          # TypeScript type checking
 ```
 
 ### Code Quality
@@ -428,32 +460,66 @@ npm run build          # Type checking via TypeScript
 
 ## Deployment
 
-### Current: Local Development
+### Current: Azure Container Apps (Manual Deployment)
+
+**Status**: Both frontend and backend are deployed to Azure Container Apps using manual deployment process.
+
+**Deployment Method**:
+- **Frontend**: Manually deployed via `az containerapp up`
+- **Backend**: Manually deployed via `az containerapp up`
+- **CI/CD**: GitHub Actions workflows configured but not currently active
+- **Storage**: Azure Blob Storage (STORAGE_MODE=azure)
+
+**Known Deployment Notes**:
+- Initial Azure deployments may have a 24-48 hour DNS/propagation delay (hypothesis under investigation)
+- Manual deployment used as workaround while investigating GitHub Actions issues
+
+### Local Development
+
+For local development and testing:
 - Docker Compose for backend only
 - Frontend runs separately with `npm run dev` on port 5173
 - Backend on port 8000
-- Local JSON storage or Azure Blob Storage
+- Can use local JSON storage (`STORAGE_MODE=local`) or Azure Blob Storage (`STORAGE_MODE=azure`)
 
-### Phase 4: Azure Container Apps (Infrastructure Ready)
-- ✅ **Bicep Templates**: Infrastructure defined in `infra/main.bicep`
-- ✅ **Dockerfiles**: Both frontend and backend ready
-- ✅ **CI/CD**: GitHub Actions workflows configured
-- ✅ **Container Apps**: Frontend + backend configuration complete
-- ⏳ **Needs**: Local testing, deployment execution
+**Local Development Steps**:
+```bash
+# Backend (Docker Compose)
+docker-compose up --build
 
-**Deployment Steps**:
-1. Test Dockerfiles locally
-2. Deploy infrastructure with `az deployment group create`
-3. Push code to trigger GitHub Actions CI/CD
-4. Validate all features in cloud
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment guide.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment guide and troubleshooting.
+
+## Known Issues
+
+### Intermittent "Server error - please try again later" Messages
+
+**Symptom**: Occasional error messages when using the application, particularly with AI chat or data-heavy pages.
+
+**Root Cause**: Transient Azure Blob Storage connectivity issues when `STORAGE_MODE=azure`. This can occur due to:
+- Network latency/timeouts
+- Azure service throttling (rare)
+- Connection pool exhaustion during high traffic
+
+**Workarounds**:
+1. **For Local Development**: Set `STORAGE_MODE=local` in `.env` to eliminate network dependency
+2. **Refresh the page**: Intermittent errors usually resolve on retry
+3. **Enable DEBUG mode**: Set `DEBUG=true` in `.env` to see detailed error messages
+
+**Planned Fix**: PR22 will implement retry logic with exponential backoff and timeout configuration (3-4 hours of work). See [implementation-plan.md](implementation-plan.md) for details.
+
+**Progress**: Under investigation. See implementation plan for current status.
 
 ## Documentation
 
-- **[implementation-plan.md](implementation-plan.md)** - Complete project roadmap
+- **[implementation-plan.md](implementation-plan.md)** - Complete project roadmap with current phase status
 - **[docs/INSTALL.md](docs/INSTALL.md)** - Detailed installation guide
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment instructions
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment instructions and troubleshooting
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** - Project roadmap and future plans
 - **[docs/archive/](docs/archive/)** - Historical documentation
 
@@ -494,4 +560,8 @@ MIT
 
 ---
 
-**Status**: Feature-complete with infrastructure ready for deployment. See [implementation-plan.md](implementation-plan.md) for deployment steps (Phase 4) and polish work (Phase 5).
+**Status**: Deployed to Azure Container Apps (Phase 4 complete). **Latest**: Azure AD authentication module complete (PR3 - 2025-11-17). Currently working on reliability improvements to address intermittent Azure Blob Storage connectivity. See [implementation-plan.md](implementation-plan.md) for current phase status and next steps (PR22: Retry Logic + Timeout Configuration).
+
+**Recent Updates:**
+- **2025-11-17**: Azure AD JWT authentication for admin endpoints (PR3) - Fixed async/await patterns, type hints, added httpx dependency
+- **2025-11-17**: Implementation plan optimized for context window efficiency (13.4% reduction, 487 lines)

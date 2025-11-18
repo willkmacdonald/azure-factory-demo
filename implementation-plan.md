@@ -1,14 +1,14 @@
 # Factory Agent - Implementation Plan
 
-**Last Updated**: 2025-11-17
-**Status**: Phase 3 Complete (100%) | Phase 4 Infrastructure Ready | Azure Blob Storage Live
-**Architecture**: React + FastAPI + Azure Container Apps + AI Foundry + Azure Blob Storage
+**Last Updated**: 2025-11-17 (Updated: PR3 Code Review Fixes)
+**Status**: Phase 3 Complete (100%) | Phase 4 In Progress (Deployed + Auth Complete) | Phase 5 Planned
+**Architecture**: React + FastAPI + Azure Container Apps + AI Foundry + Azure Blob Storage + Azure AD Auth
 
 ---
 
 ## Executive Summary
 
-Factory Agent is a **feature-complete** Industry 4.0 monitoring application with AI-powered insights and supply chain traceability.
+Factory Agent is a **feature-complete** Industry 4.0 monitoring application with AI-powered insights and supply chain traceability, now **deployed to Azure** with a **known reliability issue** to fix.
 
 **Completed** (Phases 1-3):
 - ✅ Backend: 21 REST API endpoints (metrics + traceability + AI chat)
@@ -17,15 +17,21 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 - ✅ Supply Chain: End-to-end traceability with material-supplier linkage
 - ✅ Testing: 79+ backend tests (100% passing)
 - ✅ Code Review: All critical and important issues resolved
+- ✅ Authentication: Azure AD JWT validation module complete
 
-**Ready** (Phase 4 - 90% Complete):
-- ✅ Infrastructure: Bicep templates for Container Apps
-- ✅ CI/CD: GitHub Actions workflows configured
-- ✅ Containers: Dockerfiles for frontend + backend
-- ⏳ **Needs**: Local testing, deployment execution, cloud validation
+**Deployed** (Phase 4 - 80% Complete):
+- ✅ Infrastructure: Bicep templates, Dockerfiles, GitHub Actions
+- ✅ Deployment: Frontend + backend deployed to Azure Container Apps (manual)
+- ✅ Azure Blob Storage: Integrated and accessible (but with transient issues)
+- ✅ Hybrid Development: Local dev + cloud data working
+- ✅ Authentication: Azure AD JWT validation in backend/src/api/auth.py
+- ⚠️ **Issue Found**: Intermittent connectivity errors from Azure Blob Storage (known, isolated)
+- ⏳ **Needs**: Implement retry logic + timeouts (PR22) to resolve transient failures
 
-**Next** (Phase 5):
-- Polish with demo scenarios and documentation
+**Next** (Phase 4 Continuation + Phase 5):
+- Resolve reliability issues (retry logic, timeout config)
+- Optional: Fix GitHub Actions CI/CD pipeline
+- Phase 5: Polish with demo scenarios and documentation
 
 ---
 
@@ -49,45 +55,77 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 - Workaround: Using storage account in WKM Migration Sub (working smoothly)
 - Forum post created for community help on Azure Dev subscription ResourceNotFound issue
 
-### Immediate Priority: Deploy to Azure (Phase 4)
+### Phase 4 Status: Deployment & Reliability (In Progress)
 
-**Infrastructure Status** (90% Ready):
+**Current Situation** (2025-11-17):
+- ✅ All core features complete (backend API, frontend, AI chat)
+- ✅ Azure Blob Storage integrated and accessible
+- ⏳ **Deployed to Azure** (manually - not via GitHub Actions)
+  - Frontend deployed to Azure Container Apps
+  - Backend deployed to Azure Container Apps
+- ⚠️ **Known Issue**: Intermittent "Server error - please try again later" messages
+  - **Root Cause**: Azure Blob Storage transient connectivity issues
+  - **Frequency**: Intermittent, appears under certain load conditions
+  - **Impact**: User-facing errors when `STORAGE_MODE="azure"`
+  - **Hypothesis**: Possible 24-48 hour propagation delay for initial Azure deployments
+  - **Investigation**: Identified when STORAGE_MODE switches to azure in production
+
+**Infrastructure Status**:
 - ✅ `infra/main.bicep` - Frontend + backend Container Apps defined
-- ✅ `frontend/Dockerfile` - Multi-stage React build + Nginx
-- ✅ `backend/Dockerfile` - Python 3.11 + FastAPI
-- ✅ `.github/workflows/deploy-frontend.yml` - Frontend CI/CD
-- ✅ `.github/workflows/deploy-backend.yml` - Backend CI/CD
+- ✅ `frontend/Dockerfile` - Multi-stage React build + Nginx (deployed)
+- ✅ `backend/Dockerfile` - Python 3.11 + FastAPI (deployed)
+- ⏳ `.github/workflows/deploy-frontend.yml` - CI/CD configured (not yet used)
+- ⏳ `.github/workflows/deploy-backend.yml` - CI/CD configured (not yet used)
 - ✅ Azure Blob Storage - Configured and tested with live data
-- ⏳ **TODO**: Test Dockerfiles locally, execute deployment
+- ⚠️ **Workaround**: Manual deployment in use (not automated CI/CD)
 
-**Recommended Next Steps**:
-1. **Test Dockerfiles locally** (1 hour)
-   ```bash
-   docker build -t factory-backend ./backend
-   docker build -t factory-frontend ./frontend
-   docker-compose up
-   ```
+### Immediate Priority: Resolve Azure Blob Storage Reliability (Phase 4)
 
-2. **Deploy to Azure** (2-3 hours)
-   ```bash
-   # Deploy infrastructure
-   az deployment group create --resource-group wkm-rg --template-file infra/main.bicep
+**Option 1: Investigate & Wait** (Low effort, risky)
+- Theory: DNS/propagation delays on initial Azure deployment
+- Action: Wait 24-48 hours and re-test
+- Risk: May not resolve; production deployment incomplete
 
-   # Push via GitHub Actions or manual
-   git push origin main  # Triggers CI/CD
-   ```
+**Option 2: Implement Retry Logic** (Medium effort, recommended)
+- Add exponential backoff for Azure Blob Storage API calls
+- Configure retry policy: 3 attempts with 100-1000ms delays
+- Update: `backend/src/shared/blob_storage.py` (if exists)
+- Testing: Validate retry behavior under load
+- Effort: 1-2 hours
+- Impact: Improves reliability and handles transient failures
 
-3. **Validate in cloud** (1 hour)
-   - Test all 5 pages work
-   - Verify API calls (CORS configured)
-   - Test AI chat with Azure AI Foundry
-   - Confirm traceability workflows
-   - Validate Azure Blob Storage connectivity
+**Option 3: Add Timeout Configuration** (Medium effort, recommended)
+- Configure Azure Blob Storage client timeouts
+- Set connection timeout: 10-30 seconds
+- Set request timeout: 30-60 seconds
+- Add circuit breaker pattern for repeated failures
+- Effort: 1-2 hours
+- Impact: Prevents hanging requests, fail-fast behavior
 
-**Alternatives: Optional Improvements (Can be done anytime)**
+**Option 4: Add Caching Layer** (Higher effort, optional)
+- Cache Azure Blob data in-memory (Redis or process memory)
+- Reduce direct Azure calls by caching recent data
+- Implement cache invalidation strategy
+- Effort: 3-4 hours
+- Impact: Reduces load on Azure Blob, improves response times
+
+**Option 5: Fallback to Local Storage** (Low effort, workaround)
+- When STORAGE_MODE="azure" fails, fallback to local JSON
+- Log fallback events for monitoring
+- Effort: <1 hour
+- Impact: Improves reliability but data isn't persisted to cloud
+
+**Recommended Path**:
+1. **Short-term**: Implement Option 2 (retry logic) - 1-2 hours
+2. **Follow-up**: Add Option 3 (timeout config) - 1-2 hours
+3. **Monitor**: Test in production for 24-48 hours
+4. **Optional**: Add Option 4 (caching) if needed
+
+**Alternatives: Optional Improvements**
 - **PR20B**: Code Quality (4 items, 1-2 hours total)
 - **PR21**: Selective Authentication (4-6 hours, security enhancement)
-- Not blocking deployment
+- **GitHub Actions Fix**: Troubleshoot and fix CI/CD pipeline (2-3 hours)
+- **Deployment Documentation**: Document workaround process (1 hour)
 
 ---
 
@@ -300,6 +338,17 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ### Recent PRs (All Complete)
 
+**PR3: Authentication Module Code Review Fixes** ✅
+- **Status**: Complete (2025-11-17)
+- **Location**: `backend/src/api/auth.py`
+- **Fixes Applied**:
+  1. ✅ Async/await patterns: Replaced synchronous `requests` with `httpx.AsyncClient`
+  2. ✅ Type hints: Fixed `'any'` to `'Any'` from `typing` module
+  3. ✅ Dependency: Added `httpx` to `backend/requirements.txt`
+  4. ✅ Security: Improved error messages to avoid exposing sensitive endpoint details
+- **Impact**: Authentication module now follows async/await best practices for FastAPI
+- **Commits**: Merged to main branch
+
 **PR19: Material-Supplier Root Cause Linkage** ✅
 - Backend: QualityIssue model with material/supplier fields
 - API: Material linkage in quality endpoint responses
@@ -375,15 +424,19 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 | Phase 2: Backend Integration | 8-12 hrs | ~10 hrs | ✅ Complete |
 | Phase 3: Frontend Development | 24-30 hrs | ~28 hrs | ✅ Complete |
 | Code Review + Fixes | 2-3 hrs | ~1 hr | ✅ Complete |
-| **Phase 4: Deployment** | **6-8 hrs** | **TBD** | 🚀 **Next** |
+| **PR3: Auth Module Code Review Fixes** | **~0.5 hrs** | **~0.5 hrs** | **✅ Complete** |
+| **Phase 4: Deployment** | **6-8 hrs** | **~4 hrs (manual)** | 🚀 **In Progress** |
+| Phase 4: Reliability (PR22) | **3-4 hrs** | **TBD** | 📋 **Next** |
+| Phase 4: CI/CD Fix (PR23, optional) | **2-3 hrs** | - | 📋 Optional |
+| Phase 4: Documentation (PR24, optional) | **1 hr** | - | 📋 Optional |
 | Phase 5: Polish & Scenarios | 8-12 hrs | - | 📋 Planned |
 | PR20B: Code Quality (optional) | 1-2 hrs | - | 📋 Optional |
 | PR21: Selective Authentication (optional) | 4-6 hrs | - | 📋 Optional |
-| **Total Completed** | - | **~53 hrs** | **74% Done** |
-| **Total Remaining (Core)** | - | **~14-22 hrs** | **26% Left** |
-| **Total with All Optional** | - | **~19-30 hrs** | **If included** |
+| **Total Completed** | - | **~57.5 hrs** | **76% Done** |
+| **Total Remaining (Core)** | - | **~10-15 hrs** | **24% Left** |
+| **Total with All Optional** | - | **~18-33 hrs** | **If included** |
 
-**Current Status**: ~74% complete by effort, all core features done
+**Current Status**: ~76% complete by effort, all core features done, Phase 4 deployed with authentication complete, next: reliability fixes (retry logic + timeouts)
 
 ---
 
@@ -409,7 +462,26 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ---
 
+---
+
+## Next Actions
+
+### PR22: Azure Blob Storage Reliability (High Priority, 3-4 hrs)
+Implement retry logic + timeout configuration to resolve transient failures:
+- **Task 1**: Add exponential backoff to Azure Blob Storage client (1-2 hrs)
+- **Task 2**: Configure timeouts: 10-30s connection, 30-60s request (1-2 hrs)
+- **Task 3**: Test retry behavior under load (30 min - 1 hr)
+
+### PR23: GitHub Actions CI/CD Fix (Medium Priority, 2-3 hrs, Optional)
+Fix automated deployment workflow (currently using manual deployment):
+- Troubleshoot workflow failures, fix Azure auth, validate end-to-end
+
+### PR24: Deployment Documentation (Low Priority, 1 hr, Optional)
+Document manual deployment workaround process for future reference
+
+---
+
 **Last Updated**: 2025-11-17
-**Recent Achievement**: Azure Blob Storage migration complete, hybrid development pattern active
-**Next Action**: Test Dockerfiles locally, then deploy to Azure (Phase 4)
-**Completion**: 75% by effort (core features + storage migration), 100% of core features complete
+**Status**: 76% complete by effort | Core features 100% done | Phase 4 deployed (manual)
+**Current Issue**: Intermittent Azure Blob connectivity (known, isolated)
+**Next**: Implement retry logic + timeouts (PR22) to resolve transient failures
