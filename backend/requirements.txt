@@ -16,3 +16,8 @@ openai>=1.51.0
 
 # Environment variable management
 python-dotenv==1.0.1
+
+# Authentication dependencies (Azure AD JWT validation)
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.9
+httpx>=0.24.0  # Async HTTP client for Azure AD JWKS fetching
