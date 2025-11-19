@@ -58,7 +58,7 @@ on:
 
 # Environment variables used across all jobs
 env:
-  AZURE_CONTAINER_REGISTRY: factoryagentdevacr  # ACR name (actual deployed registry)
+  AZURE_CONTAINER_REGISTRY: factoryagent4u4zqkacr  # ACR name (actual deployed registry)
   BACKEND_IMAGE_NAME: factory-agent/backend
   AZURE_RESOURCE_GROUP: factory-agent-dev-rg
   CONTAINER_APP_NAME: factory-agent-dev-backend
@@ -301,6 +301,6 @@ jobs:
 # 3. Check Azure Container Apps logs:
 #    az containerapp logs show -n factory-agent-dev-backend -g factory-agent-rg --follow
 # 4. Check Azure Container Registry for pushed images:
-#    az acr repository show-tags -n factoryagentdevacr --repository factory-agent/backend
+#    az acr repository show-tags -n factoryagent4u4zqkacr --repository factory-agent/backend
 # 5. Validate Bicep template locally:
 #    az deployment group validate --resource-group factory-agent-rg --template-file infra/main.bicep --parameters infra/main.bicepparam

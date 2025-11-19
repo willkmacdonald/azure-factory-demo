@@ -104,7 +104,7 @@ AZURE_STORAGE_CONTAINER_NAME=factory-data
 factory-agent-dev-rg (Resource Group)
 ├── factory-agent-dev-env (Container Apps Environment)
 │   └── factory-agent-dev-backend (Container App)
-├── factoryagentdevacr (Container Registry)
+├── factoryagent4u4zqkacr (Container Registry)
 ├── factory-agent-dev-logs (Log Analytics Workspace)
 └── factory-agent-dev-identity (Managed Identity)
 ```
@@ -260,7 +260,7 @@ cd ..
 #### Step 3: Create Container Registry
 
 ```bash
-ACR_NAME="factoryagentdevacr"  # Must be globally unique
+ACR_NAME="factoryagent4u4zqkacr"  # Must be globally unique
 
 az acr create \
   --name $ACR_NAME \
@@ -532,7 +532,7 @@ az containerapp revision list \
 docker run -p 8000:8000 \
   -e AZURE_OPENAI_ENDPOINT="..." \
   -e AZURE_OPENAI_KEY="..." \
-  factoryagentdevacr.azurecr.io/factory-agent/backend:latest
+  factoryagent4u4zqkacr.azurecr.io/factory-agent/backend:latest
 ```
 
 #### 3. Authentication Errors
@@ -564,12 +564,12 @@ az containerapp secret set \
 ```bash
 # Verify image exists in ACR
 az acr repository show-tags \
-  --name factoryagentdevacr \
+  --name factoryagent4u4zqkacr \
   --repository factory-agent/backend
 
 # Check managed identity permissions
 az role assignment list \
-  --scope /subscriptions/.../resourceGroups/factory-agent-dev-rg/providers/Microsoft.ContainerRegistry/registries/factoryagentdevacr
+  --scope /subscriptions/.../resourceGroups/factory-agent-dev-rg/providers/Microsoft.ContainerRegistry/registries/factoryagent4u4zqkacr
 ```
 
 ### Debug Techniques

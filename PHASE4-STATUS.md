@@ -29,7 +29,7 @@
 
 ### 3. Azure Configuration (100% Complete)
 - **ACR admin credentials enabled** ✅
-  - Username: `factoryagentdevacr`
+  - Username: `factoryagent4u4zqkacr`
   - Admin access: Enabled (for troubleshooting)
   - Images present in ACR:
     - `factory-agent/backend:latest`
@@ -57,10 +57,10 @@ Azure Container Apps cannot pull Docker images from ACR using the managed identi
 **Error Message:**
 ```
 Field 'template.containers.backend.image' is invalid with details:
-'Invalid value: "factoryagentdevacr.azurecr.io/factory-agent/backend:d35241a":
+'Invalid value: "factoryagent4u4zqkacr.azurecr.io/factory-agent/backend:d35241a":
 unable to pull image using Managed identity
 /subscriptions/***/resourceGroups/factory-agent-dev-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/factory-agent-dev-identity
-for registry factoryagentdevacr.azurecr.io'
+for registry factoryagent4u4zqkacr.azurecr.io'
 ```
 
 ### Root Cause
@@ -141,12 +141,12 @@ This **same propagation delay** affects multiple Azure services:
 **Steps:**
 1. Get ACR credentials:
    ```bash
-   az acr credential show --name factoryagentdevacr
+   az acr credential show --name factoryagent4u4zqkacr
    ```
 
 2. Update GitHub secrets:
    ```bash
-   gh secret set ACR_USERNAME -b "factoryagentdevacr"
+   gh secret set ACR_USERNAME -b "factoryagent4u4zqkacr"
    gh secret set ACR_PASSWORD -b "<password from step 1>"
    ```
 
@@ -193,7 +193,7 @@ This **same propagation delay** affects multiple Azure services:
 2. Create new container app
 3. Select ACR authentication: Admin credentials
 4. Configure:
-   - Registry: `factoryagentdevacr.azurecr.io`
+   - Registry: `factoryagent4u4zqkacr.azurecr.io`
    - Image: `factory-agent/backend:d35241a`
    - Port: 8000
    - Environment variables: Copy from GitHub secrets
@@ -253,7 +253,7 @@ This **same propagation delay** affects multiple Azure services:
 
 ### Azure Resources
 - **Resource Group:** `factory-agent-dev-rg`
-- **ACR:** `factoryagentdevacr.azurecr.io`
+- **ACR:** `factoryagent4u4zqkacr.azurecr.io`
 - **Managed Identity:** `factory-agent-dev-identity`
 - **Container Apps Environment:** `factory-agent-dev-env`
 - **Log Analytics:** `factory-agent-dev-logs`
@@ -295,13 +295,13 @@ This **same propagation delay** affects multiple Azure services:
 
 **Check ACR Images:**
 ```bash
-az acr repository show-tags --name factoryagentdevacr --repository factory-agent/backend --output table
+az acr repository show-tags --name factoryagent4u4zqkacr --repository factory-agent/backend --output table
 ```
 
 **Check Permissions:**
 ```bash
 az role assignment list \
-  --scope $(az acr show --name factoryagentdevacr --resource-group factory-agent-dev-rg --query id -o tsv) \
+  --scope $(az acr show --name factoryagent4u4zqkacr --resource-group factory-agent-dev-rg --query id -o tsv) \
   --assignee $(az identity show --name factory-agent-dev-identity --resource-group factory-agent-dev-rg --query principalId -o tsv) \
   --output table
 ```
