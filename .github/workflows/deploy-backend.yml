@@ -231,7 +231,10 @@ jobs:
             azureAiEndpoint=${{ secrets.AZURE_ENDPOINT }}
             azureAiKey=${{ secrets.AZURE_API_KEY }}
             azureAiDeployment=gpt-4o
-            storageMode=local
+            storageMode=blob
+            azureStorageConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            azureStorageContainerName=factory-data
+            allowedOrigins=https://factory-agent-dev-frontend.mangotree-f82b3c1f.eastus.azurecontainerapps.io
             environmentName=${{ github.event.inputs.environment || 'dev' }}
           failOnStdErr: false
 
