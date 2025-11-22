@@ -40,5 +40,12 @@ AZURE_STORAGE_CONNECTION_STRING: Optional[str] = os.getenv("AZURE_STORAGE_CONNEC
 AZURE_BLOB_CONTAINER: str = os.getenv("AZURE_BLOB_CONTAINER", "factory-data")
 AZURE_BLOB_NAME: str = os.getenv("AZURE_BLOB_NAME", "production.json")
 
+# Azure Blob Storage retry and timeout settings
+AZURE_BLOB_RETRY_TOTAL: int = int(os.getenv("AZURE_BLOB_RETRY_TOTAL", "3"))
+AZURE_BLOB_INITIAL_BACKOFF: int = int(os.getenv("AZURE_BLOB_INITIAL_BACKOFF", "2"))
+AZURE_BLOB_INCREMENT_BASE: int = int(os.getenv("AZURE_BLOB_INCREMENT_BASE", "2"))
+AZURE_BLOB_CONNECTION_TIMEOUT: int = int(os.getenv("AZURE_BLOB_CONNECTION_TIMEOUT", "30"))
+AZURE_BLOB_OPERATION_TIMEOUT: int = int(os.getenv("AZURE_BLOB_OPERATION_TIMEOUT", "60"))
+
 # Cost estimation settings
 DEFECT_COST_ESTIMATE: float = 50.0  # USD per defect (for demo cost impact calculations)

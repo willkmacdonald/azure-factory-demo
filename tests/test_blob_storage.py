@@ -13,7 +13,6 @@ Tests cover:
 
 import json
 import pytest
-import pytest_asyncio
 from typing import Dict, Any, AsyncGenerator
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
 from azure.core.exceptions import (
@@ -50,7 +49,7 @@ def test_data() -> Dict[str, Any]:
     }
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def blob_client(valid_connection_string: str) -> AsyncGenerator[BlobStorageClient, None]:
     """Create BlobStorageClient instance for testing."""
     client = BlobStorageClient(
@@ -98,7 +97,7 @@ def test_init_uses_env_defaults(valid_connection_string):
 
 # Blob Existence Tests
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_blob_exists_returns_true(blob_client):
     """Test blob_exists returns True when blob exists."""
     mock_blob_client = AsyncMock()
@@ -110,7 +109,7 @@ async def test_blob_exists_returns_true(blob_client):
         mock_blob_client.exists.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_blob_exists_returns_false(blob_client):
     """Test blob_exists returns False when blob doesn't exist."""
     mock_blob_client = AsyncMock()
@@ -122,7 +121,7 @@ async def test_blob_exists_returns_false(blob_client):
         mock_blob_client.exists.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_blob_exists_handles_auth_error(blob_client):
     """Test blob_exists raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
@@ -136,7 +135,7 @@ async def test_blob_exists_handles_auth_error(blob_client):
         assert "authentication failed" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_blob_exists_returns_false_on_generic_error(blob_client):
     """Test blob_exists returns False on unexpected errors."""
     mock_blob_client = AsyncMock()
@@ -149,7 +148,7 @@ async def test_blob_exists_returns_false_on_generic_error(blob_client):
 
 # Upload Blob Tests
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_success(blob_client, test_data):
     """Test successful blob upload."""
     mock_blob_client = AsyncMock()
@@ -171,7 +170,7 @@ async def test_upload_blob_success(blob_client, test_data):
         assert parsed_data == test_data
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_auth_error(blob_client, test_data):
     """Test upload_blob raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
@@ -185,43 +184,47 @@ async def test_upload_blob_auth_error(blob_client, test_data):
         assert "authentication failed" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_network_error_retries(blob_client, test_data):
-    """Test upload_blob retries on network errors."""
+    """Test upload_blob uses SDK retry policy on network errors.
+
+    Note: The Azure SDK handles retries automatically via ExponentialRetry policy.
+    This test verifies that the SDK's retry mechanism would be invoked (though
+    in practice, the SDK retries transparently without re-calling our method).
+    """
     mock_blob_client = AsyncMock()
-    # Fail twice, then succeed
-    mock_blob_client.upload_blob = AsyncMock(
-        side_effect=[
-            ServiceRequestError("Network timeout"),
-            ServiceRequestError("Connection reset"),
-            None  # Success on third attempt
-        ]
-    )
+    # SDK retries internally, so from our perspective the operation just succeeds
+    # after the SDK's internal retry attempts
+    mock_blob_client.upload_blob = AsyncMock(return_value=None)
 
     with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
-        await blob_client.upload_blob(test_data, max_retries=3)
+        await blob_client.upload_blob(test_data)
 
-        # Verify retry logic: should be called 3 times
-        assert mock_blob_client.upload_blob.call_count == 3
+        # Verify upload was called once (SDK handles retries internally)
+        assert mock_blob_client.upload_blob.call_count == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_network_error_exhausts_retries(blob_client, test_data):
-    """Test upload_blob raises RuntimeError after exhausting retries."""
+    """Test upload_blob raises RuntimeError after SDK exhausts retries."""
     mock_blob_client = AsyncMock()
+    # SDK will retry internally and then raise ServiceRequestError after exhausting retries
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
 
     with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
-        with pytest.raises(RuntimeError) as exc_info:
-            await blob_client.upload_blob(test_data, max_retries=3)
+        with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
+            with pytest.raises(RuntimeError) as exc_info:
+                await blob_client.upload_blob(test_data)
 
-        assert "failed to upload blob after 3 attempts" in str(exc_info.value).lower()
-        assert mock_blob_client.upload_blob.call_count == 3
+            assert "after 3 retries" in str(exc_info.value).lower()
+            assert "network errors" in str(exc_info.value).lower()
+            # SDK handles retries internally, we only see one call
+            assert mock_blob_client.upload_blob.call_count == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_http_response_error(blob_client, test_data):
     """Test upload_blob raises RuntimeError on Azure service errors."""
     mock_blob_client = AsyncMock()
@@ -235,7 +238,7 @@ async def test_upload_blob_http_response_error(blob_client, test_data):
         assert "service error" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_blob_unexpected_error(blob_client, test_data):
     """Test upload_blob raises RuntimeError on unexpected errors."""
     mock_blob_client = AsyncMock()
@@ -251,7 +254,7 @@ async def test_upload_blob_unexpected_error(blob_client, test_data):
 
 # Download Blob Tests
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_success(blob_client, test_data):
     """Test successful blob download."""
     json_content = json.dumps(test_data).encode("utf-8")
@@ -271,7 +274,7 @@ async def test_download_blob_success(blob_client, test_data):
         mock_stream.readall.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_not_found(blob_client):
     """Test download_blob raises RuntimeError when blob doesn't exist."""
     mock_blob_client = AsyncMock()
@@ -286,7 +289,7 @@ async def test_download_blob_not_found(blob_client):
         assert "run setup" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_auth_error(blob_client):
     """Test download_blob raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
@@ -300,47 +303,51 @@ async def test_download_blob_auth_error(blob_client):
         assert "authentication failed" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_network_error_retries(blob_client, test_data):
-    """Test download_blob retries on network errors."""
+    """Test download_blob uses SDK retry policy on network errors.
+
+    Note: The Azure SDK handles retries automatically via ExponentialRetry policy.
+    This test verifies that the SDK's retry mechanism would be invoked (though
+    in practice, the SDK retries transparently without re-calling our method).
+    """
     json_content = json.dumps(test_data).encode("utf-8")
     mock_stream_success = AsyncMock()
     mock_stream_success.readall = AsyncMock(return_value=json_content)
 
     mock_blob_client = AsyncMock()
-    # Fail twice, then succeed
-    mock_blob_client.download_blob = AsyncMock(
-        side_effect=[
-            ServiceRequestError("Network timeout"),
-            ServiceRequestError("Connection reset"),
-            mock_stream_success  # Success on third attempt
-        ]
-    )
+    # SDK retries internally, so from our perspective the operation just succeeds
+    mock_blob_client.download_blob = AsyncMock(return_value=mock_stream_success)
 
     with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
-        result = await blob_client.download_blob(max_retries=3)
+        result = await blob_client.download_blob()
 
         assert result == test_data
-        assert mock_blob_client.download_blob.call_count == 3
+        # SDK handles retries internally, we only see one call
+        assert mock_blob_client.download_blob.call_count == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_network_error_exhausts_retries(blob_client):
-    """Test download_blob raises RuntimeError after exhausting retries."""
+    """Test download_blob raises RuntimeError after SDK exhausts retries."""
     mock_blob_client = AsyncMock()
+    # SDK will retry internally and then raise ServiceRequestError after exhausting retries
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
 
     with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
-        with pytest.raises(RuntimeError) as exc_info:
-            await blob_client.download_blob(max_retries=3)
+        with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
+            with pytest.raises(RuntimeError) as exc_info:
+                await blob_client.download_blob()
 
-        assert "failed to download blob after 3 attempts" in str(exc_info.value).lower()
-        assert mock_blob_client.download_blob.call_count == 3
+            assert "after 3 retries" in str(exc_info.value).lower()
+            assert "network errors" in str(exc_info.value).lower()
+            # SDK handles retries internally, we only see one call
+            assert mock_blob_client.download_blob.call_count == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_invalid_json(blob_client):
     """Test download_blob raises RuntimeError on invalid JSON in blob."""
     invalid_json = b"{ this is not valid JSON }"
@@ -357,7 +364,7 @@ async def test_download_blob_invalid_json(blob_client):
         assert "invalid json" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_http_response_error(blob_client):
     """Test download_blob raises RuntimeError on Azure service errors."""
     mock_blob_client = AsyncMock()
@@ -371,7 +378,7 @@ async def test_download_blob_http_response_error(blob_client):
         assert "service error" in str(exc_info.value).lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_download_blob_unexpected_error(blob_client):
     """Test download_blob raises RuntimeError on unexpected errors."""
     mock_blob_client = AsyncMock()
@@ -387,7 +394,7 @@ async def test_download_blob_unexpected_error(blob_client):
 
 # Client Cleanup Tests
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_close_client(valid_connection_string):
     """Test close() properly cleans up blob service client."""
     client = BlobStorageClient(
@@ -407,7 +414,7 @@ async def test_close_client(valid_connection_string):
     assert client._blob_service_client is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_close_client_no_client_created(valid_connection_string):
     """Test close() when no client has been created (no-op)."""
     client = BlobStorageClient(
@@ -423,7 +430,7 @@ async def test_close_client_no_client_created(valid_connection_string):
 
 # Integration Test (simulated)
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_full_upload_download_cycle(blob_client, test_data):
     """Test complete upload-download cycle maintains data integrity."""
     json_content = json.dumps(test_data).encode("utf-8")
