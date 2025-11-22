@@ -225,17 +225,17 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
           template: ./infra/main.bicep
-          parameters: >-
-            containerRegistryName='${{ env.AZURE_CONTAINER_REGISTRY }}'
-            imageTag='${{ needs.push.outputs.image-tag }}'
-            azureAiEndpoint='${{ secrets.AZURE_ENDPOINT }}'
-            azureAiKey='${{ secrets.AZURE_API_KEY }}'
-            azureAiDeployment='gpt-4o'
-            storageMode='blob'
-            azureStorageConnectionString='${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}'
-            azureStorageContainerName='factory-data'
-            allowedOrigins='https://factory-agent-dev-frontend.mangotree-f82b3c1f.eastus.azurecontainerapps.io'
-            environmentName='${{ github.event.inputs.environment || 'dev' }}'
+          parameters: |
+            containerRegistryName=${{ env.AZURE_CONTAINER_REGISTRY }}
+            imageTag=${{ needs.push.outputs.image-tag }}
+            azureAiEndpoint=${{ secrets.AZURE_ENDPOINT }}
+            azureAiKey=${{ secrets.AZURE_API_KEY }}
+            azureAiDeployment=gpt-4o
+            storageMode=blob
+            azureStorageConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            azureStorageContainerName=factory-data
+            allowedOrigins="https://factory-agent-dev-frontend.mangotree-f82b3c1f.eastus.azurecontainerapps.io"
+            environmentName=${{ github.event.inputs.environment || 'dev' }}
           failOnStdErr: false
 
       # -----------------------------------------------------------------------
