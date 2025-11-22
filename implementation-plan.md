@@ -1,8 +1,33 @@
 # Factory Agent - Implementation Plan
 
-**Last Updated**: 2025-11-17 (Updated: PR3 Code Review Fixes)
-**Status**: Phase 3 Complete (100%) | Phase 4 In Progress (Deployed + Auth Complete) | Phase 5 Planned
+**Last Updated**: 2025-11-22 (Updated: PR22 Critical Issue Identified - Branch Cannot Be Merged As-Is)
+**Status**: Phase 3 Complete (100%) | Phase 4 In Progress (60% - Deployed + Auth Complete, CI/CD & Reliability Pending) | Phase 5 Planned
 **Architecture**: React + FastAPI + Azure Container Apps + AI Foundry + Azure Blob Storage + Azure AD Auth
+
+---
+
+## CRITICAL ALERT: PR22 Branch Issue ⚠️
+
+**BLOCKER**: PR22 WIP branch **CANNOT BE MERGED AS-IS** - It deletes 5 critical infrastructure commits.
+
+**Problem Summary**:
+- PR22 was branched from commit d8fd64b (Nov 17), BEFORE 5 recent infra commits (Nov 19-22)
+- Merging PR22 would **DELETE** critical Bicep templates added in main:
+  - `infra/backend.bicep` (283 lines)
+  - `infra/frontend.bicep` (205 lines)
+  - `infra/shared.bicep` (145 lines)
+- Would **REVERT** split infrastructure back to old monolithic `infra/main.bicep`
+- Includes unrelated frontend changes (724 lines in package.json, MainLayout, DashboardPage)
+
+**What's Good in PR22** (salvageable):
+- shared/blob_storage.py: ExponentialRetry policy with configurable retries
+- shared/config.py: AZURE_BLOB_RETRY_TOTAL, AZURE_BLOB_INITIAL_BACKOFF, etc.
+- .env.example: Retry/timeout documentation (lines 69-90)
+- tests/test_blob_storage.py: 24 tests passing (100%)
+
+**Solution**: Create clean branch `pr22-retry-logic-clean` by cherry-picking ONLY retry/timeout changes from PR22 onto main branch. DELETE old PR22 branch to avoid confusion.
+
+---
 
 ---
 
@@ -12,25 +37,29 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 **Completed** (Phases 1-3):
 - ✅ Backend: 21 REST API endpoints (metrics + traceability + AI chat)
-- ✅ Frontend: 5 complete React pages with Material-UI
+- ✅ Frontend: 5 complete React pages with Material-UI (~4,900 lines of TypeScript)
 - ✅ AI Chat: Azure AI Foundry integration with tool calling
 - ✅ Supply Chain: End-to-end traceability with material-supplier linkage
-- ✅ Testing: 79+ backend tests (100% passing)
+- ✅ Testing: 162 backend tests (161 passing / 99.4% pass rate)
 - ✅ Code Review: All critical and important issues resolved
 - ✅ Authentication: Azure AD JWT validation module complete
 
-**Deployed** (Phase 4 - 80% Complete):
-- ✅ Infrastructure: Bicep templates, Dockerfiles, GitHub Actions
-- ✅ Deployment: Frontend + backend deployed to Azure Container Apps (manual)
-- ✅ Azure Blob Storage: Integrated and accessible (but with transient issues)
+**Deployed** (Phase 4 - 60% Complete):
+- ✅ Infrastructure: Bicep templates (split backend/frontend), Dockerfiles, GitHub Actions workflows
+- ✅ Deployment: Frontend + backend deployed to Azure Container Apps (manual deployment)
+- ✅ Azure Blob Storage: Integrated and accessible
 - ✅ Hybrid Development: Local dev + cloud data working
 - ✅ Authentication: Azure AD JWT validation in backend/src/api/auth.py
-- ⚠️ **Issue Found**: Intermittent connectivity errors from Azure Blob Storage (known, isolated)
-- ⏳ **Needs**: Implement retry logic + timeouts (PR22) to resolve transient failures
+- ⚠️ **PR22 BLOCKER**: Retry logic implemented but branch has fatal issues (deletes 5 critical infrastructure commits) - CANNOT MERGE AS-IS
+  - Solution: Use PR22-FIX procedure to create clean branch with ONLY retry/timeout changes
+  - Estimated time: 30-45 minutes
+- ⏳ **CI/CD**: Infrastructure fixes completed (5 commits Nov 19-22), workflows ready for activation (blocked by PR22-FIX)
+- ⚠️ **Known Issue**: 1 pre-existing test failure in test_whitespace_only_message (edge case validation, low impact)
 
 **Next** (Phase 4 Continuation + Phase 5):
-- Resolve reliability issues (retry logic, timeout config)
-- Optional: Fix GitHub Actions CI/CD pipeline
+- Test and merge PR22 WIP branch (retry logic + timeout config already implemented)
+- Activate GitHub Actions CI/CD workflows (infrastructure fixes complete)
+- Fix pre-existing test failure (test_whitespace_only_message)
 - Phase 5: Polish with demo scenarios and documentation
 
 ---
@@ -55,77 +84,87 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 - Workaround: Using storage account in WKM Migration Sub (working smoothly)
 - Forum post created for community help on Azure Dev subscription ResourceNotFound issue
 
-### Phase 4 Status: Deployment & Reliability (In Progress)
+### Phase 4 Status: Deployment & Reliability (60% Complete)
 
-**Current Situation** (2025-11-17):
+**Current Situation** (2025-11-22):
 - ✅ All core features complete (backend API, frontend, AI chat)
 - ✅ Azure Blob Storage integrated and accessible
-- ⏳ **Deployed to Azure** (manually - not via GitHub Actions)
+- ✅ Deployed to Azure Container Apps (manual deployment - working)
   - Frontend deployed to Azure Container Apps
   - Backend deployed to Azure Container Apps
-- ⚠️ **Known Issue**: Intermittent "Server error - please try again later" messages
-  - **Root Cause**: Azure Blob Storage transient connectivity issues
-  - **Frequency**: Intermittent, appears under certain load conditions
-  - **Impact**: User-facing errors when `STORAGE_MODE="azure"`
-  - **Hypothesis**: Possible 24-48 hour propagation delay for initial Azure deployments
-  - **Investigation**: Identified when STORAGE_MODE switches to azure in production
+  - Azure AD authentication functional
+- ⏳ **PR22 WIP Branch** (Nov 18): Retry logic + timeout config implemented
+  - ExponentialRetry policy configured
+  - Timeout configuration added: AZURE_BLOB_RETRY_TOTAL=3, CONNECTION_TIMEOUT=30s, OPERATION_TIMEOUT=60s
+  - Code written but NOT COMMITTED to main yet
+  - Ready for testing and merge
+- ⏳ **CI/CD Preparation**: 5 infrastructure commits (Nov 19-22)
+  - Split Bicep templates (backend/frontend separate)
+  - Replaced azure/arm-deploy with direct az CLI
+  - Workflows ready for activation
+- ⚠️ **Known Issue**: 1 pre-existing test failure (test_whitespace_only_message - edge case validation, low impact)
 
 **Infrastructure Status**:
-- ✅ `infra/main.bicep` - Frontend + backend Container Apps defined
+- ✅ `infra/shared.bicep` - Shared resources (Log Analytics, Container Environment, Managed Identity)
+- ✅ `infra/backend.bicep` - Backend Container App + secrets (deployed)
+- ✅ `infra/frontend.bicep` - Frontend Container App + Nginx config (deployed)
 - ✅ `frontend/Dockerfile` - Multi-stage React build + Nginx (deployed)
 - ✅ `backend/Dockerfile` - Python 3.11 + FastAPI (deployed)
-- ⏳ `.github/workflows/deploy-frontend.yml` - CI/CD configured (not yet used)
-- ⏳ `.github/workflows/deploy-backend.yml` - CI/CD configured (not yet used)
+- ⏳ `.github/workflows/deploy-frontend.yml` - CI/CD configured, infrastructure fixes complete (Nov 19-22)
+- ⏳ `.github/workflows/deploy-backend.yml` - CI/CD configured, infrastructure fixes complete (Nov 19-22)
 - ✅ Azure Blob Storage - Configured and tested with live data
-- ⚠️ **Workaround**: Manual deployment in use (not automated CI/CD)
+- ⚠️ **Current State**: Manual deployment in use; CI/CD workflows ready for activation
 
-### Immediate Priority: Resolve Azure Blob Storage Reliability (Phase 4)
+### Immediate Priority: Complete Phase 4 Deployment
 
-**Option 1: Investigate & Wait** (Low effort, risky)
-- Theory: DNS/propagation delays on initial Azure deployment
-- Action: Wait 24-48 hours and re-test
-- Risk: May not resolve; production deployment incomplete
+**PR22-FIX: Azure Blob Storage Retry Logic (Status: CRITICAL - BLOCKING)**
 
-**Option 2: Implement Retry Logic** (Medium effort, recommended)
-- Add exponential backoff for Azure Blob Storage API calls
-- Configure retry policy: 3 attempts with 100-1000ms delays
-- Update: `backend/src/shared/blob_storage.py` (if exists)
-- Testing: Validate retry behavior under load
-- Effort: 1-2 hours
-- Impact: Improves reliability and handles transient failures
+**ALERT**: Original PR22 branch **CANNOT BE MERGED** - it was branched from Nov 17 before 5 recent infrastructure commits and would delete critical Bicep templates (infra/backend.bicep, infra/frontend.bicep, infra/shared.bicep) if merged.
 
-**Option 3: Add Timeout Configuration** (Medium effort, recommended)
-- Configure Azure Blob Storage client timeouts
-- Set connection timeout: 10-30 seconds
-- Set request timeout: 30-60 seconds
-- Add circuit breaker pattern for repeated failures
-- Effort: 1-2 hours
-- Impact: Prevents hanging requests, fail-fast behavior
+**Salvageable from PR22** (Good Code):
+- ✅ **Retry Logic Implementation**:
+  - ExponentialRetry policy with configurable max_retries (default: 3)
+  - Backoff: initial=2s, increment_base=2
+  - Configuration: AZURE_BLOB_RETRY_TOTAL, AZURE_BLOB_INITIAL_BACKOFF, AZURE_BLOB_INCREMENT_BASE
+- ✅ **Timeout Configuration**:
+  - Connection timeout: 30s (configurable via AZURE_BLOB_CONNECTION_TIMEOUT)
+  - Operation timeout: 60s (configurable via AZURE_BLOB_OPERATION_TIMEOUT)
+  - Environment variables documented in .env.example (lines 69-90)
+- ✅ **Tests**: 24 blob storage tests, all passing
 
-**Option 4: Add Caching Layer** (Higher effort, optional)
-- Cache Azure Blob data in-memory (Redis or process memory)
-- Reduce direct Azure calls by caching recent data
-- Implement cache invalidation strategy
-- Effort: 3-4 hours
-- Impact: Reduces load on Azure Blob, improves response times
+**Required Solution** (See "Next Actions" section for full instructions):
+1. Create clean branch: `pr22-retry-logic-clean` from current main (64b616e)
+2. Cherry-pick ONLY retry/timeout changes:
+   - shared/blob_storage.py (ExponentialRetry implementation)
+   - shared/config.py (timeout configuration variables)
+   - .env.example (documentation)
+   - tests/test_blob_storage.py (if any changes)
+3. Verify: pytest passes (161/162 tests expected)
+4. Merge clean branch to main
+5. Delete old PR22 branch
 
-**Option 5: Fallback to Local Storage** (Low effort, workaround)
-- When STORAGE_MODE="azure" fails, fallback to local JSON
-- Log fallback events for monitoring
-- Effort: <1 hour
-- Impact: Improves reliability but data isn't persisted to cloud
+**Estimated Effort**: 30-45 minutes
+**Blocks**: CI/CD activation, Phase 4 completion
 
-**Recommended Path**:
-1. **Short-term**: Implement Option 2 (retry logic) - 1-2 hours
-2. **Follow-up**: Add Option 3 (timeout config) - 1-2 hours
-3. **Monitor**: Test in production for 24-48 hours
-4. **Optional**: Add Option 4 (caching) if needed
+**CI/CD Activation (Status: Infrastructure Ready)**
+- ✅ **Infrastructure Fixes Complete** (5 commits Nov 19-22):
+  - Bicep templates split (backend/frontend separate)
+  - azure/arm-deploy replaced with direct az CLI
+  - Workflows configured with proper authentication
+- ⏳ **Next Steps**:
+  1. Test workflows manually via workflow_dispatch
+  2. Resolve any authentication or deployment issues
+  3. Activate automated deployments on push to main
+
+**Test Failure Fix (Status: Identified, Low Priority)**
+- ⚠️ **Issue**: test_whitespace_only_message expects 422/500, endpoint returns 200
+- **Location**: tests/test_chat_integration.py:193
+- **Impact**: Low (edge case validation, not core functionality)
+- ⏳ **Next Steps**: Review chat endpoint validation logic, fix test or endpoint
 
 **Alternatives: Optional Improvements**
-- **PR20B**: Code Quality (4 items, 1-2 hours total)
 - **PR21**: Selective Authentication (4-6 hours, security enhancement)
-- **GitHub Actions Fix**: Troubleshoot and fix CI/CD pipeline (2-3 hours)
-- **Deployment Documentation**: Document workaround process (1 hour)
+- **Deployment Documentation**: Document manual deployment process (1 hour)
 
 ---
 
@@ -372,16 +411,18 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 ### Development Statistics
 
 **Backend**:
-- 21 REST API endpoints
-- 79+ comprehensive tests (100% passing)
+- 21 REST API endpoints (all async with full type safety)
+- 162 comprehensive tests (161 passing / 99.4% pass rate)
 - 4 route modules (data, metrics, chat, traceability)
-- Rate limiting, CORS, input validation
+- Rate limiting (SlowAPI), CORS, input validation
 - Async/await throughout FastAPI
+- Azure AD JWT authentication
 
 **Frontend**:
-- 89,883 lines of TypeScript
-- 5 complete pages
-- 30+ API client methods
+- ~4,900 lines of TypeScript (src/ only, excluding node_modules)
+- 5 complete pages (Dashboard, Machines, Alerts, Traceability, Chat)
+- 51+ reusable components
+- 30+ type-safe API client methods
 - Full Material-UI integration
 - Recharts visualization
 
@@ -396,11 +437,12 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 ## Success Criteria
 
 ### Technical ✅
-- ✅ All backend endpoints working
-- ✅ All React pages functional
-- ✅ Type safety (Python + TypeScript)
-- ✅ Tests passing (79+)
-- ⏳ Deployed to Azure (ready to execute)
+- ✅ All backend endpoints working (21 async endpoints)
+- ✅ All React pages functional (5 pages, 51+ components)
+- ✅ Type safety (Python type hints + TypeScript strict mode)
+- ✅ Tests passing (161/162 = 99.4% pass rate)
+- ✅ Deployed to Azure Container Apps (manual deployment)
+- ⏳ CI/CD automation (infrastructure ready, workflows pending activation)
 
 ### Demonstrable ✅
 - ✅ Can trace quality issue → supplier
@@ -425,18 +467,17 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 | Phase 3: Frontend Development | 24-30 hrs | ~28 hrs | ✅ Complete |
 | Code Review + Fixes | 2-3 hrs | ~1 hr | ✅ Complete |
 | **PR3: Auth Module Code Review Fixes** | **~0.5 hrs** | **~0.5 hrs** | **✅ Complete** |
-| **Phase 4: Deployment** | **6-8 hrs** | **~4 hrs (manual)** | 🚀 **In Progress** |
-| Phase 4: Reliability (PR22) | **3-4 hrs** | **TBD** | 📋 **Next** |
-| Phase 4: CI/CD Fix (PR23, optional) | **2-3 hrs** | - | 📋 Optional |
-| Phase 4: Documentation (PR24, optional) | **1 hr** | - | 📋 Optional |
+| **Phase 4: Deployment (Manual)** | **6-8 hrs** | **~4 hrs** | **✅ Complete** |
+| Phase 4: PR22 Retry Logic (WIP) | **3-4 hrs** | **~2 hrs (code complete)** | ⏳ **Testing** |
+| Phase 4: CI/CD Activation | **2-3 hrs** | **~1 hr (infra fixes)** | ⏳ **Activation** |
+| Phase 4: Test Fix (optional) | **0.5 hrs** | - | 📋 Optional |
 | Phase 5: Polish & Scenarios | 8-12 hrs | - | 📋 Planned |
-| PR20B: Code Quality (optional) | 1-2 hrs | - | 📋 Optional |
 | PR21: Selective Authentication (optional) | 4-6 hrs | - | 📋 Optional |
-| **Total Completed** | - | **~57.5 hrs** | **76% Done** |
-| **Total Remaining (Core)** | - | **~10-15 hrs** | **24% Left** |
-| **Total with All Optional** | - | **~18-33 hrs** | **If included** |
+| **Total Completed** | - | **~61.5 hrs** | **82% Done** |
+| **Total Remaining (Core)** | - | **~2-4 hrs** | **18% Left** |
+| **Total with Phase 5** | - | **~10-16 hrs** | **If included** |
 
-**Current Status**: ~76% complete by effort, all core features done, Phase 4 deployed with authentication complete, next: reliability fixes (retry logic + timeouts)
+**Current Status**: ~82% complete by effort, all core features deployed, Phase 4 code complete (PR22 WIP ready for merge), next: test and merge PR22, activate CI/CD
 
 ---
 
@@ -466,22 +507,113 @@ Factory Agent is a **feature-complete** Industry 4.0 monitoring application with
 
 ## Next Actions
 
-### PR22: Azure Blob Storage Reliability (High Priority, 3-4 hrs)
-Implement retry logic + timeout configuration to resolve transient failures:
-- **Task 1**: Add exponential backoff to Azure Blob Storage client (1-2 hrs)
-- **Task 2**: Configure timeouts: 10-30s connection, 30-60s request (1-2 hrs)
-- **Task 3**: Test retry behavior under load (30 min - 1 hr)
+### PR22-FIX: Recreate Retry Logic Branch (BLOCKING - 30-45 min)
+**Status**: URGENT - Old PR22 cannot be merged, must create clean branch
+**Priority**: CRITICAL - Blocks all further work
 
-### PR23: GitHub Actions CI/CD Fix (Medium Priority, 2-3 hrs, Optional)
-Fix automated deployment workflow (currently using manual deployment):
-- Troubleshoot workflow failures, fix Azure auth, validate end-to-end
+**Step-by-step Instructions**:
+
+1. **Task 1**: Verify current state (5 min)
+   ```bash
+   git checkout main
+   git log --oneline -5  # Verify latest commit is 64b616e
+   ```
+
+2. **Task 2**: Create clean feature branch (2 min)
+   ```bash
+   git checkout -b pr22-retry-logic-clean
+   ```
+
+3. **Task 3**: Cherry-pick ONLY retry/timeout changes from old PR22 (15 min)
+   - Copy `shared/blob_storage.py` from PR22 (retry logic implementation)
+   - Copy `shared/config.py` lines 43-48 (timeout config variables)
+   - Copy `.env.example` lines 69-90 (retry/timeout documentation)
+   - Verify `tests/test_blob_storage.py` (all 24 tests should pass)
+   - **DO NOT** copy any other changes (frontend, package.json, Dockerfiles, etc.)
+
+4. **Task 4**: Validate changes (10 min)
+   ```bash
+   # Run full test suite
+   pytest
+   # Expected: 161/162 passing (same as before)
+
+   # Check git diff to verify ONLY retry/timeout files changed
+   git diff main
+   ```
+
+5. **Task 5**: Commit changes (2 min)
+   ```bash
+   git add .
+   git commit -m "feat: Add Azure Blob Storage retry logic and timeout configuration
+
+   - Implement ExponentialRetry policy with configurable max_retries (default: 3)
+   - Add connection timeout (default: 30s) and operation timeout (default: 60s)
+   - Configuration via environment variables:
+     * AZURE_BLOB_RETRY_TOTAL
+     * AZURE_BLOB_INITIAL_BACKOFF
+     * AZURE_BLOB_INCREMENT_BASE
+     * AZURE_BLOB_CONNECTION_TIMEOUT
+     * AZURE_BLOB_OPERATION_TIMEOUT
+   - Documented in .env.example
+
+   See PR22 for original implementation details."
+   ```
+
+6. **Task 6**: Merge to main (2 min)
+   ```bash
+   git checkout main
+   git merge pr22-retry-logic-clean
+   git push origin main
+   ```
+
+7. **Task 7**: Delete old PR22 branch (2 min)
+   ```bash
+   git branch -D pr22-feature  # (or whatever the old branch name is)
+   git push origin --delete pr22-feature
+   ```
+
+8. **Task 8**: Verify merge (2 min)
+   ```bash
+   git log --oneline -3  # Confirm new commit on main
+   pytest  # Run full test suite one more time
+   ```
+
+**Why This Approach**:
+- Preserves the good retry logic implementation from PR22
+- Avoids deleting 5 critical infrastructure commits
+- Creates clean, focused PR with ONLY retry/timeout changes
+- Prevents confusion with old PR22 branch still existing
+
+### PR22: Test and Merge Retry Logic (BLOCKED - See PR22-FIX Above)
+**Status**: BLOCKED - Cannot merge as-is, must use PR22-FIX approach instead
+- ~~Task 1: Review PR22 WIP branch changes~~
+- ~~Task 2: Run backend tests to validate retry behavior~~
+- ~~Task 3: Merge PR22 WIP to main branch~~
+- ~~Task 4: Deploy updated backend to Azure~~
+**Action**: Use PR22-FIX procedure above instead
+
+### PR23: Activate GitHub Actions CI/CD (Medium Priority, 1-2 hrs)
+**Status**: Infrastructure fixes complete (5 commits Nov 19-22), workflows ready
+- **Task 1**: Test backend workflow via workflow_dispatch (30 min)
+- **Task 2**: Test frontend workflow via workflow_dispatch (30 min)
+- **Task 3**: Resolve any authentication or deployment issues (30-60 min)
+- **Task 4**: Enable automated deployments on push to main (5 min)
+
+### Fix test_whitespace_only_message (Low Priority, 15-30 min, Optional)
+**Status**: 1 pre-existing test failure (edge case validation)
+- **Task 1**: Review chat endpoint validation logic (10 min)
+- **Task 2**: Fix test expectation or add input validation (10-20 min)
 
 ### PR24: Deployment Documentation (Low Priority, 1 hr, Optional)
-Document manual deployment workaround process for future reference
+Document deployment process and infrastructure decisions for future reference
 
 ---
 
-**Last Updated**: 2025-11-17
-**Status**: 76% complete by effort | Core features 100% done | Phase 4 deployed (manual)
-**Current Issue**: Intermittent Azure Blob connectivity (known, isolated)
-**Next**: Implement retry logic + timeouts (PR22) to resolve transient failures
+**Last Updated**: 2025-11-22 (CRITICAL: PR22 Branch Issue Identified)
+**Status**: 82% complete by effort | Core features 100% done | Phase 4 deployed (manual) | PR22 BLOCKED by branch conflict
+**Current State**: PR22 branch cannot be merged as-is (deletes 5 critical infrastructure commits); must use PR22-FIX procedure to cherry-pick retry logic onto clean branch
+**Critical Blocker**: PR22-FIX procedure (30-45 min) must be completed BEFORE CI/CD activation
+**Next Steps** (in order):
+1. **URGENT**: Complete PR22-FIX procedure (clean branch with ONLY retry/timeout changes) - 30-45 min
+2. Activate CI/CD workflows (blocked until PR22-FIX complete) - 1-2 hrs
+3. Fix test_whitespace_only_message (optional, low priority) - 15-30 min
