@@ -215,15 +215,29 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # -----------------------------------------------------------------------
-      # Deploy infrastructure with Bicep (idempotent)
+      # Deploy shared infrastructure (idempotent)
       # -----------------------------------------------------------------------
-      # This creates or updates all Azure resources defined in main.bicep
-      # Azure Resource Manager only updates resources that have changed
-      - name: Deploy Azure infrastructure
+      # Creates/updates shared resources: Container Environment, Log Analytics, Identity
+      # Safe to run on every deployment - only updates if changed
+      - name: Deploy shared infrastructure
         run: |
           az deployment group create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --template-file ./infra/main.bicep \
+            --template-file ./infra/shared.bicep \
+            --parameters \
+              containerRegistryName="${{ env.AZURE_CONTAINER_REGISTRY }}" \
+              environmentName="${{ github.event.inputs.environment || 'dev' }}"
+
+      # -----------------------------------------------------------------------
+      # Deploy backend infrastructure (idempotent)
+      # -----------------------------------------------------------------------
+      # Creates/updates ONLY backend Container App with backend image tag
+      # This ensures frontend is NOT redeployed when backend changes
+      - name: Deploy backend infrastructure
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file ./infra/backend.bicep \
             --parameters \
               containerRegistryName="${{ env.AZURE_CONTAINER_REGISTRY }}" \
               imageTag="${{ needs.push.outputs.image-tag }}" \
