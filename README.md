@@ -61,6 +61,8 @@ A production-ready cloud-native application for factory operations monitoring an
 - **Pydantic 2.10+** - Data validation and serialization
 - **Azure OpenAI SDK 1.51+** - AI chat with AsyncAzureOpenAI client
 - **Azure Blob Storage 12.15+** - Cloud data persistence (async client)
+- **Azure Key Vault 4.8+** - Centralized secrets management
+- **Azure Identity 1.15+** - DefaultAzureCredential for authentication
 - **SlowAPI 0.1+** - Rate limiting middleware
 - **python-jose 3.3+** - JWT token validation for Azure AD auth
 - **httpx 0.24+** - Async HTTP client for JWKS fetching
@@ -146,12 +148,45 @@ AZURE_BLOB_CONTAINER=factory-data
 AZURE_AD_TENANT_ID=your-azure-ad-tenant-id
 AZURE_AD_CLIENT_ID=your-app-registration-client-id
 
+# Azure Key Vault (Optional - for production secrets management)
+# Leave empty to use environment variables directly
+KEYVAULT_URL=https://your-vault-name.vault.azure.net/
+
 # Application
 DEBUG=false  # Set to 'true' for detailed error messages (development only)
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174
 RATE_LIMIT_CHAT=10/minute
 RATE_LIMIT_SETUP=5/minute
 ```
+
+**Using Azure Key Vault (Optional - Recommended for Production):**
+
+Azure Key Vault provides secure, centralized storage for application secrets:
+
+1. **Create Key Vault** (see [docs/AZURE_KEYVAULT_SETUP.md](docs/AZURE_KEYVAULT_SETUP.md)):
+   ```bash
+   az keyvault create --name factory-agent-kv \
+     --resource-group factory-agent-rg \
+     --location eastus
+   ```
+
+2. **Upload secrets** using the helper script:
+   ```bash
+   ./scripts/upload_secrets_to_keyvault.sh factory-agent-kv
+   ```
+
+3. **Configure the application**:
+   ```bash
+   KEYVAULT_URL=https://factory-agent-kv.vault.azure.net/
+   ```
+
+4. **Benefits**:
+   - No API keys in code or configuration files
+   - Secret rotation without code changes
+   - Audit trail for secret access
+   - Works seamlessly with Managed Identity in Azure
+
+For detailed setup instructions, see [docs/AZURE_KEYVAULT_SETUP.md](docs/AZURE_KEYVAULT_SETUP.md).
 
 **Getting Azure AD credentials (Optional):**
 1. Go to [Azure Portal](https://portal.azure.com)
@@ -293,7 +328,7 @@ factory-agent/
 │   ├── data_generator.py      # Synthetic data generation
 │   ├── chat_service.py        # Azure AI Foundry integration
 │   ├── blob_storage.py        # Azure Blob Storage client
-│   └── config.py              # Environment configuration
+│   └── config.py              # Configuration + Azure Key Vault integration
 │
 ├── tests/                      # Test suite (79+ tests)
 │   ├── test_chat_service.py
@@ -312,7 +347,11 @@ factory-agent/
 │   ├── DEPLOYMENT.md          # Deployment guide
 │   ├── INSTALL.md             # Installation instructions
 │   ├── ROADMAP.md             # Project roadmap
+│   ├── AZURE_KEYVAULT_SETUP.md # Key Vault setup guide
 │   └── archive/               # Historical documentation
+│
+├── scripts/                    # Helper scripts
+│   └── upload_secrets_to_keyvault.sh # Key Vault secret upload
 │
 ├── docker-compose.yml         # Local development setup
 ├── implementation-plan.md     # Project implementation plan
@@ -520,6 +559,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment guide and t
 - **[implementation-plan.md](implementation-plan.md)** - Complete project roadmap with current phase status
 - **[docs/INSTALL.md](docs/INSTALL.md)** - Detailed installation guide
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment instructions and troubleshooting
+- **[docs/AZURE_KEYVAULT_SETUP.md](docs/AZURE_KEYVAULT_SETUP.md)** - Azure Key Vault setup and configuration
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** - Project roadmap and future plans
 - **[docs/archive/](docs/archive/)** - Historical documentation
 

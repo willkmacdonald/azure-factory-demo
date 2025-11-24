@@ -96,6 +96,27 @@ class ChatRequest(BaseModel):
         max_length=50
     )
 
+    @field_validator('message')
+    @classmethod
+    def validate_message_content(cls, v: str) -> str:
+        """Ensure message is non-empty after stripping whitespace.
+
+        This prevents users from submitting empty or whitespace-only messages,
+        which would waste API tokens and provide no value.
+
+        Args:
+            v: Message content to validate
+
+        Returns:
+            str: Validated message content
+
+        Raises:
+            ValueError: If message is empty or whitespace-only
+        """
+        if not v.strip():
+            raise ValueError("Message cannot be empty or whitespace-only")
+        return v
+
     @field_validator('history')
     @classmethod
     def validate_total_history_size(cls, v: List[ChatMessage]) -> List[ChatMessage]:
