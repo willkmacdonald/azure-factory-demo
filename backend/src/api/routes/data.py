@@ -36,7 +36,7 @@ from shared.data import (
     data_exists,
     MACHINES,
 )
-from shared.config import RATE_LIMIT_SETUP
+from shared.config import RATE_LIMIT_SETUP, RATE_LIMIT_SETUP_ANONYMOUS
 from src.api.auth import get_current_user_optional
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,24 @@ router = APIRouter(prefix="/api", tags=["Data"])
 # Create limiter instance for this router
 # Used to apply rate limits to the setup endpoint (prevents spam data generation)
 limiter = Limiter(key_func=get_remote_address)
+
+
+def get_setup_rate_limit(request: Request) -> str:
+    """Return different rate limit based on authentication status.
+
+    Authenticated users (with Bearer token) get more generous limits (5/minute).
+    Anonymous users get stricter limits (1/hour by default) to prevent cost abuse.
+
+    Args:
+        request: FastAPI Request object
+
+    Returns:
+        Rate limit string (e.g., "5/minute" or "1/hour")
+    """
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return RATE_LIMIT_SETUP  # 5/minute for authenticated users
+    return RATE_LIMIT_SETUP_ANONYMOUS  # 1/hour for anonymous users
 
 # =============================================================================
 # REQUEST/RESPONSE MODELS
@@ -151,7 +169,7 @@ class DateRangeResponse(BaseModel):
 
 
 @router.post("/setup", response_model=SetupResponse)
-@limiter.limit(RATE_LIMIT_SETUP)
+@limiter.limit(get_setup_rate_limit)
 async def setup_data(
     request: Request,
     setup_request: SetupRequest = SetupRequest(),

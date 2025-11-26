@@ -116,12 +116,21 @@ ALLOWED_ORIGINS: List[str] = [
 ]
 RATE_LIMIT_CHAT: str = os.getenv("RATE_LIMIT_CHAT", "10/minute")
 RATE_LIMIT_SETUP: str = os.getenv("RATE_LIMIT_SETUP", "5/minute")
+# Stricter rate limit for anonymous/demo access (cost protection)
+RATE_LIMIT_SETUP_ANONYMOUS: str = os.getenv("RATE_LIMIT_SETUP_ANONYMOUS", "1/hour")
 
 # Environment settings
 DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 
 # Storage settings
-STORAGE_MODE: str = os.getenv("STORAGE_MODE", "local")  # "local" or "azure"
+STORAGE_MODE: str = os.getenv("STORAGE_MODE", "azure")  # "local" or "azure"
+
+# Warn if using local storage mode (intended for debugging only)
+if STORAGE_MODE.lower() == "local":
+    logger.warning(
+        "Using LOCAL storage mode. This is intended for debugging only. "
+        "Production deployments should use STORAGE_MODE='azure'."
+    )
 AZURE_STORAGE_CONNECTION_STRING: Optional[str] = get_secret("AZURE-STORAGE-CONNECTION-STRING")
 AZURE_BLOB_CONTAINER: str = os.getenv("AZURE_BLOB_CONTAINER", "factory-data")
 AZURE_BLOB_NAME: str = os.getenv("AZURE_BLOB_NAME", "production.json")
@@ -133,5 +142,13 @@ AZURE_BLOB_INCREMENT_BASE: int = int(os.getenv("AZURE_BLOB_INCREMENT_BASE", "2")
 AZURE_BLOB_CONNECTION_TIMEOUT: int = int(os.getenv("AZURE_BLOB_CONNECTION_TIMEOUT", "30"))
 AZURE_BLOB_OPERATION_TIMEOUT: int = int(os.getenv("AZURE_BLOB_OPERATION_TIMEOUT", "60"))
 
+# Upload size limit (bytes) - default 50MB for demo data
+# This prevents DoS attacks via large payload uploads
+AZURE_BLOB_MAX_UPLOAD_SIZE: int = int(os.getenv("AZURE_BLOB_MAX_UPLOAD_SIZE", str(50 * 1024 * 1024)))
+
 # Cost estimation settings
 DEFECT_COST_ESTIMATE: float = 50.0  # USD per defect (for demo cost impact calculations)
+
+# Memory storage settings (PR25)
+# Uses existing AZURE_BLOB_CONTAINER, just different blob name
+MEMORY_BLOB_NAME: str = os.getenv("MEMORY_BLOB_NAME", "memory.json")

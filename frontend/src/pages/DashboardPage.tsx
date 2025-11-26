@@ -112,7 +112,7 @@ const DashboardPage: React.FC = () => {
 
   /**
    * Handle data generation
-   * - Requires user authentication
+   * - Prompts for sign-in if Azure AD is configured and user is not authenticated
    * - Calls backend API to generate synthetic data
    * - Refreshes dashboard after success
    */
@@ -121,6 +121,19 @@ const DashboardPage: React.FC = () => {
       setGenerating(true);
       setError(null);
       setSuccessMessage(null);
+
+      // If Azure AD is configured and user is not authenticated, prompt sign-in first
+      if (azureAdConfigured && !isAuthenticated) {
+        try {
+          await instance.loginPopup(loginRequest);
+          // After successful login, continue with data generation
+        } catch (loginErr) {
+          console.error('Failed to sign in:', loginErr);
+          setError('Please sign in with your Microsoft account to generate data');
+          setGenerating(false);
+          return;
+        }
+      }
 
       // Generate data (default 30 days)
       const response = await apiService.generateData({ days: 30 });
@@ -183,9 +196,10 @@ const DashboardPage: React.FC = () => {
    * Render empty state if no data exists
    */
   if (!stats?.exists) {
-    // Determine which button to show based on Azure AD configuration and auth state
-    const showSignInButton = azureAdConfigured && !isAuthenticated;
-    const showGenerateButton = !azureAdConfigured || isAuthenticated;
+    // Always show generate button - it will prompt sign-in if needed when clicked
+    const showSignInButton = false; // No separate sign-in button needed
+    const showGenerateButton = true; // Always visible
+    const requiresSignIn = azureAdConfigured && !isAuthenticated;
 
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 p-8">
@@ -207,8 +221,8 @@ const DashboardPage: React.FC = () => {
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
             <p className="text-blue-800 dark:text-blue-200">
               No production data available.
-              {azureAdConfigured && !isAuthenticated
-                ? ' Please sign in with your Microsoft account to generate demo data.'
+              {requiresSignIn
+                ? ' Click the button below to sign in and generate demo data.'
                 : ' Click the button below to generate synthetic production data for testing.'}
             </p>
           </div>
@@ -237,7 +251,12 @@ const DashboardPage: React.FC = () => {
                 {generating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating Data...
+                    {requiresSignIn ? 'Signing in...' : 'Generating Data...'}
+                  </>
+                ) : requiresSignIn ? (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    Sign in & Generate Demo Data
                   </>
                 ) : (
                   <>
