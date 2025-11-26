@@ -37,7 +37,7 @@ from shared.data import (
     MACHINES,
 )
 from shared.config import RATE_LIMIT_SETUP
-from backend.src.api.auth import get_current_user
+from src.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

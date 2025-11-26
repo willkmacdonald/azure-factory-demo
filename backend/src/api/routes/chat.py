@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from shared.chat_service import get_chat_response, build_system_prompt
 from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG
-from backend.src.api.auth import get_current_user_optional
+from src.api.auth import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
