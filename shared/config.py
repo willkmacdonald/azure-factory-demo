@@ -100,12 +100,6 @@ AZURE_API_VERSION: str = get_secret("AZURE-API-VERSION") or "2024-08-01-preview"
 FACTORY_NAME: str = get_secret("FACTORY-NAME") or "Demo Factory"
 DATA_FILE: str = os.getenv("DATA_FILE", "./data/production.json")
 
-# Voice interface settings
-TTS_VOICE: str = "alloy"  # OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
-TTS_MODEL: str = "tts-1"  # or "tts-1-hd" for higher quality
-WHISPER_MODEL: str = "whisper-1"
-RECORDING_DURATION: int = 5  # seconds
-
 # API Security settings
 ALLOWED_ORIGINS: List[str] = [
     origin.strip()
