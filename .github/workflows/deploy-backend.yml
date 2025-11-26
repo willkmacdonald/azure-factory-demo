@@ -98,7 +98,8 @@ jobs:
           echo "Checking for DEBUG mode in configuration files..."
 
           # Check .env.example for DEBUG=true (should be false)
-          if grep -q "DEBUG=true" .env.example 2>/dev/null; then
+          # Use regex to match only non-commented lines starting with DEBUG=true
+          if grep -E "^DEBUG=true" .env.example 2>/dev/null; then
             echo "::error::.env.example contains DEBUG=true - this should be DEBUG=false"
             exit 1
           fi
