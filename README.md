@@ -2,7 +2,7 @@
 
 A production-ready cloud-native application for factory operations monitoring and AI-powered insights, featuring comprehensive supply chain traceability, real-time metrics, and an intelligent chatbot. Built with React, FastAPI, and deployed on Azure Container Apps.
 
-## 🎉 Project Status: Production-Ready (Phase 4 Complete - 100%)
+## Project Status: Production-Ready (Phase 4 Complete + Phase 5B In Progress)
 
 **All core features are implemented and deployed to Azure Container Apps with active CI/CD!**
 
@@ -11,19 +11,24 @@ A production-ready cloud-native application for factory operations monitoring an
 - ✅ **AI Chat**: Azure AI Foundry integration with tool calling
 - ✅ **Supply Chain Traceability**: End-to-end visibility (materials → suppliers → batches → orders)
 - ✅ **Material-Supplier Root Cause Linkage**: Direct traceability from defects to suppliers (PR19)
+- ✅ **Agent Memory System**: Cross-session context persistence for investigations and actions (PR25)
 - ✅ **Authentication**: Azure AD JWT validation for admin endpoints (PR3)
-- ✅ **Security**: Rate limiting, CORS, input validation, Azure AD auth, prompt injection mitigation
+- ✅ **Security**: Rate limiting, CORS, security headers, input validation, upload size limits, Azure AD auth
 - ✅ **Testing**: 138 tests, 100% passing
 - ✅ **Infrastructure**: Bicep templates (split backend/frontend), Docker, CI/CD active
 - ✅ **Reliability**: Azure Blob Storage retry logic + timeout configuration (PR22)
 - ✅ **Code Quality**: 99.5/10 with 100% type hint coverage
 
-**Current Phase**: Phase 4 Complete (87% overall progress by effort). Ready for security hardening (PR24 series) and demo scenarios (Phase 5).
+**Current Phase**: Phase 5B In Progress - Memory system backend complete (PR25), chat integration next (PR26-29).
 
 ## Features
 
 ### Core Capabilities
 - **AI-Powered Chat**: Natural language queries with Azure AI Foundry (GPT-4, GPT-4o) and tool calling
+- **Agent Memory System** (NEW - PR25): Cross-session context persistence
+  - Track ongoing investigations across conversations
+  - Log actions with baseline metrics for impact measurement
+  - Generate shift handoff summaries
 - **Real-Time Dashboards**: OEE, downtime, quality metrics with interactive charts
 - **Supply Chain Traceability**:
   - Backward trace: Batch → Materials → Suppliers
@@ -43,8 +48,17 @@ A production-ready cloud-native application for factory operations monitoring an
 - **Async-First Backend**: FastAPI with async/await for scalability
 - **Type-Safe Frontend**: React 19 + TypeScript with Material-UI v7
 - **Dual Storage**: Local JSON (dev) or Azure Blob Storage (production)
+- **Agent Memory Persistence**: Investigations and actions stored in Azure Blob Storage
 - **Functions-First**: Maintainable code with minimal class overhead
-- **Production-Ready**: Rate limiting, error handling, comprehensive logging
+- **Production-Ready**: Rate limiting, security headers, error handling, comprehensive logging
+
+### Security Features (PR24C)
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
+- **Upload Size Validation**: 50MB max upload limit to prevent DoS attacks
+- **Rate Limiting**: Per-endpoint rate limits (SlowAPI)
+- **Input Validation**: Pydantic models on all endpoints
+- **Azure AD Auth**: JWT validation for admin endpoints
+- **Prompt Injection Mitigation**: Pattern detection and logging
 
 ## Tech Stack
 
@@ -324,12 +338,13 @@ factory-agent/
 │   └── Dockerfile
 │
 ├── shared/                     # Shared Python modules
-│   ├── models.py              # Pydantic data models
+│   ├── models.py              # Pydantic data models (incl. Investigation, Action, MemoryStore)
 │   ├── metrics.py             # Analysis functions
 │   ├── data.py                # Data storage (JSON + Azure Blob)
 │   ├── data_generator.py      # Synthetic data generation
 │   ├── chat_service.py        # Azure AI Foundry integration
-│   ├── blob_storage.py        # Azure Blob Storage client
+│   ├── blob_storage.py        # Azure Blob Storage client (upload validation)
+│   ├── memory_service.py      # Agent memory persistence (NEW - PR25)
 │   └── config.py              # Configuration + Azure Key Vault integration
 │
 ├── tests/                      # Test suite (138 tests, 11 files)
@@ -443,6 +458,28 @@ Quality issues now link directly to materials and suppliers:
 - Production-ready
 
 Switch modes via environment variable: `STORAGE_MODE=local` or `STORAGE_MODE=azure`
+
+### Agent Memory System (PR25)
+
+The memory system enables cross-session context persistence for investigations and actions:
+
+**Data Models**:
+- **Investigation**: Track ongoing issue investigations with findings, hypotheses, and status
+- **Action**: Log parameter changes, maintenance, or process changes with baseline metrics for impact tracking
+
+**Capabilities**:
+- `save_investigation()`: Create new investigations linked to machines or suppliers
+- `update_investigation()`: Add findings, hypotheses, or change status
+- `log_action()`: Record actions with baseline metrics and expected impact
+- `get_relevant_memories()`: Filter by machine, supplier, or status
+- `generate_shift_summary()`: Generate handoff summaries for shift changes
+
+**Example Use Cases**:
+- "Following up on the CNC-001 investigation from yesterday..."
+- "Your temperature adjustment improved OEE by 8%"
+- "Here's the shift summary with 3 active investigations and 2 pending follow-ups"
+
+**Storage**: `memory.json` blob in Azure Blob Storage (requires `STORAGE_MODE=azure`)
 
 ## Planted Scenarios
 
@@ -599,11 +636,11 @@ MIT
 
 ---
 
-**Status**: Production-ready with active CI/CD (Phase 4 complete - 100%). **Latest**: Code quality review completed with 99.5/10 score and 100% type hint coverage (Session 4 - 2025-11-23). Ready for security hardening (PR24 series) and demo scenarios (Phase 5). See [implementation-plan.md](implementation-plan.md) for roadmap.
+**Status**: Production-ready with active CI/CD. Phase 5B in progress - Memory system backend complete (PR25), chat integration next (PR26-29). See [implementation-plan.md](implementation-plan.md) for roadmap.
 
 **Recent Updates:**
+- **2025-11-26**: PR25 Complete - Agent memory system with Investigation, Action, and MemoryStore models
+- **2025-11-26**: PR24C Complete - Security headers middleware and upload size validation (50MB max)
 - **2025-11-26**: PR24A Complete - Secrets migrated to Azure Key Vault, .env.example updated
-- **2025-11-26**: Implementation plan optimized (945 → 437 lines, 54% reduction)
 - **2025-11-23**: Session 4 - Comprehensive code review (98/10 → 99.5/10), 3 quick wins implemented
 - **2025-11-23**: PR22 - Azure Blob Storage retry logic + timeout configuration (exponential backoff, 24 new tests)
-- **2025-11-22**: Infrastructure split - Separate Bicep templates for backend/frontend deployment

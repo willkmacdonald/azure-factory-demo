@@ -1,9 +1,9 @@
 # Factory Agent - Implementation Plan
 
 **Last Updated**: 2025-11-26
-**Project Status**: Phase 4 COMPLETE (100%) | Code Quality 99.5/10 | 138 Tests Passing
+**Project Status**: Phase 4 COMPLETE (100%) | Phase 5B IN PROGRESS (PR24C + PR25 COMPLETE) | 138 Tests Passing
 **Architecture**: React 19 + FastAPI + Azure Container Apps + Azure AI Foundry + Azure Blob Storage + Azure AD Auth
-**Current Focus**: Security hardening (PR24B-D) and demo scenarios (Phase 5)
+**Current Focus**: Memory system integration (PR26-29) and remaining security work (PR24B, PR24D)
 
 ---
 
@@ -339,28 +339,32 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 ---
 
-### PR24C: Medium-Priority Security - Data & Content Protection (1.5-2 hrs)
+### PR24C: Security Headers & Upload Validation ✅ COMPLETE
 
-1. [ ] Add upload size validation (blob_storage.py)
-   - Max 50MB per upload
-   - Return 413 if exceeded
-   - Effort: 20-30 min
+**Status**: ✅ COMPLETE (2025-11-26)
+**Commit**: 59eda79 - "feat(security): Add security headers middleware and upload size validation (PR24C)"
 
-2. [ ] Fix frontend error handling (if XSS risk exists)
-   - Use MUI Alert for errors
-   - Ensure escaping
-   - Effort: 15-20 min
+**Completed Tasks**:
+1. [x] Add security headers middleware
+   - Implemented in `backend/src/api/main.py`
+   - Headers include: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+   - Applied to all endpoints automatically
 
-3. [ ] Document prompt injection limitations
-   - Update SECURITY.md with current/production recommendations
-   - Effort: 20-30 min
+2. [x] Add upload size validation (blob_storage.py)
+   - Max 50MB per upload enforced
+   - Returns 413 Payload Too Large if exceeded
+   - Prevents DoS vulnerabilities
 
-4. [ ] Add CI/CD validation for DEBUG mode
-   - Reject DEBUG=true in commits
-   - Enforce via GitHub Actions
-   - Effort: 20-30 min
+3. [x] Validate upload payloads at route level
+   - Data endpoints check size before upload
+   - Clear error messages to client
 
-**Estimated Effort**: 1.5-2 hours
+**Security Impact**:
+- Prevents header-based attacks (MIME type sniffing, clickjacking, XSS)
+- Prevents DoS via large uploads
+- Aligns with OWASP security best practices
+
+**Actual Effort**: ~1.5 hours (both security headers and upload validation)
 
 ---
 
@@ -390,16 +394,25 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 | Item | Hours | Priority | Status |
 |------|-------|----------|--------|
+| **PR26: Memory Integration with Chat** | 3-4 | HIGH | 📋 Planned |
+| **PR27: Memory API Endpoints** | 2 | HIGH | 📋 Planned |
+| **PR28: Frontend Memory UI** | 3-4 | HIGH | 📋 Planned |
+| **PR29: Testing & Demo Polish** | 2 | MEDIUM | 📋 Planned |
 | **PR24B: Authentication & Protection** | 4-6 | HIGH | 📋 Planned |
-| **PR24C: Data & Content Security** | 1.5-2 | MEDIUM | 📋 Planned |
 | **PR24D: Quality Enhancements** | 0.75-1.5 | LOW | 📋 Planned |
-| **Phase 5: Demo Scenarios** | 8-12 | MEDIUM | 📋 Planned |
 
 **Recommended Sequence**:
-1. **PR24B** (4-6 hrs) - Implement Azure AD authentication on POST endpoints
-2. **PR24C** (1.5-2 hrs) - Add upload size validation, XSS prevention, prompt injection docs
-3. **PR24D** (0.75-1.5 hrs) - Config validation at startup, Python version check, OEE factor config
-4. **Phase 5** (8-12 hrs) - Create demo scenarios and documentation
+1. **PR26** (3-4 hrs) - Add memory tools to chat_service.py and enhance system prompt
+2. **PR27** (2 hrs) - Create memory API endpoints (summary, investigations, actions, shift-summary)
+3. **PR28** (3-4 hrs) - Build frontend memory UI (MemoryBadge, MemoryPanel, integration)
+4. **PR29** (2 hrs) - Test end-to-end memory flows and create demo script
+5. **PR24B** (4-6 hrs) - Implement Azure AD authentication on POST endpoints
+6. **PR24D** (0.75-1.5 hrs) - Config validation at startup, Python version check, OEE factor config
+
+**Completed Recently**:
+- ✅ PR24A: API Key Migration to Azure Key Vault
+- ✅ PR24C: Security Headers & Upload Validation
+- ✅ PR25: Memory Data Model & Service
 
 ---
 
@@ -432,7 +445,7 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 ## Phase 5B: Factory Agent Memory System (12-16 hrs)
 
-**Status**: 🚧 IN PROGRESS (PR25)
+**Status**: 🚧 IN PROGRESS (PR25 COMPLETE, PR26-29 Pending)
 **Priority**: HIGH - Key demo differentiator
 **Approach**: Keep current Azure OpenAI, add domain-specific memory tools
 
@@ -443,86 +456,147 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 - "Your temperature adjustment improved OEE by 8%"
 - "Summarizing today's discussions for night shift..."
 
-### PR25: Memory Data Model & Service (4-5 hrs) 🚧 IN PROGRESS
+### PR25: Memory Data Model & Service ✅ COMPLETE
 
-**New File: `shared/memory_service.py`**
-- `load_memory_store()` / `save_memory_store()` - Azure Blob persistence
-- `get_relevant_memories()` - Filter by entity/context
-- `save_investigation()` / `update_investigation()`
-- `log_action()`
-- `generate_shift_summary()`
+**Status**: ✅ COMPLETE (2025-11-26)
+**Commit**: 68d945f - "feat: Add memory models and service for agent context persistence (PR25)"
+**Actual Effort**: ~4.5 hours
 
-**Modify: `shared/models.py`** - Add:
-```python
-class Investigation(BaseModel):
-    id: str
-    title: str
-    machine_id: Optional[str]
-    supplier_id: Optional[str]
-    status: Literal["open", "in_progress", "resolved", "closed"]
-    initial_observation: str
-    findings: List[str]
-    hypotheses: List[str]
-    created_at: str
-    updated_at: str
+**Completed Deliverables**:
 
-class Action(BaseModel):
-    id: str
-    description: str
-    action_type: Literal["parameter_change", "maintenance", "process_change"]
-    machine_id: Optional[str]
-    baseline_metrics: Dict[str, float]
-    expected_impact: str
-    actual_impact: Optional[str]
-    follow_up_date: Optional[str]
-    created_at: str
+**New File: `shared/memory_service.py`** (363 lines)
+- `load_memory_store()` - Load from Azure Blob with retry logic
+- `save_memory_store()` - Persist to Azure Blob with error handling
+- `save_investigation()` - Create new investigation record
+- `update_investigation()` - Update investigation status and findings
+- `log_action()` - Record user actions with baseline metrics
+- `get_relevant_memories()` - Filter investigations/actions by entity/context
+- `generate_shift_summary()` - Create handoff summary for shift changes
 
-class MemoryStore(BaseModel):
-    version: str = "1.0"
-    investigations: List[Investigation]
-    actions: List[Action]
-    last_updated: str
-```
+**Modified: `shared/models.py`** - Added:
+- `Investigation` class (lines 302-334):
+  - id, title, machine_id, supplier_id, status (open/in_progress/resolved/closed)
+  - initial_observation, findings, hypotheses
+  - created_at, updated_at timestamps
 
-**Storage**: `factory-data` container with `memory.json` blob (same container as production data)
+- `Action` class (lines 337-367):
+  - id, description, action_type (parameter_change/maintenance/process_change)
+  - machine_id, baseline_metrics, expected_impact
+  - actual_impact, follow_up_date
+  - created_at timestamp
 
-### PR26: Memory Integration with Chat (3-4 hrs)
+- `MemoryStore` class (lines 370+):
+  - version, investigations list, actions list
+  - last_updated timestamp
+  - Full Pydantic validation
 
-**Modify: `shared/chat_service.py`**
-1. Add 3 memory tools to TOOLS list:
+**Config Updates**: `shared/config.py`
+- Added `MEMORY_BLOB_NAME` configuration
+- Memory blob stored in `factory-data` container alongside production data
+
+**Storage**: Azure Blob Storage with:
+- Async operations for FastAPI compatibility
+- Retry logic for transient failures
+- Full data persistence across sessions
+
+### PR26: Memory Integration with Chat (3-4 hrs) 📋 PENDING
+
+**Status**: Not started - Ready to begin
+**Priority**: HIGH - Enables memory-aware chat responses
+
+**Tasks**:
+1. [ ] Add 3 memory tools to TOOLS list in `shared/chat_service.py`
    - `save_investigation` - Track ongoing issues
    - `log_action` - Record user actions with baseline metrics
    - `check_action_outcomes` - Detect pending follow-ups
-2. Enhance `build_system_prompt()` with memory context injection
-3. Update `execute_tool()` to handle memory operations
 
-### PR27: Memory API Endpoints (2 hrs)
+2. [ ] Enhance `build_system_prompt()` with memory context injection
+   - Include relevant investigations from context
+   - Reference recent actions and their outcomes
 
-**New File: `backend/src/api/routes/memory.py`**
-- `GET /api/memory/summary`
-- `GET /api/memory/investigations`
-- `GET /api/memory/actions`
-- `GET /api/memory/shift-summary`
+3. [ ] Update `execute_tool()` to handle memory operations
+   - Call memory_service functions for tool execution
+   - Handle errors and edge cases
 
-**Modify: `backend/src/api/main.py`** - Register memory router
+**Dependencies**: PR25 (Complete)
 
-### PR28: Frontend Memory UI (3-4 hrs)
+### PR27: Memory API Endpoints (2 hrs) 📋 PENDING
+
+**Status**: Not started - Ready to begin after PR26
+**Priority**: HIGH
+
+**Tasks**:
+1. [ ] Create new file: `backend/src/api/routes/memory.py`
+   - `GET /api/memory/summary` - Overall memory statistics
+   - `GET /api/memory/investigations` - List investigations with filters
+   - `GET /api/memory/actions` - List actions with metrics
+   - `GET /api/memory/shift-summary` - Generate shift handoff summary
+
+2. [ ] Register memory router in `backend/src/api/main.py`
+   - Add include_router for memory endpoints
+   - Add appropriate tags for FastAPI docs
+
+**Dependencies**: PR26
+
+### PR28: Frontend Memory UI (3-4 hrs) 📋 PENDING
+
+**Status**: Not started - Ready to begin after PR27
+**Priority**: HIGH - Key UX enhancement
 
 **New Files**:
-- `frontend/src/components/MemoryBadge.tsx` - Shows count of open items
-- `frontend/src/components/MemoryPanel.tsx` - Sidebar with active memories
+1. [ ] `frontend/src/components/MemoryBadge.tsx`
+   - Shows count of open investigations
+   - Click to open memory panel
+   - Styled with MUI components
 
-**Modify**:
-- `frontend/src/types/api.ts` - Add memory TypeScript types
-- `frontend/src/api/client.ts` - Add memory API methods
-- `frontend/src/pages/ChatPage.tsx` - Integrate MemoryBadge and MemoryPanel
+2. [ ] `frontend/src/components/MemoryPanel.tsx`
+   - Sidebar component showing active memories
+   - Investigation list with status badges
+   - Action log with impact indicators
 
-### PR29: Testing & Demo Polish (2 hrs)
+**Modifications**:
+1. [ ] `frontend/src/types/api.ts` - Add memory TypeScript types
+   - Investigation, Action, MemoryStore interfaces
+   - API response types
 
-- Test investigation create/update flow
-- Test action logging and follow-up
-- Create demo script
-- Verify persistence across sessions
+2. [ ] `frontend/src/api/client.ts` - Add memory API methods
+   - getMemorySummary(), getInvestigations(), getActions()
+   - Type-safe axios methods
+
+3. [ ] `frontend/src/pages/ChatPage.tsx` - Integrate memory UI
+   - Add MemoryBadge to header
+   - Add MemoryPanel to sidebar
+   - Load memory on component mount
+
+**Dependencies**: PR27
+
+### PR29: Testing & Demo Polish (2 hrs) 📋 PENDING
+
+**Status**: Not started - Final validation phase
+**Priority**: MEDIUM - Ensures memory system works end-to-end
+
+**Tasks**:
+1. [ ] Test investigation create/update flow
+   - Create investigation via chat
+   - Update status and findings
+   - Verify persistence in Azure Blob
+
+2. [ ] Test action logging and follow-up
+   - Log action with baseline metrics
+   - Verify display in frontend
+   - Test follow-up detection
+
+3. [ ] Create demo script
+   - Document demo walkthrough
+   - Example investigations and actions
+   - Talking points for memory value
+
+4. [ ] Verify persistence across sessions
+   - Load app, create investigation
+   - Restart app, verify data persists
+   - Test with multiple concurrent sessions
+
+**Dependencies**: PR28
 
 ### Critical Files
 
