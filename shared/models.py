@@ -1,6 +1,6 @@
 """Pydantic models for tool responses and data validation."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -292,3 +292,95 @@ class ProductionBatch(BaseModel):
     duration_hours: Optional[float] = Field(
         default=None, ge=0, description="Batch duration in hours"
     )
+
+
+# ============================================================================
+# Factory Agent Memory Models (PR25)
+# ============================================================================
+
+
+class Investigation(BaseModel):
+    """
+    Track ongoing issue investigations.
+
+    Investigations capture the agent's analysis of factory issues, including
+    initial observations, findings, and hypotheses. Used for:
+    - Following up on issues across sessions
+    - Providing continuity ("Following up on the CNC-001 issue...")
+    - Shift handoff summaries
+    """
+
+    id: str = Field(description="Unique investigation ID (e.g., INV-20241126-001)")
+    title: str = Field(description="Brief investigation title")
+    machine_id: Optional[str] = Field(
+        default=None, description="Related machine ID if applicable"
+    )
+    supplier_id: Optional[str] = Field(
+        default=None, description="Related supplier ID if applicable"
+    )
+    status: Literal["open", "in_progress", "resolved", "closed"] = Field(
+        default="open", description="Current investigation status"
+    )
+    initial_observation: str = Field(
+        description="What triggered this investigation"
+    )
+    findings: List[str] = Field(
+        default_factory=list, description="Discovered findings during investigation"
+    )
+    hypotheses: List[str] = Field(
+        default_factory=list, description="Working hypotheses for root cause"
+    )
+    created_at: str = Field(description="ISO timestamp of creation")
+    updated_at: str = Field(description="ISO timestamp of last update")
+
+
+class Action(BaseModel):
+    """
+    Track actions taken and their outcomes.
+
+    Actions record parameter changes, maintenance activities, or process
+    modifications along with baseline metrics for impact measurement. Used for:
+    - Tracking expected vs actual impact
+    - Proactive follow-up ("Your temperature adjustment improved OEE by 8%")
+    - Learning from past actions
+    """
+
+    id: str = Field(description="Unique action ID (e.g., ACT-20241126-001)")
+    description: str = Field(description="What action was taken")
+    action_type: Literal["parameter_change", "maintenance", "process_change"] = Field(
+        description="Category of action"
+    )
+    machine_id: Optional[str] = Field(
+        default=None, description="Related machine ID if applicable"
+    )
+    baseline_metrics: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Metrics captured before action (e.g., oee, quality_rate)"
+    )
+    expected_impact: str = Field(description="What improvement is expected")
+    actual_impact: Optional[str] = Field(
+        default=None, description="Measured impact after follow-up (set later)"
+    )
+    follow_up_date: Optional[str] = Field(
+        default=None, description="When to check results (ISO date)"
+    )
+    created_at: str = Field(description="ISO timestamp of creation")
+
+
+class MemoryStore(BaseModel):
+    """
+    Container for all memory entities persisted to Azure Blob Storage.
+
+    The MemoryStore holds investigations and actions, enabling the factory
+    agent to maintain context across sessions and provide continuity.
+    Stored in the factory-data container as memory.json.
+    """
+
+    version: str = Field(default="1.0", description="Schema version for migrations")
+    investigations: List[Investigation] = Field(
+        default_factory=list, description="Active and historical investigations"
+    )
+    actions: List[Action] = Field(
+        default_factory=list, description="Recorded actions with outcomes"
+    )
+    last_updated: str = Field(description="ISO timestamp of last modification")
