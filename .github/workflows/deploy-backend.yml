@@ -57,11 +57,14 @@ on:
           - prod
 
 # Environment variables used across all jobs
+# Note: Resource names are environment-aware for multi-environment deployments
 env:
-  AZURE_CONTAINER_REGISTRY: factoryagent4u4zqkacr  # ACR name (actual deployed registry)
+  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY || 'factoryagent4u4zqkacr' }}
   BACKEND_IMAGE_NAME: factory-agent/backend
-  AZURE_RESOURCE_GROUP: factory-agent-dev-rg
-  CONTAINER_APP_NAME: factory-agent-dev-backend
+  # Resource group and container app names use environment suffix from workflow input
+  # Default to 'dev' for push-triggered deployments
+  AZURE_RESOURCE_GROUP: factory-agent-${{ github.event.inputs.environment || 'dev' }}-rg
+  CONTAINER_APP_NAME: factory-agent-${{ github.event.inputs.environment || 'dev' }}-backend
 
 # Permissions required for OIDC authentication (alternative to service principal)
 permissions:
@@ -82,6 +85,31 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Security Check: Validate DEBUG mode is disabled (PR24C)
+      # -----------------------------------------------------------------------
+      # Prevents accidentally deploying with DEBUG=true which exposes:
+      # - Detailed error messages to clients
+      # - Stack traces and internal paths
+      # - Potential security vulnerabilities
+      - name: Check DEBUG mode is disabled
+        run: |
+          echo "Checking for DEBUG mode in configuration files..."
+
+          # Check .env.example for DEBUG=true (should be false)
+          if grep -q "DEBUG=true" .env.example 2>/dev/null; then
+            echo "::error::.env.example contains DEBUG=true - this should be DEBUG=false"
+            exit 1
+          fi
+
+          # Check for hardcoded DEBUG=true in Python files
+          if grep -rn "DEBUG\s*=\s*True" backend/src/ shared/ 2>/dev/null; then
+            echo "::error::Hardcoded DEBUG=True found in source code"
+            exit 1
+          fi
+
+          echo "✅ DEBUG mode checks passed"
 
       # -----------------------------------------------------------------------
       # Set up Docker Buildx (advanced Docker build engine)
