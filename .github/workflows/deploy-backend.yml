@@ -104,8 +104,10 @@ jobs:
             exit 1
           fi
 
-          # Check for hardcoded DEBUG=true in Python files
-          if grep -rn "DEBUG\s*=\s*True" backend/src/ shared/ 2>/dev/null; then
+          # Check for hardcoded DEBUG=True in Python files (excluding comments)
+          # Only match actual variable assignments, not mentions in comments or strings
+          # Pattern matches: DEBUG = True or DEBUG=True at start of line (with optional whitespace)
+          if grep -rn "^[^#]*DEBUG\s*=\s*True" backend/src/ shared/ 2>/dev/null | grep -v "#.*DEBUG"; then
             echo "::error::Hardcoded DEBUG=True found in source code"
             exit 1
           fi
