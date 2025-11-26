@@ -9,21 +9,25 @@ Code Flow:
 1. Import required dependencies (FastAPI, CORSMiddleware, SlowAPI, type hints)
 2. Create FastAPI application instance with metadata for auto-generated docs
 3. Configure rate limiting with SlowAPI (prevents DoS attacks)
-4. Configure CORS middleware with specific allowed origins from config
-5. Define health check endpoint for service monitoring
+4. Configure security headers middleware (PR24C)
+5. Configure CORS middleware with specific allowed origins from config
+6. Define health check endpoint for service monitoring
 
 This module provides:
 - Rate limiting to prevent abuse (configurable per endpoint)
+- Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
 - Health check endpoint at GET /health
 - CORS configuration for React frontend (configurable origins)
 - Automatic API documentation at /docs and /redoc
 """
 
 import logging
+import time
 from typing import Dict
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -120,6 +124,65 @@ app.add_middleware(
     # Includes standard headers plus common auth headers
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
+
+# =============================================================================
+# SECURITY HEADERS MIDDLEWARE (PR24C)
+# =============================================================================
+
+# Add security headers to all responses for defense in depth
+# These headers protect against common web vulnerabilities:
+# - XSS (Cross-Site Scripting)
+# - Clickjacking
+# - MIME-type sniffing
+# - Information disclosure
+#
+# Reference: https://owasp.org/www-project-secure-headers/
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next) -> Response:
+    """Add security headers to all responses.
+
+    Security Headers Added:
+    - X-Content-Type-Options: Prevents MIME-type sniffing
+    - X-Frame-Options: Prevents clickjacking
+    - X-XSS-Protection: Legacy XSS filter (for older browsers)
+    - Referrer-Policy: Controls referer header information
+    - Permissions-Policy: Restricts browser features
+    - X-Process-Time: Request processing time (for monitoring)
+
+    Note: Content-Security-Policy is not added here because:
+    1. API responses are JSON, not HTML
+    2. Frontend handles its own CSP via meta tags or Nginx headers
+    """
+    start_time = time.perf_counter()
+    response = await call_next(request)
+
+    # Prevent MIME-type sniffing (forces browser to use declared Content-Type)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Prevent clickjacking (blocks embedding in iframes from other origins)
+    response.headers["X-Frame-Options"] = "DENY"
+
+    # Legacy XSS protection for older browsers (modern browsers use CSP)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+
+    # Control how much referrer information is included in requests
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Restrict browser features (microphone, camera, geolocation, etc.)
+    # Empty value disables all features by default
+    response.headers["Permissions-Policy"] = (
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), payment=(), usb=()"
+    )
+
+    # Add processing time header (useful for performance monitoring)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.4f}"
+
+    return response
+
 
 # =============================================================================
 # ROUTER REGISTRATION

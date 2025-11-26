@@ -31,6 +31,7 @@ from .config import (
     AZURE_BLOB_INCREMENT_BASE,
     AZURE_BLOB_CONNECTION_TIMEOUT,
     AZURE_BLOB_OPERATION_TIMEOUT,
+    AZURE_BLOB_MAX_UPLOAD_SIZE,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,13 +165,30 @@ class BlobStorageClient:
         The Azure SDK automatically retries transient failures using the configured
         exponential backoff policy (see __init__ for retry configuration).
 
+        Security (PR24C): Upload size is validated against AZURE_BLOB_MAX_UPLOAD_SIZE
+        to prevent DoS attacks via large payload uploads. Default limit is 50MB.
+
         Args:
             data: Dictionary to upload as JSON
 
         Raises:
+            ValueError: If upload size exceeds AZURE_BLOB_MAX_UPLOAD_SIZE
             RuntimeError: If upload fails after all SDK retries
         """
         json_data = json.dumps(data, indent=2, default=str)
+
+        # PR24C: Validate upload size to prevent DoS attacks
+        data_size = len(json_data.encode("utf-8"))
+        if data_size > AZURE_BLOB_MAX_UPLOAD_SIZE:
+            max_mb = AZURE_BLOB_MAX_UPLOAD_SIZE / (1024 * 1024)
+            actual_mb = data_size / (1024 * 1024)
+            logger.warning(
+                f"Upload rejected: size {actual_mb:.2f}MB exceeds limit {max_mb:.2f}MB"
+            )
+            raise ValueError(
+                f"Upload size ({actual_mb:.2f}MB) exceeds maximum allowed "
+                f"({max_mb:.2f}MB). Reduce data size or increase AZURE_BLOB_MAX_UPLOAD_SIZE."
+            )
 
         try:
             async with self._get_service_client() as service_client:
