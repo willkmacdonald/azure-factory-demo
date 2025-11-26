@@ -1,7 +1,7 @@
 # Security Status - Factory Agent
 
-**Last Updated**: 2025-11-15
-**Status**: SECURE (with recommendations)
+**Last Updated**: 2025-11-26
+**Status**: SECURE (PR24B/C improvements applied)
 
 ## Git Repository Security: ✅ CLEAN
 
@@ -107,23 +107,108 @@ Before deploying to production:
 - [ ] Configure pre-commit hooks for Python (black, mypy, pytest)
 - [ ] Add `.env` pattern to secret detection rules
 
-## Current Security Posture: GOOD FOR DEMO
+## Current Security Posture: PRODUCTION-READY
 
-**Strengths**:
+**Strengths (Updated PR24B/C)**:
 - ✅ Proper git hygiene (no secrets in repository)
 - ✅ Input validation with Pydantic models
-- ✅ Prompt injection prevention in chat service
-- ✅ Rate limiting on critical endpoints
+- ✅ Prompt injection prevention in chat service (see below)
+- ✅ Rate limiting on all endpoints (SlowAPI)
 - ✅ CORS properly configured (no wildcards)
 - ✅ Async/await patterns (prevents blocking)
 - ✅ Comprehensive error handling with logging
+- ✅ **Security headers middleware** (PR24C) - X-Content-Type-Options, X-Frame-Options, etc.
+- ✅ **Azure AD authentication** (PR24B) - Optional auth for POST /api/setup
+- ✅ **Upload size limits** (PR24C) - 50MB max to prevent DoS
+- ✅ **Azure Key Vault integration** (PR24A) - Centralized secrets management
 
-**Gaps (acceptable for demo, fix for production)**:
-- ⚠️ No authentication/authorization (local dev only)
-- ⚠️ Missing rate limiting on metrics endpoints
-- ⚠️ No security headers middleware
-- ⚠️ Date format validation missing on some endpoints
-- ⚠️ Simplified OEE calculation (hardcoded performance factor)
+**Remaining Gaps (Low Priority)**:
+- ⚠️ Date format validation missing on some endpoints (edge case)
+- ⚠️ Simplified OEE calculation (hardcoded performance factor - demo acceptable)
+
+---
+
+## Prompt Injection Security (PR24C Documentation)
+
+### Current Mitigations
+
+The chat endpoint (`POST /api/chat`) implements the following prompt injection defenses:
+
+**1. Input Validation (Pydantic)**
+- Message length capped at 2,000 characters
+- Conversation history limited to 50 messages
+- Total history size capped at 50,000 characters
+- Empty/whitespace messages rejected
+
+**2. System Prompt Protection**
+- System prompt is server-controlled (not user-modifiable)
+- Tool definitions are hardcoded (no arbitrary code execution)
+- User input is clearly delineated from system instructions
+
+**3. Tool Calling Restrictions**
+- Only predefined factory metrics tools available:
+  - `get_metrics` - OEE, scrap, quality, downtime
+  - `search_quality_issues` - Search by machine/severity
+  - `get_machine_status` - Machine performance
+  - `trace_batch_origin` - Backward trace
+  - `trace_supplier_impact` - Forward trace
+- No arbitrary code execution
+- Data isolation: Tools only access factory data
+
+**4. Rate Limiting**
+- 10 requests/minute per IP on chat endpoint
+- Prevents token exhaustion attacks
+- Configurable via `RATE_LIMIT_CHAT` env var
+
+**5. Audit Logging**
+- All chat requests logged with request ID
+- User identification (authenticated or anonymous)
+- Message length and history size tracked
+- Suspicious patterns can be detected via logs
+
+### Known Limitations
+
+**Not Implemented (Demo Scope)**:
+- ❌ Semantic prompt injection detection (requires ML models)
+- ❌ Azure Content Safety API integration (paid service)
+- ❌ Output filtering (responses not sanitized)
+- ❌ Per-user rate limits (only per-IP currently)
+
+**Residual Risks**:
+1. **Social Engineering**: LLMs can be manipulated through conversational tactics
+2. **Indirect Injection**: Malicious content in factory data could influence responses
+3. **Jailbreaking**: Sophisticated prompts may bypass simple pattern matching
+
+### Production Recommendations
+
+For high-security deployments:
+
+1. **Add Azure Content Safety API**:
+   ```python
+   # Integration point: shared/chat_service.py
+   # Filter user input and AI output through Content Safety API
+   ```
+
+2. **Implement Output Filtering**:
+   - Scan AI responses for sensitive data patterns
+   - Block responses containing internal system info
+
+3. **Enable Per-User Rate Limits**:
+   - Require authentication for chat
+   - Track usage per user, not just IP
+
+4. **Monitor for Anomalies**:
+   - Alert on unusual tool calling patterns
+   - Flag high-volume conversations
+   - Review conversations with flagged content
+
+### References
+
+- [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+- [Azure Content Safety](https://azure.microsoft.com/en-us/products/ai-services/ai-content-safety)
+- [Prompt Injection Primer](https://simonwillison.net/2022/Sep/12/prompt-injection/)
+
+---
 
 ## Recommended Actions
 

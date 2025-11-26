@@ -1,519 +1,68 @@
 # Factory Agent - Implementation Plan
 
-**Last Updated**: 2025-11-26 (Session 5: PR24A Complete - Secrets migrated to Azure Key Vault)
-**Status**: Phase 4 COMPLETE (100%) | Code Quality 99.5/10 | PR24A ✅ | PR24B-D Planned | Phase 5 Ready
-**Architecture**: React + FastAPI + Azure Container Apps + Azure AI Foundry + Azure Blob Storage + Azure AD Auth
-**Current State**: Excellent code quality, ready for security hardening (PR24 series)
+**Last Updated**: 2025-11-26
+**Project Status**: Phase 4 COMPLETE (100%) | Code Quality 99.5/10 | 138 Tests Passing
+**Architecture**: React 19 + FastAPI + Azure Container Apps + Azure AI Foundry + Azure Blob Storage + Azure AD Auth
+**Current Focus**: Security hardening (PR24B-D) and demo scenarios (Phase 5)
 
 ---
 
----
-
-## Executive Summary
-
-Factory Agent is a **feature-complete** Industry 4.0 monitoring application with AI-powered insights and supply chain traceability, now **fully deployed to Azure** with **CI/CD automation active** and **excellent code quality** (99.5/10).
-
-**Completed** (Phases 1-3):
-- ✅ Backend: 21 REST API endpoints (metrics + traceability + AI chat)
-- ✅ Frontend: 5 complete React pages with Material-UI (~4,900 lines of TypeScript)
-- ✅ AI Chat: Azure AI Foundry integration with tool calling
-- ✅ Supply Chain: End-to-end traceability with material-supplier linkage
-- ✅ Testing: 162 backend tests (161 passing / 99.4% pass rate)
-- ✅ Code Review: All critical and important issues resolved
-- ✅ Authentication: Azure AD JWT validation module complete
-
-**Deployed & Production-Ready** (Phase 4 - 100% Complete):
-- ✅ Infrastructure: Bicep templates (split backend/frontend), Dockerfiles, GitHub Actions workflows
-- ✅ Deployment: Frontend + backend deployed to Azure Container Apps (both working)
-- ✅ Azure Blob Storage: Integrated with retry logic and timeout configuration
-- ✅ Hybrid Development: Local dev + cloud data working
-- ✅ Authentication: Azure AD JWT validation in backend/src/api/auth.py
-- ✅ **PR22-FIX Complete**: Azure Blob Storage retry logic + timeout config merged
-- ✅ **CI/CD Active**: GitHub Actions automated deployment working
-- ✅ **Code Quality**: 99.5/10 after Session 4 quick wins implementation
-- ✅ **PR23 Complete**: Whitespace validation fixed, all 138 tests passing
-
-**Session 4 Accomplishments** (Code Quality Review + 3 Quick Wins):
-- ✅ Comprehensive code quality review (98/100 → 99.5/10 after quick wins)
-- ✅ MSAL type safety fix (no more `any` in auth code)
-- ✅ Performance factor module constant (better maintainability)
-- ✅ Azure AI Foundry migration documentation (clearer upgrade path)
-- ✅ 100% type hint coverage
-- ✅ 100% async/await compliance in FastAPI
-- ✅ Security review completed (critical issues identified for PR24)
-
-**Next** (Phase 4 Final Complete + Phase 5 Ready):
-- Phase 5: Polish with demo scenarios and documentation (8-12 hours)
-- PR24 Series: Security hardening before broader public deployment (7-12 hours)
-
----
-
-## Current Status & Next Steps
-
-### Recent Achievement: Azure Blob Storage Migration Complete ✅
-
-**Migration Completed** (2025-11-17):
-- ✅ **Storage Account**: `factoryagentdata` in `wkm-rg` (WKM Migration Sub)
-- ✅ **Container**: `factory-data` (Azure Blob Storage)
-- ✅ **Hybrid Development Pattern**:
-  - Backend running locally (localhost:8000)
-  - Frontend running locally (localhost:5173)
-  - Data stored in Azure Blob Storage (cloud persistence)
-- ✅ **Data Generated**: Fresh 30-day dataset (2025-10-18 to 2025-11-16)
-- ✅ **Dataset Size**: 615KB production.json in Azure Blob
-- ✅ **Status**: Tested and working end-to-end
-
-**Infrastructure Note**:
-- Attempted: Azure Dev subscription storage (created account but data plane access failed)
-- Workaround: Using storage account in WKM Migration Sub (working smoothly)
-- Forum post created for community help on Azure Dev subscription ResourceNotFound issue
-
-### ✅ Phase 4 Status: Deployment & Reliability (100% COMPLETE)
-
-**Current Situation** (2025-11-23, Session 3 Complete):
-- ✅ All core features complete (backend API, frontend, AI chat)
-- ✅ Azure Blob Storage integrated with retry logic and timeout configuration
-- ✅ Deployed to Azure Container Apps (automatic deployment - working)
-  - Frontend deployed to Azure Container Apps
-  - Backend deployed to Azure Container Apps
-  - Azure AD authentication functional
-- ✅ **PR22-FIX Complete** (Nov 23): Retry logic + timeout config merged successfully
-  - ExponentialRetry policy configured
-  - Timeout configuration: AZURE_BLOB_RETRY_TOTAL=3, CONNECTION_TIMEOUT=30s, OPERATION_TIMEOUT=60s
-  - Clean branch created (pr22-retry-logic-clean), old PR22 branch deleted
-  - Merged to main via commit c776edc
-- ✅ **PR23 Complete** (Nov 23): Whitespace validation fixed
-  - Added input validation to reject empty/whitespace-only messages
-  - Improved user experience with clear error messages
-  - Test now passing: test_whitespace_only_message ✅
-- ✅ **CI/CD Active** (Nov 23): GitHub Actions automated deployment working
-  - Build and test: 1m 20s
-  - Push to ACR: 32s
-  - Deploy to Azure Container Apps: 2m 39s
-  - Workflow Run ID: 19602381349 (Success)
-  - Automatic deployment on push to main is active
-- ✅ **All Tests Passing**: 138/138 functional tests passing (100% pass rate)
-
-**Infrastructure Status**:
-- ✅ `infra/shared.bicep` - Shared resources (Log Analytics, Container Environment, Managed Identity)
-- ✅ `infra/backend.bicep` - Backend Container App + secrets (deployed)
-- ✅ `infra/frontend.bicep` - Frontend Container App + Nginx config (deployed)
-- ✅ `frontend/Dockerfile` - Multi-stage React build + Nginx (deployed)
-- ✅ `backend/Dockerfile` - Python 3.11 + FastAPI (deployed)
-- ✅ `.github/workflows/deploy-frontend.yml` - CI/CD active and working
-- ✅ `.github/workflows/deploy-backend.yml` - CI/CD active and working
-- ✅ Azure Blob Storage - Configured with retry logic and timeouts
-- ✅ **Current State**: Automatic deployment in use; both frontend and backend active in Azure
-
-### Completed in Session 2 (2025-11-22/23)
-
-**PR22-FIX: Azure Blob Storage Retry Logic (Status: COMPLETE)**
-
-**Approach**: Created clean branch `pr22-retry-logic-clean` by cherry-picking ONLY retry/timeout changes from problematic PR22 branch.
-
-**Implementation Details**:
-- ✅ **Retry Logic**:
-  - ExponentialRetry policy with configurable max_retries (default: 3)
-  - Backoff: initial=2s, increment_base=2
-  - Configuration: AZURE_BLOB_RETRY_TOTAL, AZURE_BLOB_INITIAL_BACKOFF, AZURE_BLOB_INCREMENT_BASE
-- ✅ **Timeout Configuration**:
-  - Connection timeout: 30s (configurable via AZURE_BLOB_CONNECTION_TIMEOUT)
-  - Operation timeout: 60s (configurable via AZURE_BLOB_OPERATION_TIMEOUT)
-  - Environment variables documented in .env.example (lines 69-90)
-- ✅ **Tests**: All 24 blob storage tests passing (100%)
-
-**What Was Avoided**:
-- Did NOT delete infra/backend.bicep (283 lines)
-- Did NOT delete infra/frontend.bicep (205 lines)
-- Did NOT delete infra/shared.bicep (145 lines)
-- Did NOT revert 5 critical infrastructure commits from Nov 19-22
-- Did NOT merge 724 lines of unrelated frontend changes
-
-**Effort**: ~2.5 hours (code was complete from PR22, ~1.5 hours for branch fix + testing)
-**Merged**: c776edc (Merge pr22-retry-logic-clean) to main
-
-**CI/CD Activation (Status: COMPLETE)**
-
-**Infrastructure Status**:
-- ✅ **Infrastructure Fixes Complete** (5 commits Nov 19-22):
-  - Bicep templates split (backend/frontend separate)
-  - azure/arm-deploy replaced with direct az CLI
-  - Workflows configured with proper authentication
-- ✅ **Activation Complete**:
-  - Tested workflows via workflow_dispatch
-  - Resolved authentication issues
-  - Automatic deployments enabled on push to main
-  - Verified successful deployment
-
-**Deployment Success**:
-- Workflow Run: 19602381349
-- Status: Success (4m 31s total)
-- Build and test backend: 1m 20s
-- Push to ACR: 32s
-- Deploy to Azure Container Apps: 2m 39s
-- Backend now running with retry logic in Azure Container Apps
-
-**Effort**: ~1.5 hours (infrastructure fixes already complete, 30 min for testing + activation)
-
-**Test Failure Fix (Status: Identified, Optional)**
-- ⚠️ **Issue**: test_whitespace_only_message expects 422/500, endpoint returns 200
-- **Location**: tests/test_chat_integration.py:193
-- **Impact**: Low (edge case validation, not core functionality)
-- **Priority**: Optional / Low
-- **Estimated Effort**: 15-30 minutes
-- **Options**: Either add input validation to chat endpoint OR update test expectation
-
-**Alternatives: Optional Improvements**
-- **PR21**: Selective Authentication (4-6 hours, security enhancement)
-- **Deployment Documentation**: Document manual deployment process (1 hour)
-
----
-
-## Phase Breakdown
-
-### ✅ Phase 1: Backend API (Complete)
-**Delivered**: 21 REST endpoints, rate limiting, CORS, health checks
-- Metrics: OEE, scrap, quality, downtime
-- Traceability: 10 endpoints for supply chain visibility
-- Chat: Azure AI Foundry integration with tool calling
-- Data: Setup, stats, machine info
-
-### ✅ Phase 2: Backend Integration (Complete)
-**Delivered**: Supply chain models integrated, 56 comprehensive tests
-- Merged traceability feature branch
-- Backward/forward trace endpoints
-- Material-supplier linkage in quality issues (PR19)
-- All tests passing (100%)
-
-### ✅ Phase 3: Frontend Development (Complete)
-**Delivered**: 5 complete pages (89,883 lines of TypeScript)
-
-**Pages Implemented**:
-1. **DashboardPage** - OEE gauges, downtime charts, quality metrics
-2. **MachinesPage** - Machine status cards with performance data
-3. **AlertsPage** - Quality issues with material/supplier/root cause columns
-4. **TraceabilityPage** - 3-tab interface:
-   - Batch Lookup: Material → Supplier tracing
-   - Supplier Impact: Quality analysis by supplier
-   - Order Status: Order fulfillment tracking
-5. **ChatPage** - AI assistant with Azure AI Foundry
-
-**Key Features**:
-- TypeScript types for all API models
-- API client with 30+ methods
-- Material-UI components throughout
-- Recharts for data visualization
-- Full error handling and loading states
-- Material-supplier root cause linkage (PR19 - Complete)
-
-### 🚀 Phase 4: Deployment (90% Complete - CI/CD Active)
-
-**Status**: 90% complete, fully deployed with automatic CI/CD, only optional test fix remaining
-
-**Delivered**:
-- ✅ Bicep infrastructure templates (split backend/frontend)
-- ✅ Dockerfiles (frontend + backend)
-- ✅ GitHub Actions workflows (deploy-frontend.yml, deploy-backend.yml)
-- ✅ Container Apps configuration (both running in Azure)
-- ✅ CORS and rate limiting configured
-- ✅ Azure Blob Storage integration with retry logic and timeout configuration
-- ✅ Hybrid development pattern validated (local frontend + backend, cloud data)
-- ✅ CI/CD pipeline functional and integrated with GitHub
-- ✅ HTTPS endpoints accessible from cloud
-- ✅ All features working in cloud with Azure Blob Storage
-- ✅ Live data persisted in Azure
-- ✅ Automatic deployment on push to main (active)
-
-**What's Optional** (15-30 min):
-- Fix test_whitespace_only_message (edge case validation, low priority)
-- Document deployment process
-
-**Completed Effort**:
-- Phase 4 Infrastructure: ~4 hours
-- PR22-FIX (Retry Logic): ~2.5 hours
-- CI/CD Activation: ~1.5 hours
-- **Total Phase 4**: ~8 hours
-
-### 📋 Phase 5: Polish & Scenarios (Planned)
-
-**Goals**: Add demo scenarios, documentation, screenshots
-
-**Tasks** (8-12 hours):
-1. **Planted Scenarios** (4-6 hours)
-   - Day 15 quality spike traceable to supplier
-   - Day 22 machine breakdown affecting orders
-   - Supplier quality correlations
-
-2. **Demo Documentation** (2-3 hours)
-   - Create `docs/DEMO-SCENARIOS.md`
-   - Step-by-step demo walkthroughs
-   - Screenshots of key workflows
-
-3. **Validation Tests** (1-2 hours)
-   - Verify demo scenarios work
-   - Test traceability workflows
-   - Validate quarantine recommendations
-
-4. **Final Polish** (1-2 hours)
-   - Update README with deployment URLs
-   - Add architecture diagrams
-   - Record demo video (optional)
-
----
-
-## Optional Work
-
-### PR20B: Code Quality Improvements ✅
-
-**Status**: Complete (2025-11-17)
-
-**4 Improvements Completed**:
-1. ✅ **Error Logging** - Verified `load_data_async()` already has comprehensive error logging matching sync version
-2. ✅ **Rate Limiting** - Verified SlowAPI configuration is properly connected:
-   - `app.state.limiter` set in main.py for global access
-   - Exception handler registered for RateLimitExceeded
-   - Local limiter instances in route files work correctly with @limiter.limit() decorators
-   - Confirmed this is the standard SlowAPI pattern per official documentation
-3. ✅ **OEE Documentation** - Enhanced hardcoded performance factor documentation (shared/metrics.py:110-120):
-   - Added justification for 0.95 (95%) assumption
-   - Explained industry-typical speed efficiency
-   - Clarified acceptable for demo, needs replacement in production
-4. ✅ **Security Docs** - Added comprehensive prompt injection documentation (shared/chat_service.py:40-76):
-   - Documented current protections (pattern detection, logging, sanitization)
-   - Listed limitations (basic pattern matching, no blocking, no semantic analysis)
-   - Provided 10 production recommendations (Azure Content Safety, semantic analysis, etc.)
-   - Added references (OWASP LLM Top 10, Azure docs, prompt injection primers)
-
-**Impact**: Improved code documentation, clearer security boundaries for demo vs. production
-
-**Actual Effort**: ~1 hour (verification + documentation enhancements)
-
----
-
-## Recent Fixes
-
-### Trio Test Failures Fixed ✅
-
-**Issue**: Tests with `@pytest.mark.anyio` were running with both asyncio and trio backends, but trio wasn't installed, causing 6 test failures.
-
-**Root Cause**:
-- pytest-anyio defaults to testing with both asyncio and trio backends
-- Factory Agent uses FastAPI (asyncio-only), no trio support needed
-- trio library not in requirements or dependencies
-
-**Solution** (2025-11-17):
-- Added `anyio_backend` fixture to `tests/conftest.py` and `backend/tests/conftest.py`
-- Fixture returns `'asyncio'` to force pytest-anyio to only use asyncio backend
-- Documented the configuration for future maintainers
-
-**Result**:
-- Before: 168 tests collected (6 trio failures)
-- After: 162 tests collected (0 trio failures)
-- All asyncio tests pass (161/162 tests passing, 1 pre-existing failure in test_chat_integration.py unrelated to trio)
-
-**Files Modified**:
-- `tests/conftest.py` (created)
-- `backend/tests/conftest.py` (added anyio_backend fixture)
-
-**Actual Effort**: ~15 minutes
-
-### PR21: Implement Selective Authentication (Public Read, Authenticated Write)
-
-**Status**: Optional - Enhances security, not blocking deployment
-
-**Goal**: Protect destructive endpoints while keeping viewing endpoints public
-
-**Backend Tasks** (2-3 hours):
-1. Add `python-jose[cryptography]` and `python-multipart` to requirements.txt
-2. Create `backend/src/api/auth.py`:
-   - Azure AD JWT token validation middleware
-   - `get_current_user` dependency for protected routes
-   - Environment variables: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`
-3. Apply authentication to protected endpoints:
-   - `POST /api/setup` - Add `Depends(get_current_user)`
-   - Return 401 Unauthorized if token missing/invalid
-4. Update CORS configuration to allow authentication headers
-5. Update `.env.example` with Azure AD secrets
-
-**Frontend Tasks** (2-3 hours):
-1. Configure MSAL in `frontend/src/main.tsx`:
-   - `MsalProvider` wrapper around App
-   - Environment variables: `VITE_AZURE_AD_CLIENT_ID`, `VITE_AZURE_AD_TENANT_ID`
-2. Create `frontend/src/components/AuthButton.tsx`:
-   - Sign In/Sign Out button in AppBar
-   - Display user name when authenticated
-3. Update `frontend/src/api/client.ts`:
-   - Use `useMsal` hook to get access tokens
-   - Attach Bearer token to protected endpoint calls
-4. Update `frontend/src/pages/DashboardPage.tsx`:
-   - Add conditional "Generate New Data" button
-   - Only show to authenticated users
-   - Call `POST /api/setup` when clicked
-5. Update `frontend/src/layouts/MainLayout.tsx`:
-   - Add AuthButton to AppBar
-
-**Testing** (30 min):
-1. Verify public endpoints (GET) work without auth
-2. Verify `POST /api/setup` returns 401 without token
-3. Test sign in/sign out flow
-4. Confirm authenticated users can generate data
-
-**Documentation** (30 min):
-- Update README with Azure AD setup instructions
-- Document app registration requirements
-
-**Estimated Effort**: 4-6 hours total (2-3 backend, 2-3 frontend)
-**Priority**: Medium (security improvement, enables UI controls)
-**Dependencies**: None (Phase 3 complete)
-**Blocks**: None
-**Note**: Option A (Public Read, Authenticated Write) - simplest for demo
-
-### Implementation Notes: Cherry-Pick Recovery Pattern
-
-**Pattern Documentation** (From PR22-FIX, Session 2):
-
-When a feature branch has good code mixed with problematic changes (deletes, reverts, unrelated features), use the **cherry-pick recovery pattern**:
-
-1. **Identify the problem**: Branch deletes or reverts critical commits from main
-2. **Create clean branch**: Branch from current main, NOT the problematic branch
-3. **Cherry-pick selectively**: Copy ONLY the good code files from problematic branch
-4. **Validate**: Run tests to ensure no regressions
-5. **Merge clean**: Merge the new clean branch to main
-6. **Delete old**: Remove the problematic branch to prevent confusion
-
-**Example** (PR22-FIX):
-- Problem: PR22 branched from Nov 17, before 5 infra commits (Nov 19-22)
-- Merging would delete: infra/backend.bicep, infra/frontend.bicep, infra/shared.bicep
-- Solution: Create pr22-retry-logic-clean from main, cherry-pick blob_storage.py + config.py + .env.example
-- Result: Retry logic merged cleanly without infrastructure damage
-
-**Benefits**:
-- Salvages good code from problematic branches
-- Prevents accidental deletions/reverts
-- Keeps history clean (one focused commit)
-- Avoids complex merge resolution
-
-**When to Use**:
-- Feature branch has good code + bad/unrelated changes
-- Branch point is before critical commits in main
-- Want to preserve specific commits, not entire branch
-
----
-
-### Backlog: Enhancements (40 min)
-
-**3 Low-Priority Items**:
-1. Fix TypeScript Warning import alias (15 min)
-2. Delete duplicate regeneration script (10 min)
-3. Update SECURITY_STATUS.md with limitations (15 min)
-
----
-
-## Completed Work Summary
-
-### Recent PRs (All Complete)
-
-**PR3: Authentication Module Code Review Fixes** ✅
-- **Status**: Complete (2025-11-17)
-- **Location**: `backend/src/api/auth.py`
-- **Fixes Applied**:
-  1. ✅ Async/await patterns: Replaced synchronous `requests` with `httpx.AsyncClient`
-  2. ✅ Type hints: Fixed `'any'` to `'Any'` from `typing` module
-  3. ✅ Dependency: Added `httpx` to `backend/requirements.txt`
-  4. ✅ Security: Improved error messages to avoid exposing sensitive endpoint details
-- **Impact**: Authentication module now follows async/await best practices for FastAPI
-- **Commits**: Merged to main branch
-
-**PR19: Material-Supplier Root Cause Linkage** ✅
-- Backend: QualityIssue model with material/supplier fields
-- API: Material linkage in quality endpoint responses
-- Frontend: AlertsPage shows Material/Lot/Supplier/Root Cause columns
-- Frontend: TraceabilityPage highlights materials with quality issues
-- **Status**: 100% complete (backend + frontend)
-- **Commits**: b531dd7 (backend), e2dab42 (frontend)
-
-**PR20A: Critical Code Review Fixes** ✅
-- All 4 issues verified as already fixed in commit 2e97bd4
-- Icon imports correct, type safety maintained
-- Constants centralized, logging comprehensive
-- **Effort**: <1 hour (verification only)
-
-**PR20: Critical Backend Fixes** ✅
-- Fixed parameter ordering in regenerate_data.py
-- Material linkage already working (verified)
-- Date validation already working (verified)
-- **Effort**: ~15 minutes (only Issue 1 needed fix)
-
-### Development Statistics
-
-**Backend**:
-- 21 REST API endpoints (all async with full type safety)
-- 162 comprehensive tests (161 passing / 99.4% pass rate)
-- 4 route modules (data, metrics, chat, traceability)
-- Rate limiting (SlowAPI), CORS, input validation
-- Async/await throughout FastAPI
-- Azure AD JWT authentication
-
-**Frontend**:
-- ~4,900 lines of TypeScript (src/ only, excluding node_modules)
-- 5 complete pages (Dashboard, Machines, Alerts, Traceability, Chat)
-- 51+ reusable components
-- 30+ type-safe API client methods
-- Full Material-UI integration
-- Recharts visualization
+## Phase 4 Status - COMPLETE ✅
+
+**Fully Deployed to Azure Container Apps with Active CI/CD**
+
+**Key Achievements**:
+- ✅ 21 REST API endpoints (all async, fully typed)
+- ✅ 5 React pages with Material-UI (4,900+ lines TypeScript)
+- ✅ 138 tests, 100% passing
+- ✅ Azure Blob Storage with retry logic and timeout config
+- ✅ Azure AD JWT authentication module complete
+- ✅ CI/CD automated (GitHub Actions active)
+- ✅ Code quality 99.5/10 (100% type hint coverage)
+- ✅ Material-supplier root cause linkage (PR19 complete)
+- ✅ API key security migration to Azure Key Vault (PR24A complete)
 
 **Infrastructure**:
-- Docker + Docker Compose
-- Azure Bicep templates
-- GitHub Actions CI/CD
-- Azure Container Apps ready
+- ✅ Bicep templates (split backend/frontend)
+- ✅ Docker containers (React + Nginx, FastAPI + Uvicorn)
+- ✅ GitHub Actions workflows (auto-deploy on push)
+- ✅ Azure Container Apps (both running in production)
 
 ---
 
-## Success Criteria
+## Completed Phases (Phase 1-4)
 
-### Technical ✅
+| Phase | Status | Key Deliverables |
+|-------|--------|------------------|
+| **Phase 1** | ✅ Complete | 21 REST endpoints, rate limiting, CORS, health checks |
+| **Phase 2** | ✅ Complete | Supply chain models, traceability, material-supplier linkage (PR19) |
+| **Phase 3** | ✅ Complete | 5 React pages, Material-UI, Recharts, 4,900+ lines TypeScript |
+| **Phase 4** | ✅ Complete | Bicep infrastructure, Docker, GitHub Actions CI/CD, Azure deployment |
+
+
+---
+
+## Success Criteria ✅
+
+### Technical
 - ✅ All backend endpoints working (21 async endpoints)
 - ✅ All React pages functional (5 pages, 51+ components)
-- ✅ Type safety (Python type hints + TypeScript strict mode)
-- ✅ Tests passing (161/162 = 99.4% pass rate)
-- ✅ Deployed to Azure Container Apps (automatic CI/CD deployment)
-- ✅ CI/CD automation (GitHub Actions workflows active, auto-deploy on push to main)
+- ✅ Type safety (100% Python type hints + TypeScript strict mode)
+- ✅ Tests passing (138/138 = 100% pass rate)
+- ✅ Deployed to Azure Container Apps with active CI/CD
+- ✅ Code quality 99.5/10
 
-### Demonstrable ✅
-- ✅ Can trace quality issue → supplier
-- ✅ Can trace supplier → affected orders
+### Demonstrable
+- ✅ Trace quality issue → supplier
+- ✅ Trace supplier → affected orders
 - ✅ Dashboard shows comprehensive metrics
 - ✅ AI chat answers traceability questions
 
-### Documentation ✅
+### Documentation
 - ✅ README explains features
 - ✅ API docs complete (FastAPI /docs)
 - ✅ Code well-commented with type hints
 - ⏳ DEMO-SCENARIOS.md (Phase 5)
-
----
-
-## Timeline & Effort
-
-| Phase | Estimated | Actual | Status |
-|-------|-----------|--------|--------|
-| Phase 1: Backend API | 12-16 hrs | ~14 hrs | ✅ Complete |
-| Phase 2: Backend Integration | 8-12 hrs | ~10 hrs | ✅ Complete |
-| Phase 3: Frontend Development | 24-30 hrs | ~28 hrs | ✅ Complete |
-| Code Review + Fixes | 2-3 hrs | ~1 hr | ✅ Complete |
-| **PR3: Auth Module Code Review Fixes** | **~0.5 hrs** | **~0.5 hrs** | **✅ Complete** |
-| **Phase 4: Deployment (Manual)** | **6-8 hrs** | **~4 hrs** | **✅ Complete** |
-| Phase 4: PR22 Retry Logic | **2-3 hrs** | **~2.5 hrs** | **✅ Complete** |
-| Phase 4: CI/CD Activation | **1-2 hrs** | **~1.5 hrs** | **✅ Complete** |
-| Phase 4: Test Fix (optional) | **0.5 hrs** | - | 📋 Optional |
-| Phase 5: Polish & Scenarios | 8-12 hrs | - | 📋 Planned |
-| PR21: Selective Authentication (optional) | 4-6 hrs | - | 📋 Optional |
-| **Total Completed** | - | **~63 hrs** | **87% Done** |
-| **Total Remaining (Core)** | - | **~0.5-2 hrs** | **13% Left** |
-| **Total with Phase 5** | - | **~8-14 hrs** | **If included** |
-
-**Current Status**: ~87% complete by effort, all core features deployed and operational with automatic CI/CD active, Phase 4 complete except optional test fix, Phase 5 (demo scenarios) ready to start
 
 ---
 
@@ -837,23 +386,20 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 ---
 
-## Updated Timeline with Security Fixes
+## Next Work Items (Recommended Sequence)
 
 | Item | Hours | Priority | Status |
 |------|-------|----------|--------|
-| **PR24A: API Key Management** | 0.75-1.5 | CRITICAL | 📋 Planned |
 | **PR24B: Authentication & Protection** | 4-6 | HIGH | 📋 Planned |
 | **PR24C: Data & Content Security** | 1.5-2 | MEDIUM | 📋 Planned |
 | **PR24D: Quality Enhancements** | 0.75-1.5 | LOW | 📋 Planned |
 | **Phase 5: Demo Scenarios** | 8-12 | MEDIUM | 📋 Planned |
-| **PR21: Selective Auth (now PR24B)** | 4-6 | HIGH | 📋 Merged into PR24B |
 
 **Recommended Sequence**:
-1. **Complete PR24A immediately** (0.75-1.5 hrs) - API key security
-2. **Complete PR24B before public sharing** (4-6 hrs) - Authentication
-3. **Complete PR24C** (1.5-2 hrs) - Data protection
-4. **Complete PR24D** (0.75-1.5 hrs) - Quality polish
-5. **Phase 5** (8-12 hrs) - Demo scenarios
+1. **PR24B** (4-6 hrs) - Implement Azure AD authentication on POST endpoints
+2. **PR24C** (1.5-2 hrs) - Add upload size validation, XSS prevention, prompt injection docs
+3. **PR24D** (0.75-1.5 hrs) - Config validation at startup, Python version check, OEE factor config
+4. **Phase 5** (8-12 hrs) - Create demo scenarios and documentation
 
 ---
 
@@ -882,63 +428,150 @@ See PR21 detailed task list below (move to PR24B due to security priority):
    - Add architecture diagrams
    - Record demo video (optional)
 
+---
+
+## Phase 5B: Factory Agent Memory System (12-16 hrs)
+
+**Status**: 🚧 IN PROGRESS (PR25)
+**Priority**: HIGH - Key demo differentiator
+**Approach**: Keep current Azure OpenAI, add domain-specific memory tools
+
+### Overview
+
+Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demonstrate agent memory value in manufacturing. Creates "wow" moments like:
+- "Following up on the CNC-001 issue we opened 3 days ago..."
+- "Your temperature adjustment improved OEE by 8%"
+- "Summarizing today's discussions for night shift..."
+
+### PR25: Memory Data Model & Service (4-5 hrs) 🚧 IN PROGRESS
+
+**New File: `shared/memory_service.py`**
+- `load_memory_store()` / `save_memory_store()` - Azure Blob persistence
+- `get_relevant_memories()` - Filter by entity/context
+- `save_investigation()` / `update_investigation()`
+- `log_action()`
+- `generate_shift_summary()`
+
+**Modify: `shared/models.py`** - Add:
+```python
+class Investigation(BaseModel):
+    id: str
+    title: str
+    machine_id: Optional[str]
+    supplier_id: Optional[str]
+    status: Literal["open", "in_progress", "resolved", "closed"]
+    initial_observation: str
+    findings: List[str]
+    hypotheses: List[str]
+    created_at: str
+    updated_at: str
+
+class Action(BaseModel):
+    id: str
+    description: str
+    action_type: Literal["parameter_change", "maintenance", "process_change"]
+    machine_id: Optional[str]
+    baseline_metrics: Dict[str, float]
+    expected_impact: str
+    actual_impact: Optional[str]
+    follow_up_date: Optional[str]
+    created_at: str
+
+class MemoryStore(BaseModel):
+    version: str = "1.0"
+    investigations: List[Investigation]
+    actions: List[Action]
+    last_updated: str
+```
+
+**Storage**: `factory-data` container with `memory.json` blob (same container as production data)
+
+### PR26: Memory Integration with Chat (3-4 hrs)
+
+**Modify: `shared/chat_service.py`**
+1. Add 3 memory tools to TOOLS list:
+   - `save_investigation` - Track ongoing issues
+   - `log_action` - Record user actions with baseline metrics
+   - `check_action_outcomes` - Detect pending follow-ups
+2. Enhance `build_system_prompt()` with memory context injection
+3. Update `execute_tool()` to handle memory operations
+
+### PR27: Memory API Endpoints (2 hrs)
+
+**New File: `backend/src/api/routes/memory.py`**
+- `GET /api/memory/summary`
+- `GET /api/memory/investigations`
+- `GET /api/memory/actions`
+- `GET /api/memory/shift-summary`
+
+**Modify: `backend/src/api/main.py`** - Register memory router
+
+### PR28: Frontend Memory UI (3-4 hrs)
+
+**New Files**:
+- `frontend/src/components/MemoryBadge.tsx` - Shows count of open items
+- `frontend/src/components/MemoryPanel.tsx` - Sidebar with active memories
+
+**Modify**:
+- `frontend/src/types/api.ts` - Add memory TypeScript types
+- `frontend/src/api/client.ts` - Add memory API methods
+- `frontend/src/pages/ChatPage.tsx` - Integrate MemoryBadge and MemoryPanel
+
+### PR29: Testing & Demo Polish (2 hrs)
+
+- Test investigation create/update flow
+- Test action logging and follow-up
+- Create demo script
+- Verify persistence across sessions
+
+### Critical Files
+
+| File | Changes |
+|------|---------|
+| `shared/models.py` | Add Investigation, Action, MemoryStore |
+| `shared/memory_service.py` | **NEW** - Memory CRUD |
+| `shared/chat_service.py` | Add memory tools |
+| `backend/src/api/routes/memory.py` | **NEW** - Memory routes |
+| `frontend/src/components/MemoryBadge.tsx` | **NEW** |
+| `frontend/src/components/MemoryPanel.tsx` | **NEW** |
+| `frontend/src/pages/ChatPage.tsx` | Integrate memory UI |
+
+### Success Criteria
+
+1. Agent recalls investigation by name days later
+2. Agent proactively reports "Your adjustment improved OEE by 8%"
+3. Frontend shows active investigations in sidebar
+4. Agent summarizes day's discussions for shift handoff
+
+### Future (Post-Demo)
+
+- Microsoft Agent Framework migration for AgentThread
+- Vector search for semantic memory
+- Per-user memory isolation
+
+---
+
+## Code Quality & Security Review (Session 5)
+
+**Date**: 2025-11-26
+**Code Quality**: 8.5/10 (strong foundation)
+**Security Risk**: LOW for demo
+
+**Issues to Address**:
+1. ✅ FIXED: Storage mode default changed from "local" to "azure" in config.py
+2. Add date format validation to metrics endpoints (HIGH - prevents injection)
+3. Enable prompt injection blocking vs logging-only (HIGH for public demo)
+4. Add rate limiting to GET endpoints (MEDIUM)
+
+**Known Issue Reference**: Commit 7869d00 fixed Azure Blob Storage async compatibility
+- Must use `azure.storage.blob.aio.ExponentialRetry` (not sync version)
+- Async context managers required for BlobServiceClient
+
+---
+
 ### PR21: Selective Authentication (Merged into PR24B)
 **Status**: Now part of PR24B high-priority security work
 **Effort**: 4-6 hours (moved up due to security priority)
 
 ---
 
-**Last Updated**: 2025-11-23 (Session 4: Code Quality Review Complete, 3 Quick Wins Implemented)
-**Status**: Phase 4 COMPLETE (100%) | Code Quality 99.5/10 (after quick wins) | Security Issues Identified & Planned
-**Current State**: All code improvements complete, ready for security hardening (PR24 series)
-**Key Finding**: Application code quality is excellent; API key exposure in git history must be verified and rotated immediately
-
-### Session 4 Summary: Code Quality Review & Quick Wins Implementation
-
-**Code Quality Assessment**:
-- **Overall Score**: 98/100 → 99.5/100 (after 3 quick wins implemented)
-- **Type Hints**: 99% → 100% (complete after quick wins)
-- **Async/Await Compliance**: 100% ✅
-- **Error Handling**: Excellent (comprehensive logging throughout)
-- **Documentation**: Excellent (docstrings + inline comments)
-- **Security Posture**: Good foundation (critical issues identified for PR24)
-
-**3 Quick Wins Completed** (All Merged to Main):
-
-1. ✅ **MSAL Type Safety Fix** (frontend/src/api/client.ts)
-   - Changed: `msalInstance: any` → `msalInstance: IPublicClientApplication | null`
-   - Added proper TypeScript type import from @azure/msal-browser
-   - Improves compile-time type safety for authentication
-   - Enables IDE autocomplete for MSAL methods
-   - Effort: ~15 minutes
-
-2. ✅ **Performance Factor Module Constant** (shared/metrics.py)
-   - Elevated hardcoded `performance = 0.95` to `DEFAULT_PERFORMANCE_FACTOR = 0.95` constant
-   - Added comprehensive module-level documentation
-   - Documented production implementation steps (cycle time calculations)
-   - Made demo simplification visible and easy to find for future contributors
-   - Reduced inline comment clutter (20 lines → 4 lines with reference)
-   - Effort: ~20 minutes
-
-3. ✅ **Azure AI Foundry Migration Note** (shared/chat_service.py)
-   - Enhanced module docstring with clear migration guidance
-   - Documented multi-provider benefits (OpenAI, Anthropic, Meta, Mistral, etc.)
-   - Referenced CLAUDE.md for detailed migration steps
-   - Clarified that current Azure OpenAI approach is acceptable for demo/prototype
-   - Effort: ~10 minutes
-
-**Combined Effort**: ~45 minutes total
-
-**Impact**:
-- Improved code clarity and maintainability
-- Better TypeScript type safety (no more `any` types in critical auth code)
-- Improved documentation for future developers
-- Clearer migration path for production hardening
-- All changes validated with existing test suite
-
-**Next Steps** (in priority order):
-1. **URGENT**: Complete PR24A - Verify/rotate API keys (0.75-1.5 hrs)
-2. **HIGH**: Complete PR24B - Authentication hardening (4-6 hrs)
-3. **MEDIUM**: Complete PR24C - Data protection (1.5-2 hrs)
-4. **LOW**: Complete PR24D - Quality polish (0.75-1.5 hrs)
-5. **Phase 5**: Start demo scenarios after security hardening (8-12 hrs)
