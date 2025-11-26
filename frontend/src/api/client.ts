@@ -9,6 +9,7 @@
  */
 
 import axios, { type AxiosInstance, type AxiosError, type AxiosResponse } from 'axios';
+import type { IPublicClientApplication } from '@azure/msal-browser';
 import type {
   HealthResponse,
   OEEMetrics,
@@ -83,9 +84,9 @@ const apiClient: AxiosInstance = axios.create({
  * Set the MSAL instance for auth token acquisition
  * This is called from the main app after MSAL is initialized
  */
-let msalInstance: any = null;
+let msalInstance: IPublicClientApplication | null = null;
 
-export function setMsalInstance(instance: any): void {
+export function setMsalInstance(instance: IPublicClientApplication): void {
   msalInstance = instance;
 }
 

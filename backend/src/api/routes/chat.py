@@ -12,6 +12,7 @@ from slowapi.util import get_remote_address
 
 from shared.chat_service import get_chat_response, build_system_prompt
 from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG
+from backend.src.api.auth import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
@@ -196,14 +197,19 @@ async def get_openai_client() -> AsyncAzureOpenAI:
 async def chat(
     request: Request,
     chat_request: ChatRequest,
-    client: AsyncAzureOpenAI = Depends(get_openai_client)
+    client: AsyncAzureOpenAI = Depends(get_openai_client),
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ) -> ChatResponse:
     """Chat endpoint with AI assistant using tool calling.
 
     This endpoint allows users to send messages to the AI assistant and receive
     responses. The AI can call tools to fetch factory metrics and data.
 
-    Security Considerations:
+    Security Considerations (PR24B):
+    - Optional authentication: Authentication is optional but recommended for production
+      * If authenticated: User info is logged for audit trail and cost attribution
+      * If not authenticated: Anonymous access is allowed (demo/development mode)
+      * For production: Consider making authentication required via environment flag
     - Rate limiting (PR7): Limited to 10 requests/minute per IP to prevent abuse
     - Input validation: Message length capped at 2000 chars, history at 50 messages
     - Prompt injection mitigation:
@@ -219,13 +225,14 @@ async def chat(
     vulnerable to social engineering attacks. For production use, consider:
     - Content filtering on user inputs (Azure Content Safety API)
     - Monitoring for unusual tool calling patterns
-    - User authentication and per-user rate limits
-    - Audit logging of all chat interactions
+    - User authentication and per-user rate limits (currently optional)
+    - Audit logging of all chat interactions (currently implemented)
 
     Args:
         request: FastAPI Request object (required for rate limiting - slowapi)
         chat_request: Chat request containing message and conversation history
         client: Azure OpenAI client (injected dependency)
+        current_user: Optional authenticated user information (None if not authenticated)
 
     Returns:
         ChatResponse containing AI response and updated conversation history
@@ -238,10 +245,15 @@ async def chat(
     request_id = str(uuid.uuid4())
     start_time = time.time()
 
+    # Log request with authentication status for audit trail
+    user_identifier = current_user.get('email') if current_user else "anonymous"
     logger.info(
-        f"Chat request received [request_id={request_id}]: {chat_request.message[:50]}...",
+        f"Chat request received [request_id={request_id}, user={user_identifier}]: "
+        f"{chat_request.message[:50]}...",
         extra={
             "request_id": request_id,
+            "user": user_identifier,
+            "authenticated": current_user is not None,
             "message_length": len(chat_request.message),
             "history_size": len(chat_request.history),
         },

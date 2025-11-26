@@ -6,6 +6,31 @@ and the REST API. It handles Azure OpenAI integration, tool calling, and
 conversation management.
 
 Extracted from src/main.py in PR4 to enable code reuse between CLI and web interfaces.
+
+CURRENT IMPLEMENTATION: Azure OpenAI Service (Direct)
+-------------------------------------------------------
+This module currently uses Azure OpenAI Service directly via the openai package.
+
+FUTURE ENHANCEMENT: Migrate to Azure AI Foundry
+------------------------------------------------
+For production deployments and multi-provider flexibility, consider migrating to
+Azure AI Foundry, which provides:
+
+✅ Multi-Provider Support:
+   - OpenAI models (GPT-4, GPT-4o, GPT-4 Vision, etc.)
+   - Anthropic models (Claude 3.5 Sonnet, Claude 3 Opus, etc.)
+   - Meta models (Llama 3.1, Llama 3.2, etc.)
+   - DeepSeek, Mistral, Cohere, and other providers
+
+✅ Flexibility Benefits:
+   - Switch between providers without code changes
+   - Compare model performance across providers
+   - Cost optimization by choosing best price/performance ratio
+   - No vendor lock-in to OpenAI
+
+Migration Guide: See ~/.claude/CLAUDE.md section "Azure AI Services Pattern"
+
+For this demo/prototype, direct Azure OpenAI Service integration is sufficient.
 """
 
 from datetime import datetime

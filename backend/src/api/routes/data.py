@@ -13,7 +13,7 @@ Code Flow:
 4. Response is serialized to JSON and returned to client
 
 This module provides:
-- POST /api/setup: Generate synthetic production data (rate-limited)
+- POST /api/setup: Generate synthetic production data (rate-limited, requires authentication)
 - GET /api/stats: Get data statistics (record counts, date ranges)
 - GET /api/machines: List available machines
 - GET /api/date-range: Get available data date range
@@ -21,8 +21,9 @@ This module provides:
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -36,6 +37,9 @@ from shared.data import (
     MACHINES,
 )
 from shared.config import RATE_LIMIT_SETUP
+from backend.src.api.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # ROUTER CONFIGURATION
@@ -150,7 +154,8 @@ class DateRangeResponse(BaseModel):
 @limiter.limit(RATE_LIMIT_SETUP)
 async def setup_data(
     request: Request,
-    setup_request: SetupRequest = SetupRequest()
+    setup_request: SetupRequest = SetupRequest(),
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> SetupResponse:
     """Generate synthetic production data.
 
@@ -162,31 +167,42 @@ async def setup_data(
     - Shift-level metrics
     - Planted scenarios for interesting analysis
 
+    Security (PR24B): This endpoint requires Azure AD authentication to prevent
+    unauthorized data generation. Only authenticated users can generate data,
+    which protects against:
+    - Unauthorized data overwrites
+    - Resource exhaustion from spam data generation
+    - Malicious data corruption
+
     Rate limiting (PR7): This endpoint is rate-limited to prevent abuse.
     Default limit is 5 requests per minute per IP address (configurable via
     RATE_LIMIT_SETUP environment variable). Data generation is computationally
     expensive, so this prevents spam.
 
     Flow:
-    1. Receive request with optional 'days' parameter
-    2. Call initialize_data() to generate synthetic data
-    3. Load generated data to extract metadata
-    4. Return summary statistics
+    1. Validate Azure AD JWT token (via get_current_user dependency)
+    2. Receive request with optional 'days' parameter
+    3. Call initialize_data() to generate synthetic data
+    4. Load generated data to extract metadata
+    5. Return summary statistics
 
     Args:
         request: FastAPI Request object (required for rate limiting - slowapi)
         setup_request: SetupRequest with optional days parameter (default: 30)
+        current_user: Authenticated user information (injected by get_current_user)
 
     Returns:
         SetupResponse: Summary of generated data
 
     Raises:
+        HTTPException: 401 if not authenticated (via get_current_user dependency)
         HTTPException: 500 if data generation fails
         RateLimitExceeded: If rate limit is exceeded (returns 429 status)
 
     Example:
         POST /api/setup
-        {"days": 60}
+        Headers: Authorization: Bearer <azure_ad_token>
+        Body: {"days": 60}
 
         Response:
         {
@@ -197,9 +213,20 @@ async def setup_data(
             "machines": 4
         }
     """
+    # Log authenticated user for audit trail
+    logger.info(
+        f"Data generation initiated by authenticated user: {current_user.get('email')} "
+        f"(days={setup_request.days})"
+    )
+
     try:
         # Generate and save data asynchronously, get metadata directly from return value
         result = await initialize_data_async(days=setup_request.days)
+
+        logger.info(
+            f"Data generation completed successfully by {current_user.get('email')} "
+            f"(days={result['days']}, start={result['start_date']}, end={result['end_date']})"
+        )
 
         return SetupResponse(
             message="Data generated successfully",
@@ -209,6 +236,10 @@ async def setup_data(
             machines=result["machines"]
         )
     except Exception as e:
+        logger.error(
+            f"Data generation failed for user {current_user.get('email')}: {e}",
+            exc_info=True
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate data: {str(e)}"

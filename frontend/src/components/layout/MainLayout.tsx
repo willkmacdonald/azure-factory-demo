@@ -10,6 +10,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import AuthButton from '../auth/AuthButton';
 
 interface NavigationItem {
   label: string;
@@ -53,17 +54,23 @@ const MainLayout: React.FC = () => {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
             Factory Agent
           </h1>
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            ) : (
-              <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Auth Button for Mobile (compact) */}
+            <div className="scale-90">
+              <AuthButton />
+            </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -115,8 +122,8 @@ const MainLayout: React.FC = () => {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-        <div className="p-6">
+      <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto flex flex-col">
+        <div className="p-6 flex-1">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
             Factory Agent
           </h2>
@@ -141,6 +148,11 @@ const MainLayout: React.FC = () => {
               );
             })}
           </nav>
+        </div>
+
+        {/* Auth Button - Bottom of Sidebar */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <AuthButton />
         </div>
       </aside>
 

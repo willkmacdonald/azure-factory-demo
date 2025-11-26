@@ -15,6 +15,28 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# Configuration Constants
+# ============================================================================
+
+# DEMO SIMPLIFICATION: Hardcoded performance factor for OEE calculation
+# In production, performance should be calculated as:
+#   performance = (actual_output / theoretical_maximum_output)
+# where theoretical_maximum_output = ideal_cycle_time * uptime
+#
+# Implementation steps for production:
+# 1. Add ideal_cycle_time to machine configuration (e.g., 60 seconds per part)
+# 2. Calculate: theoretical_output = uptime_hours * (3600 / ideal_cycle_time)
+# 3. Calculate: performance = total_parts / theoretical_output
+#
+# This constant represents typical speed efficiency in well-maintained manufacturing:
+# - Equipment rarely runs at 100% theoretical speed due to minor slowdowns
+# - 95% is industry-typical for well-maintained equipment
+# - Accounts for micro-stops, reduced speed periods, and quality checks
+#
+# See inline comments in calculate_oee() for detailed implementation guidance
+DEFAULT_PERFORMANCE_FACTOR = 0.95  # 95% - industry typical for well-maintained equipment
+
 
 def get_date_range(start_date: str, end_date: str) -> List[str]:
     """
@@ -97,27 +119,12 @@ async def calculate_oee(
         availability = total_uptime / total_planned_time if total_planned_time > 0 else 0
         quality = total_good / total_parts if total_parts > 0 else 0
 
-        # Performance (simplified for demo - assume running at 95% of ideal when uptime)
-        # DEMO SIMPLIFICATION: In production, performance should be calculated as:
-        #   performance = (actual_output / theoretical_maximum_output)
-        # where theoretical_maximum_output = ideal_cycle_time * uptime
-        #
-        # To implement proper performance calculation:
-        # 1. Add ideal_cycle_time to machine configuration (e.g., 60 seconds per part)
-        # 2. Calculate: theoretical_output = uptime_hours * (3600 / ideal_cycle_time)
-        # 3. Calculate: performance = total_parts / theoretical_output
-        #
-        # HARDCODED VALUE JUSTIFICATION (PR20B):
-        # We use 0.95 (95%) as a reasonable assumption for factory equipment
-        # that's well-maintained but not running at absolute maximum speed.
-        # This represents typical speed efficiency in manufacturing:
-        # - Equipment rarely runs at 100% theoretical speed due to minor slowdowns
-        # - 95% is industry-typical for well-maintained equipment
-        # - Accounts for micro-stops, reduced speed periods, and quality checks
-        #
-        # This hardcoded value is acceptable for demo/prototype purposes but should
-        # be replaced with actual cycle time measurements in production deployments.
-        performance = 0.95
+        # Performance (simplified for demo - uses module-level constant)
+        # See DEFAULT_PERFORMANCE_FACTOR at module level for:
+        # - Detailed justification of this demo simplification
+        # - Production implementation steps with cycle time calculations
+        # - Industry context (95% = typical speed efficiency)
+        performance = DEFAULT_PERFORMANCE_FACTOR
 
         oee = availability * performance * quality
 
