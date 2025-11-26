@@ -103,7 +103,7 @@ const AlertsPage: React.FC = () => {
   };
 
   // Handler for page change
-  const handleChangePage = (_event: unknown, newPage: number): void => {
+  const handleChangePage = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
     setPage(newPage);
   };
 

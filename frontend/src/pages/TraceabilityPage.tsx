@@ -45,6 +45,7 @@ import type {
   SupplierImpact,
   Order,
   OrderBatches,
+  QualityIssue,
 } from '../types/api';
 
 /**
@@ -397,7 +398,7 @@ const TraceabilityPage: React.FC = () => {
                         {backwardTrace.materials_trace.map((material, index) => {
                           // Check if this lot is linked to any quality issues
                           const linkedIssues = backwardTrace.batch.quality_issues?.filter(
-                            (issue: any) => issue.lot_number === material.lot_number
+                            (issue: QualityIssue) => issue.lot_number === material.lot_number
                           ) || [];
                           const hasQualityIssues = linkedIssues.length > 0;
 
