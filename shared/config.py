@@ -27,35 +27,69 @@ if KEYVAULT_URL:
         _kv_client = None
 
 
+def _strip_quotes(value: Optional[str]) -> Optional[str]:
+    """Strip surrounding quotes from a value if present.
+
+    This handles cases where secrets are stored with literal quotes,
+    which can happen when values are copied with quotes included.
+
+    Args:
+        value: The value to strip quotes from
+
+    Returns:
+        Value with surrounding quotes removed, or None if input is None
+    """
+    if value is None:
+        return None
+    # Strip surrounding double or single quotes
+    if len(value) >= 2:
+        if (value.startswith('"') and value.endswith('"')) or \
+           (value.startswith("'") and value.endswith("'")):
+            return value[1:-1]
+    return value
+
+
 def get_secret(secret_name: str, default: Optional[str] = None) -> Optional[str]:
     """
-    Retrieve a secret from Azure Key Vault.
+    Retrieve a secret from Azure Key Vault with fallback to environment variables.
 
     Args:
         secret_name: Name of the secret in Key Vault (must use hyphens, not underscores)
-        default: Default value if secret not found
+        default: Default value if secret not found in Key Vault or environment
 
     Returns:
-        Secret value from Key Vault, or default if not found
+        Secret value from Key Vault, environment variable, or default if not found
 
     Note:
         Azure Key Vault secret names use hyphens instead of underscores.
         Example: AZURE_API_KEY becomes AZURE-API-KEY in Key Vault.
+        The corresponding environment variable uses underscores: AZURE_API_KEY.
     """
-    if _kv_client is None:
-        logger.debug(f"Key Vault not configured, cannot retrieve secret: {secret_name}")
-        return default
+    value: Optional[str] = None
 
-    try:
-        secret = _kv_client.get_secret(secret_name)
-        logger.debug(f"Successfully retrieved secret from Key Vault: {secret_name}")
-        return secret.value
-    except AzureError as e:
-        logger.warning(f"Failed to retrieve secret '{secret_name}' from Key Vault: {e}")
-        return default
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving secret '{secret_name}': {e}")
-        return default
+    # Try Key Vault first
+    if _kv_client is not None:
+        try:
+            secret = _kv_client.get_secret(secret_name)
+            value = secret.value
+            logger.debug(f"Successfully retrieved secret from Key Vault: {secret_name}")
+        except AzureError as e:
+            logger.warning(f"Failed to retrieve secret '{secret_name}' from Key Vault: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving secret '{secret_name}': {e}")
+
+    # Fall back to environment variable if Key Vault didn't return a value
+    if value is None:
+        # Convert hyphenated Key Vault name to underscored env var name
+        env_name = secret_name.replace("-", "_")
+        value = os.getenv(env_name)
+        if value is not None:
+            logger.debug(f"Retrieved '{secret_name}' from environment variable {env_name}")
+        else:
+            logger.debug(f"Secret '{secret_name}' not found in Key Vault or environment")
+
+    # Strip any surrounding quotes and return
+    return _strip_quotes(value) if value is not None else default
 
 
 # Azure AI Foundry settings

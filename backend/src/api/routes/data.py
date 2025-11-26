@@ -37,7 +37,7 @@ from shared.data import (
     MACHINES,
 )
 from shared.config import RATE_LIMIT_SETUP
-from src.api.auth import get_current_user
+from src.api.auth import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,7 @@ class DateRangeResponse(BaseModel):
 async def setup_data(
     request: Request,
     setup_request: SetupRequest = SetupRequest(),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ) -> SetupResponse:
     """Generate synthetic production data.
 
@@ -167,10 +167,12 @@ async def setup_data(
     - Shift-level metrics
     - Planted scenarios for interesting analysis
 
-    Security (PR24B): This endpoint requires Azure AD authentication to prevent
-    unauthorized data generation. Only authenticated users can generate data,
-    which protects against:
-    - Unauthorized data overwrites
+    Security (PR24B): This endpoint uses optional Azure AD authentication.
+    - Production: Requires Azure AD token to prevent unauthorized access
+    - Local Development: Works without authentication (demo user)
+
+    This protects against:
+    - Unauthorized data overwrites in production
     - Resource exhaustion from spam data generation
     - Malicious data corruption
 
@@ -195,7 +197,6 @@ async def setup_data(
         SetupResponse: Summary of generated data
 
     Raises:
-        HTTPException: 401 if not authenticated (via get_current_user dependency)
         HTTPException: 500 if data generation fails
         RateLimitExceeded: If rate limit is exceeded (returns 429 status)
 
@@ -213,9 +214,10 @@ async def setup_data(
             "machines": 4
         }
     """
-    # Log authenticated user for audit trail
+    # Log user for audit trail (authenticated or demo user)
+    user_email = current_user.get('email') if current_user else 'anonymous'
     logger.info(
-        f"Data generation initiated by authenticated user: {current_user.get('email')} "
+        f"Data generation initiated by user: {user_email} "
         f"(days={setup_request.days})"
     )
 
@@ -224,7 +226,7 @@ async def setup_data(
         result = await initialize_data_async(days=setup_request.days)
 
         logger.info(
-            f"Data generation completed successfully by {current_user.get('email')} "
+            f"Data generation completed successfully by {user_email} "
             f"(days={result['days']}, start={result['start_date']}, end={result['end_date']})"
         )
 
@@ -237,7 +239,7 @@ async def setup_data(
         )
     except Exception as e:
         logger.error(
-            f"Data generation failed for user {current_user.get('email')}: {e}",
+            f"Data generation failed for user {user_email}: {e}",
             exc_info=True
         )
         raise HTTPException(

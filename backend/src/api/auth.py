@@ -202,6 +202,15 @@ async def get_current_user_optional(
     Returns:
         User info dict if authenticated, None otherwise
     """
+    # If Azure AD is not configured, return demo user for local development
+    if not AZURE_AD_TENANT_ID or not AZURE_AD_CLIENT_ID:
+        return {
+            "email": "demo@localhost",
+            "name": "Demo User",
+            "oid": "demo-user-id",
+            "preferred_username": "demo@localhost",
+        }
+
     if not credentials:
         return None
 

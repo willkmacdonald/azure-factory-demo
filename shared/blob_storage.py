@@ -1,11 +1,21 @@
-"""Azure Blob Storage client wrapper for async operations."""
+"""Azure Blob Storage client wrapper for async operations.
+
+IMPORTANT: The Azure Blob Storage async client MUST be used with proper async context
+managers (`async with`) to ensure the HTTP connection pool is properly initialized.
+See: https://github.com/Azure/azure-sdk-for-python/issues/21736
+
+CRITICAL: Use the async ExponentialRetry from azure.storage.blob.aio, NOT the sync
+version from azure.storage.blob. Using the sync retry policy with async clients causes:
+"'coroutine' object has no attribute 'http_response'"
+See: https://learn.microsoft.com/en-us/python/api/azure-storage-blob/azure.storage.blob.aio.exponentialretry
+"""
 
 import json
 import logging
-import asyncio
 from typing import Dict, Any, Optional
-from azure.storage.blob import ExponentialRetry
-from azure.storage.blob.aio import BlobServiceClient, BlobClient, ContainerClient
+from contextlib import asynccontextmanager
+# CRITICAL: Import async ExponentialRetry from .aio module, NOT sync version!
+from azure.storage.blob.aio import BlobServiceClient, BlobClient, ContainerClient, ExponentialRetry
 from azure.core.exceptions import (
     ResourceNotFoundError,
     ClientAuthenticationError,
@@ -36,6 +46,10 @@ class BlobStorageClient:
     - Checking blob existence
     - Automatic retry logic with exponential backoff for transient failures
     - Configurable connection and operation timeouts
+
+    IMPORTANT: The Azure async SDK requires proper use of async context managers.
+    This client uses `async with` internally for all operations to ensure the
+    HTTP connection pool is properly initialized before any operations.
     """
 
     def __init__(
@@ -92,26 +106,26 @@ class BlobStorageClient:
             f"{AZURE_BLOB_OPERATION_TIMEOUT}s operation timeout"
         )
 
-        # Client will be created per-operation (async context manager pattern)
-        self._blob_service_client: Optional[BlobServiceClient] = None
-
-    async def _get_blob_client(self) -> BlobClient:
+    @asynccontextmanager
+    async def _get_service_client(self):
         """
-        Get blob client for operations with retry policy and connection timeout.
+        Get blob service client as an async context manager.
 
-        Returns:
-            BlobClient instance configured for the production data blob
+        CRITICAL: The Azure async SDK MUST use async context managers to properly
+        initialize the HTTP connection pool. Using the client without `async with`
+        causes the error: "'coroutine' object has no attribute 'http_response'"
+
+        See: https://github.com/Azure/azure-sdk-for-python/issues/21736
+
+        Yields:
+            BlobServiceClient properly initialized with async context
         """
-        if not self._blob_service_client:
-            self._blob_service_client = BlobServiceClient.from_connection_string(
-                self.connection_string,
-                retry_policy=self.retry_policy,
-                connection_timeout=AZURE_BLOB_CONNECTION_TIMEOUT,
-            )
-
-        return self._blob_service_client.get_blob_client(
-            container=self.container_name, blob=self.blob_name
-        )
+        async with BlobServiceClient.from_connection_string(
+            self.connection_string,
+            retry_policy=self.retry_policy,
+            connection_timeout=AZURE_BLOB_CONNECTION_TIMEOUT,
+        ) as client:
+            yield client
 
     async def blob_exists(self) -> bool:
         """
@@ -121,12 +135,15 @@ class BlobStorageClient:
             True if blob exists, False otherwise
         """
         try:
-            blob_client = await self._get_blob_client()
-            exists = await blob_client.exists()
-            logger.debug(
-                f"Blob exists check: {self.blob_name} in {self.container_name} = {exists}"
-            )
-            return exists
+            async with self._get_service_client() as service_client:
+                blob_client = service_client.get_blob_client(
+                    container=self.container_name, blob=self.blob_name
+                )
+                exists = await blob_client.exists()
+                logger.debug(
+                    f"Blob exists check: {self.blob_name} in {self.container_name} = {exists}"
+                )
+                return exists
         except ClientAuthenticationError as e:
             logger.error(
                 f"Authentication failed for Azure Blob Storage: {e}. "
@@ -156,17 +173,20 @@ class BlobStorageClient:
         json_data = json.dumps(data, indent=2, default=str)
 
         try:
-            blob_client = await self._get_blob_client()
-            await blob_client.upload_blob(
-                json_data,
-                overwrite=True,
-                content_type="application/json",
-                timeout=AZURE_BLOB_OPERATION_TIMEOUT,
-            )
-            logger.info(
-                f"Successfully uploaded {len(json_data)} bytes to blob "
-                f"{self.blob_name} in {self.container_name}"
-            )
+            async with self._get_service_client() as service_client:
+                blob_client = service_client.get_blob_client(
+                    container=self.container_name, blob=self.blob_name
+                )
+                await blob_client.upload_blob(
+                    json_data,
+                    overwrite=True,
+                    content_type="application/json",
+                    timeout=AZURE_BLOB_OPERATION_TIMEOUT,
+                )
+                logger.info(
+                    f"Successfully uploaded {len(json_data)} bytes to blob "
+                    f"{self.blob_name} in {self.container_name}"
+                )
         except ClientAuthenticationError as e:
             logger.error(f"Authentication error uploading blob: {e}")
             raise RuntimeError(
@@ -202,18 +222,21 @@ class BlobStorageClient:
             RuntimeError: If download fails after all SDK retries or blob doesn't exist
         """
         try:
-            blob_client = await self._get_blob_client()
-            # Download blob content with timeout
-            stream = await blob_client.download_blob(timeout=AZURE_BLOB_OPERATION_TIMEOUT)
-            content = await stream.readall()
+            async with self._get_service_client() as service_client:
+                blob_client = service_client.get_blob_client(
+                    container=self.container_name, blob=self.blob_name
+                )
+                # Download blob content with timeout
+                downloader = await blob_client.download_blob(timeout=AZURE_BLOB_OPERATION_TIMEOUT)
+                content_bytes = await downloader.readall()
 
-            # Parse JSON
-            data = json.loads(content.decode("utf-8"))
-            logger.info(
-                f"Successfully downloaded {len(content)} bytes from blob "
-                f"{self.blob_name} in {self.container_name}"
-            )
-            return data
+                # Parse JSON
+                data = json.loads(content_bytes.decode("utf-8"))
+                logger.info(
+                    f"Successfully downloaded {len(content_bytes)} bytes from blob "
+                    f"{self.blob_name} in {self.container_name}"
+                )
+                return data
 
         except ResourceNotFoundError as e:
             logger.error(
@@ -250,7 +273,10 @@ class BlobStorageClient:
             raise RuntimeError(f"Failed to download blob: {e}") from e
 
     async def close(self) -> None:
-        """Close the blob service client."""
-        if self._blob_service_client:
-            await self._blob_service_client.close()
-            self._blob_service_client = None
+        """Close the blob service client.
+
+        Note: With the new async context manager pattern, this method is kept
+        for backward compatibility but is no longer required as each operation
+        manages its own client lifecycle.
+        """
+        pass  # No-op - clients are now managed per-operation with async context managers
