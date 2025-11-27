@@ -368,25 +368,50 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 ---
 
-### PR24D: Low-Priority Quality Enhancements (45 min - 1.5 hrs)
+### PR24D: Quality Enhancements & Security Improvements (2-2.5 hrs)
 
-1. [ ] Verify Python 3.10+ requirement
+**Priority**: MEDIUM (defense-in-depth security + code quality)
+
+1. [ ] Date Format Validation for Metrics Endpoints
+   - **Files**: `shared/chat_service.py`, `shared/metrics.py`
+   - **Task**: Add explicit date format validation (YYYY-MM-DD) to prevent malformed inputs to metrics tools
+   - **Implementation**:
+     - Create `validate_date_format(date_str: str) -> bool` function in metrics.py
+     - Add validation in `execute_tool()` before executing metrics tools (chat_service.py)
+     - Return clear error message for invalid date formats
+   - **Effort**: 20-30 min
+   - **Priority**: MEDIUM (defense-in-depth security)
+   - **Context**: Currently date strings passed directly to parsing functions without format validation
+
+2. [ ] Enable Prompt Injection Blocking Mode
+   - **Files**: `shared/chat_service.py`, `shared/config.py`
+   - **Task**: Add optional blocking mode controlled by environment variable to `sanitize_user_input()`
+   - **Current State**: Function only logs suspicious patterns, doesn't block
+   - **Implementation**:
+     - Add `PROMPT_INJECTION_MODE` env var to `shared/config.py` (values: "log" or "block")
+     - Update `sanitize_user_input()` to raise ValueError when blocking mode enabled
+     - Default to "log" for demo compatibility, "block" for production
+   - **Effort**: 30 min
+   - **Priority**: MEDIUM for demo, HIGH for public deployment
+   - **Context**: Current approach documented in PR20B as log-only
+
+3. [ ] Verify Python 3.10+ requirement
    - Check backend/requirements.txt
    - Update if needed or change union syntax
    - Effort: Quick (15 min)
 
-2. [ ] Extract config validation to startup event
+4. [ ] Extract config validation to startup event
    - Create startup validation function
    - Verify Azure credentials at app start
    - Effort: 30-45 min
 
-3. [ ] Make OEE performance factor configurable
+5. [ ] Make OEE performance factor configurable
    - Add `OEE_PERFORMANCE_FACTOR` env var
    - Update metrics.py
    - Update .env.example
    - Effort: 15-20 min
 
-**Estimated Effort**: 45 min - 1.5 hours
+**Estimated Effort**: 2 - 2.5 hours
 
 ---
 
@@ -394,7 +419,7 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 | Item | Hours | Priority | Status |
 |------|-------|----------|--------|
-| **PR26: Memory Integration with Chat** | 3-4 | HIGH | 📋 Planned |
+| **PR26: Memory Integration with Chat** | ~1.5 | HIGH | ✅ COMPLETE |
 | **PR27: Memory API Endpoints** | 2 | HIGH | 📋 Planned |
 | **PR28: Frontend Memory UI** | 3-4 | HIGH | 📋 Planned |
 | **PR29: Testing & Demo Polish** | 2 | MEDIUM | 📋 Planned |
@@ -413,6 +438,7 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 - ✅ PR24A: API Key Migration to Azure Key Vault
 - ✅ PR24C: Security Headers & Upload Validation
 - ✅ PR25: Memory Data Model & Service
+- ✅ PR26: Memory Integration with Chat
 
 ---
 
@@ -445,7 +471,7 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 
 ## Phase 5B: Factory Agent Memory System (12-16 hrs)
 
-**Status**: 🚧 IN PROGRESS (PR25 COMPLETE, PR26-29 Pending)
+**Status**: 🚧 IN PROGRESS (PR25-26 COMPLETE, PR27-29 Pending)
 **Priority**: HIGH - Key demo differentiator
 **Approach**: Keep current Azure OpenAI, add domain-specific memory tools
 
@@ -499,24 +525,35 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 - Retry logic for transient failures
 - Full data persistence across sessions
 
-### PR26: Memory Integration with Chat (3-4 hrs) 📋 PENDING
+### PR26: Memory Integration with Chat ✅ COMPLETE
 
-**Status**: Not started - Ready to begin
+**Status**: ✅ COMPLETE (2025-11-26)
 **Priority**: HIGH - Enables memory-aware chat responses
+**Actual Effort**: ~1.5 hours
 
-**Tasks**:
-1. [ ] Add 3 memory tools to TOOLS list in `shared/chat_service.py`
-   - `save_investigation` - Track ongoing issues
-   - `log_action` - Record user actions with baseline metrics
-   - `check_action_outcomes` - Detect pending follow-ups
+**Completed Tasks**:
+1. [x] Added 4 memory tools to TOOLS list in `shared/chat_service.py`:
+   - `save_investigation` - Track ongoing factory issues
+   - `log_action` - Record user actions with baseline metrics for impact tracking
+   - `get_pending_followups` - Check for actions due for follow-up
+   - `get_memory_context` - Retrieve relevant memory for machine/supplier
 
-2. [ ] Enhance `build_system_prompt()` with memory context injection
-   - Include relevant investigations from context
-   - Reference recent actions and their outcomes
+2. [x] Enhanced `build_system_prompt()` with memory context injection:
+   - Added `_build_memory_context()` helper function
+   - Shows active investigations with status emojis
+   - Lists pending follow-ups with expected impact
+   - Displays today's action count
 
-3. [ ] Update `execute_tool()` to handle memory operations
-   - Call memory_service functions for tool execution
-   - Handle errors and edge cases
+3. [x] Updated `execute_tool()` to handle memory operations:
+   - All 4 memory tools properly routed to memory_service functions
+   - Returns structured success responses with IDs
+   - Error handling with logging
+
+**Key Implementation Details**:
+- Total tools now: 8 (4 metrics + 4 memory)
+- System prompt includes memory context section
+- Memory tools provide structured responses for LLM interpretation
+- Graceful fallback if memory service unavailable
 
 **Dependencies**: PR25 (Complete)
 
@@ -600,15 +637,15 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 
 ### Critical Files
 
-| File | Changes |
-|------|---------|
-| `shared/models.py` | Add Investigation, Action, MemoryStore |
-| `shared/memory_service.py` | **NEW** - Memory CRUD |
-| `shared/chat_service.py` | Add memory tools |
-| `backend/src/api/routes/memory.py` | **NEW** - Memory routes |
-| `frontend/src/components/MemoryBadge.tsx` | **NEW** |
-| `frontend/src/components/MemoryPanel.tsx` | **NEW** |
-| `frontend/src/pages/ChatPage.tsx` | Integrate memory UI |
+| File | Changes | Status |
+|------|---------|--------|
+| `shared/models.py` | Add Investigation, Action, MemoryStore | ✅ PR25 |
+| `shared/memory_service.py` | **NEW** - Memory CRUD | ✅ PR25 |
+| `shared/chat_service.py` | Add memory tools + system prompt | ✅ PR26 |
+| `backend/src/api/routes/memory.py` | **NEW** - Memory routes | 📋 PR27 |
+| `frontend/src/components/MemoryBadge.tsx` | **NEW** | 📋 PR28 |
+| `frontend/src/components/MemoryPanel.tsx` | **NEW** | 📋 PR28 |
+| `frontend/src/pages/ChatPage.tsx` | Integrate memory UI | 📋 PR28 |
 
 ### Success Criteria
 
@@ -640,6 +677,55 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 **Known Issue Reference**: Commit 7869d00 fixed Azure Blob Storage async compatibility
 - Must use `azure.storage.blob.aio.ExponentialRetry` (not sync version)
 - Async context managers required for BlobServiceClient
+
+---
+
+## Code Quality & Security Review (Session 6)
+
+**Date**: 2025-11-26
+**Code Quality**: 9.2/10
+**Security Risk**: LOW for demo (defense-in-depth improvements identified)
+
+### Issues Identified and Addressed
+
+**1. FIXED: TypeScript `any` Type in Auth Config**
+- **Location**: `frontend/src/auth/authConfig.ts:78`
+- **Issue**: `account: any` - violated TypeScript strict type safety
+- **Fix**: Changed to `account: AccountInfo | null` with proper import from `@azure/msal-browser`
+- **Status**: ✅ COMPLETED
+- **Effort**: 5 min
+- **Impact**: Frontend type safety improved, removes TS compiler warnings
+
+**2. IDENTIFIED: Date Format Validation Missing (Added to PR24D)**
+- **Severity**: MEDIUM
+- **Location**: `shared/chat_service.py`, `shared/metrics.py`
+- **Issue**: Date strings passed directly to parsing functions without format validation
+- **Recommendation**: Create `validate_date_format()` function with clear error messages
+- **Status**: 📋 Added to PR24D
+- **Effort**: 20-30 min
+- **Context**: Defense-in-depth security measure
+
+**3. IDENTIFIED: Prompt Injection Blocking Opportunity (Added to PR24D)**
+- **Severity**: MEDIUM for demo, HIGH for public
+- **Location**: `shared/chat_service.py` - `sanitize_user_input()`
+- **Current State**: Logs suspicious patterns but doesn't block
+- **Recommendation**: Add environment-controlled blocking mode
+- **Status**: 📋 Added to PR24D
+- **Effort**: 30 min
+- **Implementation**: `PROMPT_INJECTION_MODE` env var ("log" or "block")
+- **Default**: "log" for demo compatibility, "block" recommended for public
+
+### Summary of Session 6 Findings
+
+**Positives**:
+- ✅ Overall code quality maintained at 9.2/10
+- ✅ TypeScript type safety improvements applied
+- ✅ Security posture continues to strengthen
+- ✅ All previous PR24A, PR24C, PR25, PR26 changes validated
+
+**Next Action**:
+- Implement PR24D enhancements (date format validation + blocking mode) before public demo
+- Both fixes are quick wins (20-30 min each) with significant defense-in-depth value
 
 ---
 

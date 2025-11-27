@@ -5,7 +5,7 @@
  * Uses environment variables for flexible deployment across environments.
  */
 
-import type { Configuration, PopupRequest } from '@azure/msal-browser';
+import type { Configuration, PopupRequest, AccountInfo } from '@azure/msal-browser';
 
 /**
  * Azure AD Application (Client) ID
@@ -75,6 +75,6 @@ export function isAzureAdConfigured(): boolean {
 /**
  * Get user display name from account
  */
-export function getUserDisplayName(account: any): string {
+export function getUserDisplayName(account: AccountInfo | null): string {
   return account?.name || account?.username || 'User';
 }

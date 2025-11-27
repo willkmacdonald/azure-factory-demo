@@ -1,16 +1,18 @@
 """Chat API routes for AI assistant with tool calling."""
 
+import json
 import logging
 import uuid
 import time
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from openai import AsyncAzureOpenAI
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from shared.chat_service import get_chat_response, build_system_prompt
+from shared.chat_service import get_chat_response, get_chat_response_streaming, build_system_prompt
 from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG
 from src.api.auth import get_current_user_optional
 
@@ -320,3 +322,91 @@ async def chat(
             # Production mode: hide internal details to prevent information disclosure
             error_detail = "An error occurred while processing your request. Please try again later."
         raise HTTPException(status_code=500, detail=error_detail)
+
+
+@router.post("/chat/stream")
+@limiter.limit(RATE_LIMIT_CHAT)
+async def chat_stream(
+    request: Request,
+    chat_request: ChatRequest,
+    client: AsyncAzureOpenAI = Depends(get_openai_client),
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+) -> StreamingResponse:
+    """Streaming chat endpoint with AI assistant using Server-Sent Events (SSE).
+
+    This endpoint streams the AI response as it's generated, providing real-time
+    feedback to the user. It supports tool calling with status updates.
+
+    Event types sent via SSE:
+    - status: Processing status (e.g., "Thinking...", "Analyzing results...")
+    - delta: Text chunks as they arrive
+    - tool_call: When AI is calling a tool (e.g., "Executing get_oee_metrics")
+    - tool_result: When tool execution completes
+    - done: Final event with complete response
+    - error: If an error occurs
+
+    Args:
+        request: FastAPI Request object (required for rate limiting)
+        chat_request: Chat request containing message and conversation history
+        client: Azure OpenAI client (injected dependency)
+        current_user: Optional authenticated user information
+
+    Returns:
+        StreamingResponse with text/event-stream content type
+    """
+    request_id = str(uuid.uuid4())
+    start_time = time.time()
+
+    user_identifier = current_user.get('email') if current_user else "anonymous"
+    logger.info(
+        f"Streaming chat request received [request_id={request_id}, user={user_identifier}]: "
+        f"{chat_request.message[:50]}...",
+    )
+
+    async def event_generator():
+        """Generate SSE events from the streaming chat response."""
+        try:
+            # Build system prompt with factory context
+            system_prompt = await build_system_prompt()
+
+            # Convert ChatMessage objects to dictionaries for chat service
+            history_dicts = [msg.model_dump() for msg in chat_request.history]
+
+            # Stream the response
+            async for event in get_chat_response_streaming(
+                client=client,
+                system_prompt=system_prompt,
+                conversation_history=history_dicts,
+                user_message=chat_request.message,
+            ):
+                # Format as SSE event
+                event_data = json.dumps(event)
+                yield f"data: {event_data}\n\n"
+
+                # Log completion on done event
+                if event.get("type") == "done":
+                    elapsed_time = time.time() - start_time
+                    logger.info(
+                        f"Streaming chat completed [request_id={request_id}] in {elapsed_time:.2f}s"
+                    )
+
+        except RuntimeError as e:
+            logger.error(f"Runtime error in streaming chat [request_id={request_id}]: {e}")
+            error_event = json.dumps({"type": "error", "content": str(e)})
+            yield f"data: {error_event}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in streaming chat [request_id={request_id}]: {e}", exc_info=True)
+            error_msg = str(e) if DEBUG else "An error occurred while processing your request."
+            error_event = json.dumps({"type": "error", "content": error_msg})
+            yield f"data: {error_event}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )

@@ -118,6 +118,18 @@ export interface ChatResponse {
   history: ChatMessage[];         // Updated conversation history
 }
 
+/**
+ * Streaming Chat Event
+ * POST /api/chat/stream (Server-Sent Events)
+ */
+export interface ChatStreamEvent {
+  type: 'status' | 'delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
+  content?: string;               // Text content (for status, delta, done, error)
+  name?: string;                  // Tool name (for tool_call, tool_result)
+  status?: string;                // Tool status (for tool_call, tool_result)
+  history?: ChatMessage[];        // Updated history (for done event)
+}
+
 // ============================================================================
 // Data Management Types (from backend/src/api/routes/data.py)
 // ============================================================================

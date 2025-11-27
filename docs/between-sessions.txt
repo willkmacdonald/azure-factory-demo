@@ -1,0 +1,18 @@
+
+
+  1. Read /Users/willmacdonald/.claude/plans/vast-riding-island.md
+  2. Apply the content to implementation-plan.md
+  3. Start implementing PR25 (Memory Data Model & Service)
+
+  One uncommitted change from this session:
+  - shared/config.py - Changed STORAGE_MODE default from "local" to "azure" and added warning log
+
+Issues to Address:
+ 1. ✅ FIXED: Storage mode default changed from "local" to "azure" in config.py
+ 2. Add date format validation to metrics endpoints (HIGH - prevents injection)
+ 3. Enable prompt injection blocking vs logging-only (HIGH for public demo)
+ 4. Add rate limiting to GET endpoints (MEDIUM)
+
+ Known Issue Reference: Commit 7869d00 fixed Azure Blob Storage async compatibility
+ - Must use azure.storage.blob.aio.ExponentialRetry (not sync version)
+ - Async context managers required for BlobServiceClient

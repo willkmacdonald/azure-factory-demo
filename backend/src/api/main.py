@@ -34,7 +34,7 @@ from slowapi.errors import RateLimitExceeded
 
 from shared.config import ALLOWED_ORIGINS, DEBUG
 
-from .routes import metrics, data, chat, traceability
+from .routes import metrics, data, chat, traceability, memory
 
 # =============================================================================
 # APPLICATION INITIALIZATION
@@ -206,6 +206,11 @@ app.include_router(chat.router)
 # This adds all endpoints from traceability.py to the main app
 # Provides supply chain traceability: suppliers, batches, orders, and trace queries
 app.include_router(traceability.router)
+
+# Include the memory router with all its endpoints (PR27)
+# This adds all endpoints from memory.py to the main app
+# Provides agent memory access: investigations, actions, and shift summaries
+app.include_router(memory.router)
 
 # =============================================================================
 # API ENDPOINTS

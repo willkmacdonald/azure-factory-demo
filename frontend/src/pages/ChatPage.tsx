@@ -51,8 +51,8 @@ const SUGGESTED_PROMPTS = [
 // ============================================================================
 
 const ChatPage: React.FC = () => {
-  // Custom hook for chat state management
-  const { messages, isLoading, error, sendMessage, clearMessages, clearError } = useChat();
+  // Custom hook for chat state management (with streaming support)
+  const { messages, isLoading, error, streamStatus, sendMessage, clearMessages, clearError } = useChat();
 
   // Local state for input field
   const [input, setInput] = useState('');
@@ -261,59 +261,67 @@ const ChatPage: React.FC = () => {
                     }}
                   >
                     {message.content}
+                    {/* Blinking cursor for streaming messages */}
+                    {message.isStreaming && (
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-block',
+                          width: '2px',
+                          height: '1em',
+                          backgroundColor: 'text.primary',
+                          ml: 0.5,
+                          animation: 'blink 1s step-end infinite',
+                          '@keyframes blink': {
+                            '50%': { opacity: 0 },
+                          },
+                        }}
+                      />
+                    )}
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      mt: 1,
-                      display: 'block',
-                      opacity: 0.7,
-                    }}
-                  >
-                    {message.timestamp.toLocaleTimeString()}
-                  </Typography>
+                  {!message.isStreaming && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        mt: 1,
+                        display: 'block',
+                        opacity: 0.7,
+                      }}
+                    >
+                      {message.timestamp.toLocaleTimeString()}
+                    </Typography>
+                  )}
                 </Paper>
               </Box>
             </Box>
           ))}
 
-          {/* Loading Indicator */}
-          {isLoading && (
+          {/* Streaming Status Indicator */}
+          {isLoading && streamStatus && (
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
                 mb: 2,
+                ml: 6,  // Align with message bubbles
               }}
             >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  backgroundColor: 'secondary.main',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                }}
-              >
-                <SmartToyIcon />
-              </Box>
               <Paper
-                elevation={1}
+                elevation={0}
                 sx={{
-                  p: 2,
+                  px: 2,
+                  py: 1,
                   borderRadius: 2,
+                  backgroundColor: 'action.hover',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
                 }}
               >
-                <CircularProgress size={20} />
+                <CircularProgress size={16} />
                 <Typography variant="body2" color="text.secondary">
-                  Thinking...
+                  {streamStatus}
                 </Typography>
               </Paper>
             </Box>
