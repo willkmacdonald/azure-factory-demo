@@ -13,8 +13,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from shared.chat_service import get_chat_response, get_chat_response_streaming, build_system_prompt
-from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG
-from src.api.auth import get_current_user_optional
+from shared.config import AZURE_ENDPOINT, AZURE_API_KEY, AZURE_API_VERSION, RATE_LIMIT_CHAT, DEBUG, REQUIRE_AUTH
+from src.api.auth import get_current_user_conditional
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ async def chat(
     request: Request,
     chat_request: ChatRequest,
     client: AsyncAzureOpenAI = Depends(get_openai_client),
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_conditional)
 ) -> ChatResponse:
     """Chat endpoint with AI assistant using tool calling.
 
@@ -208,10 +208,10 @@ async def chat(
     responses. The AI can call tools to fetch factory metrics and data.
 
     Security Considerations (PR24B):
-    - Optional authentication: Authentication is optional but recommended for production
-      * If authenticated: User info is logged for audit trail and cost attribution
-      * If not authenticated: Anonymous access is allowed (demo/development mode)
-      * For production: Consider making authentication required via environment flag
+    - Conditional authentication based on REQUIRE_AUTH setting:
+      * When REQUIRE_AUTH=true: Requires valid Azure AD token (production mode)
+      * When REQUIRE_AUTH=false: Allows anonymous access with demo user (demo mode)
+      * User info is logged for audit trail and cost attribution
     - Rate limiting (PR7): Limited to 10 requests/minute per IP to prevent abuse
     - Input validation: Message length capped at 2000 chars, history at 50 messages
     - Prompt injection mitigation:
@@ -227,19 +227,20 @@ async def chat(
     vulnerable to social engineering attacks. For production use, consider:
     - Content filtering on user inputs (Azure Content Safety API)
     - Monitoring for unusual tool calling patterns
-    - User authentication and per-user rate limits (currently optional)
+    - Enable REQUIRE_AUTH=true for authenticated access
     - Audit logging of all chat interactions (currently implemented)
 
     Args:
         request: FastAPI Request object (required for rate limiting - slowapi)
         chat_request: Chat request containing message and conversation history
         client: Azure OpenAI client (injected dependency)
-        current_user: Optional authenticated user information (None if not authenticated)
+        current_user: User information (authenticated or demo user based on REQUIRE_AUTH)
 
     Returns:
         ChatResponse containing AI response and updated conversation history
 
     Raises:
+        HTTPException: 401 if REQUIRE_AUTH=true and token is missing/invalid
         HTTPException: If chat processing fails
         RateLimitExceeded: If rate limit is exceeded (returns 429 status)
     """
@@ -330,7 +331,7 @@ async def chat_stream(
     request: Request,
     chat_request: ChatRequest,
     client: AsyncAzureOpenAI = Depends(get_openai_client),
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_conditional)
 ) -> StreamingResponse:
     """Streaming chat endpoint with AI assistant using Server-Sent Events (SSE).
 

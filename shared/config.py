@@ -116,6 +116,11 @@ RATE_LIMIT_SETUP_ANONYMOUS: str = os.getenv("RATE_LIMIT_SETUP_ANONYMOUS", "1/hou
 # Environment settings
 DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 
+# Authentication settings (PR24B)
+# When REQUIRE_AUTH=true, POST endpoints require Azure AD authentication
+# When REQUIRE_AUTH=false (default), POST endpoints allow anonymous access (demo mode)
+REQUIRE_AUTH: bool = os.getenv("REQUIRE_AUTH", "false").lower() in ("true", "1", "yes")
+
 # Storage settings
 STORAGE_MODE: str = os.getenv("STORAGE_MODE", "azure")  # "local" or "azure"
 

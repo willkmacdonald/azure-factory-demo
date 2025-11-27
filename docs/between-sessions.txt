@@ -1,18 +1,31 @@
+Implementation Plan Status Summary
 
+  Completed ✅
 
-  1. Read /Users/willmacdonald/.claude/plans/vast-riding-island.md
-  2. Apply the content to implementation-plan.md
-  3. Start implementing PR25 (Memory Data Model & Service)
+  | Item      | Status     | Notes                                                        |
+  |-----------|------------|--------------------------------------------------------------|
+  | Phase 1-4 | ✅ 100%     | Core app complete - 21 endpoints, 5 pages, CI/CD             |
+  | PR23      | ✅ Complete | Whitespace validation fix                                    |
+  | PR24A     | ✅ Complete | API keys migrated to Azure Key Vault                         |
+  | PR24C     | ✅ Complete | Security headers + upload size validation                    |
+  | PR25      | ✅ Complete | Memory models + service (Investigation, Action, MemoryStore) |
 
-  One uncommitted change from this session:
-  - shared/config.py - Changed STORAGE_MODE default from "local" to "azure" and added warning log
+  In Progress / Next Up 📋
 
-Issues to Address:
- 1. ✅ FIXED: Storage mode default changed from "local" to "azure" in config.py
- 2. Add date format validation to metrics endpoints (HIGH - prevents injection)
- 3. Enable prompt injection blocking vs logging-only (HIGH for public demo)
- 4. Add rate limiting to GET endpoints (MEDIUM)
+  | Item  | Hours    | Priority | Description                                     |
+  |-------|----------|----------|-------------------------------------------------|
+  | PR26  | 3-4      | HIGH     | Memory integration with chat (add memory tools) |
+  | PR27  | 2        | HIGH     | Memory API endpoints                            |
+  | PR28  | 3-4      | HIGH     | Frontend memory UI (MemoryBadge, MemoryPanel)   |
+  | PR29  | 2        | MEDIUM   | Testing & demo polish                           |
+  | PR24B | 4-6      | HIGH     | Authentication on POST endpoints                |
+  | PR24D | 0.75-1.5 | LOW      | Config validation, Python version check         |
 
- Known Issue Reference: Commit 7869d00 fixed Azure Blob Storage async compatibility
- - Must use azure.storage.blob.aio.ExponentialRetry (not sync version)
- - Async context managers required for BlobServiceClient
+  Recommended Next Step
+
+  PR26: Memory Integration with Chat (3-4 hours)
+  - Add memory tools (save_investigation, log_action, check_action_outcomes) to chat_service.py
+  - Enhance system prompt with memory context
+  - Enables "Following up on the CNC-001 issue..." type interactions
+
+  Would you like to proceed with PR26, or tackle a different item?

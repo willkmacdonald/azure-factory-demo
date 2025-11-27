@@ -218,3 +218,53 @@ async def get_current_user_optional(
         return await get_current_user(credentials)
     except HTTPException:
         return None
+
+
+# Import REQUIRE_AUTH from config
+from shared.config import REQUIRE_AUTH
+
+
+async def get_current_user_conditional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[Dict[str, Any]]:
+    """Conditional authentication dependency based on REQUIRE_AUTH setting.
+
+    This dependency provides environment-controlled authentication behavior:
+    - When REQUIRE_AUTH=true: Requires valid Azure AD token (production mode)
+    - When REQUIRE_AUTH=false: Allows anonymous access with demo user (demo mode)
+
+    This enables the same codebase to work for both:
+    1. Local development/demos without Azure AD configured
+    2. Production deployments requiring authentication
+
+    Args:
+        credentials: HTTP Bearer credentials from Authorization header
+
+    Returns:
+        User info dict (authenticated user or demo user)
+
+    Raises:
+        HTTPException: 401 if REQUIRE_AUTH=true and token is missing/invalid
+
+    Example:
+        @router.post("/protected")
+        async def protected_endpoint(
+            current_user: Dict = Depends(get_current_user_conditional)
+        ):
+            logger.info(f"Access by: {current_user['email']}")
+    """
+    if REQUIRE_AUTH:
+        # Production mode: require valid authentication
+        logger.debug("REQUIRE_AUTH is enabled - validating authentication")
+        user = await get_current_user(credentials)
+        logger.info(f"Authenticated user access: {user.get('email')}")
+        return user
+    else:
+        # Demo mode: allow anonymous access with optional authentication
+        logger.debug("REQUIRE_AUTH is disabled - using optional authentication")
+        user = await get_current_user_optional(credentials)
+        if user:
+            logger.debug(f"Optional authentication succeeded: {user.get('email')}")
+        else:
+            logger.debug("Anonymous access (no token provided)")
+        return user

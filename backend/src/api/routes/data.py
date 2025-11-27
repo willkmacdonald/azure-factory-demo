@@ -36,8 +36,8 @@ from shared.data import (
     data_exists,
     MACHINES,
 )
-from shared.config import RATE_LIMIT_SETUP
-from src.api.auth import get_current_user_optional
+from shared.config import RATE_LIMIT_SETUP, REQUIRE_AUTH, DEBUG
+from src.api.auth import get_current_user_conditional
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,7 @@ class DateRangeResponse(BaseModel):
 async def setup_data(
     request: Request,
     setup_request: SetupRequest = SetupRequest(),
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_conditional)
 ) -> SetupResponse:
     """Generate synthetic production data.
 
@@ -172,9 +172,9 @@ async def setup_data(
     - Shift-level metrics
     - Planted scenarios for interesting analysis
 
-    Security (PR24B): This endpoint uses optional Azure AD authentication.
-    - Production: Requires Azure AD token to prevent unauthorized access
-    - Local Development: Works without authentication (demo user)
+    Security (PR24B): This endpoint uses conditional Azure AD authentication.
+    - When REQUIRE_AUTH=true: Requires valid Azure AD token (production mode)
+    - When REQUIRE_AUTH=false: Allows anonymous access with demo user (demo mode)
 
     This protects against:
     - Unauthorized data overwrites in production
@@ -187,7 +187,7 @@ async def setup_data(
     expensive, so this prevents spam.
 
     Flow:
-    1. Validate Azure AD JWT token (via get_current_user dependency)
+    1. Validate authentication based on REQUIRE_AUTH setting
     2. Receive request with optional 'days' parameter
     3. Call initialize_data() to generate synthetic data
     4. Load generated data to extract metadata
@@ -196,18 +196,19 @@ async def setup_data(
     Args:
         request: FastAPI Request object (required for rate limiting - slowapi)
         setup_request: SetupRequest with optional days parameter (default: 30)
-        current_user: Authenticated user information (injected by get_current_user)
+        current_user: User information (authenticated or demo user based on REQUIRE_AUTH)
 
     Returns:
         SetupResponse: Summary of generated data
 
     Raises:
+        HTTPException: 401 if REQUIRE_AUTH=true and token is missing/invalid
         HTTPException: 500 if data generation fails
         RateLimitExceeded: If rate limit is exceeded (returns 429 status)
 
     Example:
         POST /api/setup
-        Headers: Authorization: Bearer <azure_ad_token>
+        Headers: Authorization: Bearer <azure_ad_token>  (required when REQUIRE_AUTH=true)
         Body: {"days": 60}
 
         Response:
@@ -247,9 +248,14 @@ async def setup_data(
             f"Data generation failed for user {user_email}: {e}",
             exc_info=True
         )
+        # Environment-based error messages: hide internal details in production
+        if DEBUG:
+            error_detail = f"Failed to generate data: {str(e)}"
+        else:
+            error_detail = "Failed to generate data. Please contact support."
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to generate data: {str(e)}"
+            detail=error_detail
         )
 
 
@@ -333,9 +339,15 @@ async def get_stats() -> StatsResponse:
             batch_count=batch_count
         )
     except Exception as e:
+        logger.error(f"Failed to load data statistics: {e}", exc_info=True)
+        # Environment-based error messages: hide internal details in production
+        if DEBUG:
+            error_detail = f"Failed to load data statistics: {str(e)}"
+        else:
+            error_detail = "Failed to load data statistics. Please try again later."
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to load data statistics: {str(e)}"
+            detail=error_detail
         )
 
 
