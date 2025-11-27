@@ -26,6 +26,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 import httpx
 
+from shared.config import REQUIRE_AUTH
+
 logger = logging.getLogger(__name__)
 
 # Azure AD Configuration from environment variables
@@ -186,7 +188,6 @@ async def get_current_user(
         )
 
 
-# Optional dependency: Returns None if no token provided (for optional authentication)
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[Dict[str, Any]]:
@@ -218,10 +219,6 @@ async def get_current_user_optional(
         return await get_current_user(credentials)
     except HTTPException:
         return None
-
-
-# Import REQUIRE_AUTH from config
-from shared.config import REQUIRE_AUTH
 
 
 async def get_current_user_conditional(

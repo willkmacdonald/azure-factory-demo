@@ -5,8 +5,11 @@ This module demonstrates how to perform supply chain traceability queries
 with the expanded data model.
 """
 
+import logging
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
@@ -628,73 +631,76 @@ def generate_supplier_scorecard(supplier_id: str,
 # ==============================================================================
 
 if __name__ == "__main__":
-    print("=" * 80)
-    print("TRACEABILITY QUERY EXAMPLES")
-    print("=" * 80)
+    # Configure logging for standalone execution
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    logger.info("=" * 80)
+    logger.info("TRACEABILITY QUERY EXAMPLES")
+    logger.info("=" * 80)
 
     # Example 1: Backward trace from quality issue
-    print("\n1. BACKWARD TRACE: Quality Issue → Root Cause Supplier")
-    print("-" * 80)
+    logger.info("\n1. BACKWARD TRACE: Quality Issue → Root Cause Supplier")
+    logger.info("-" * 80)
     result = trace_backward_from_issue("QI-2025-1003-001")
-    print(f"Issue: {result['issue']['type']} ({result['issue']['severity']})")
-    print(f"Parts Affected: {result['issue']['parts_affected']}")
-    print(f"Affected Serials: {result['issue']['affected_serials']}")
-    print(f"Root Cause: {result['issue']['root_cause']}")
-    print(f"Batch: {result['batch']['id']}")
-    print(f"Order: {result['order']['id']} for {result['order']['customer']}")
-    print(f"Root Cause Supplier: {result['root_cause_supplier']}")
-    print(f"Cost Impact: ${result['issue']['cost']:.2f}")
+    logger.info(f"Issue: {result['issue']['type']} ({result['issue']['severity']})")
+    logger.info(f"Parts Affected: {result['issue']['parts_affected']}")
+    logger.info(f"Affected Serials: {result['issue']['affected_serials']}")
+    logger.info(f"Root Cause: {result['issue']['root_cause']}")
+    logger.info(f"Batch: {result['batch']['id']}")
+    logger.info(f"Order: {result['order']['id']} for {result['order']['customer']}")
+    logger.info(f"Root Cause Supplier: {result['root_cause_supplier']}")
+    logger.info(f"Cost Impact: ${result['issue']['cost']:.2f}")
 
     # Example 2: Forward trace from supplier
-    print("\n\n2. FORWARD TRACE: Supplier → Quality Impact")
-    print("-" * 80)
+    logger.info("\n\n2. FORWARD TRACE: Supplier → Quality Impact")
+    logger.info("-" * 80)
     result = trace_forward_from_supplier("SUP-001", ("2025-10-01", "2025-10-31"))
-    print(f"Supplier: {result['supplier']['name']}")
-    print(f"Material Lots Received: {result['material_lots']['count']}")
-    print(f"Production Batches: {result['production_batches']['count']}")
-    print(f"Quality Issues: {result['quality_issues']['count']}")
-    print(f"Total Cost Impact: ${result['quality_issues']['total_cost_impact']:.2f}")
-    print(f"Affected Customers: {', '.join(result['affected_orders']['customers'])}")
+    logger.info(f"Supplier: {result['supplier']['name']}")
+    logger.info(f"Material Lots Received: {result['material_lots']['count']}")
+    logger.info(f"Production Batches: {result['production_batches']['count']}")
+    logger.info(f"Quality Issues: {result['quality_issues']['count']}")
+    logger.info(f"Total Cost Impact: ${result['quality_issues']['total_cost_impact']:.2f}")
+    logger.info(f"Affected Customers: {', '.join(result['affected_orders']['customers'])}")
 
     # Example 3: Material lot trace
-    print("\n\n3. MATERIAL LOT TRACE: Lot → Usage & Issues")
-    print("-" * 80)
+    logger.info("\n\n3. MATERIAL LOT TRACE: Lot → Usage & Issues")
+    logger.info("-" * 80)
     result = trace_material_lot("LOT-2025-001")
-    print(f"Lot Number: {result['lot']['lot_number']}")
-    print(f"Supplier: {result['supplier']['name']}")
-    print(f"Quantity Used: {result['usage']['total_quantity_used']} kg")
-    print(f"Batches: {result['usage']['batches_count']}")
-    print(f"Quality Issues: {result['quality_issues']['count']}")
-    print(f"Quarantine Recommended: {result['quarantine_recommendation']['should_quarantine']}")
-    print(f"Reason: {result['quarantine_recommendation']['reason']}")
+    logger.info(f"Lot Number: {result['lot']['lot_number']}")
+    logger.info(f"Supplier: {result['supplier']['name']}")
+    logger.info(f"Quantity Used: {result['usage']['total_quantity_used']} kg")
+    logger.info(f"Batches: {result['usage']['batches_count']}")
+    logger.info(f"Quality Issues: {result['quality_issues']['count']}")
+    logger.info(f"Quarantine Recommended: {result['quarantine_recommendation']['should_quarantine']}")
+    logger.info(f"Reason: {result['quarantine_recommendation']['reason']}")
 
     # Example 4: Serial number trace
-    print("\n\n4. SERIAL NUMBER TRACE: Part → Complete History")
-    print("-" * 80)
+    logger.info("\n\n4. SERIAL NUMBER TRACE: Part → Complete History")
+    logger.info("-" * 80)
     result = trace_serial_number(1023)
-    print(f"Serial Number: {result['serial_number']}")
-    print(f"Status: {result['status']}")
-    print(f"Produced: {result['production']['date']} on {result['production']['machine']}")
-    print(f"Batch: {result['production']['batch_id']}")
-    print(f"Customer: {result['order']['customer']}")
-    print(f"Materials: {len(result['materials'])} types")
+    logger.info(f"Serial Number: {result['serial_number']}")
+    logger.info(f"Status: {result['status']}")
+    logger.info(f"Produced: {result['production']['date']} on {result['production']['machine']}")
+    logger.info(f"Batch: {result['production']['batch_id']}")
+    logger.info(f"Customer: {result['order']['customer']}")
+    logger.info(f"Materials: {len(result['materials'])} types")
     for material in result['materials']:
-        print(f"  - {material['lot_number']} from {material['supplier']}")
-    print(f"Quality Issues: {len(result['quality_issues'])}")
+        logger.info(f"  - {material['lot_number']} from {material['supplier']}")
+    logger.info(f"Quality Issues: {len(result['quality_issues'])}")
 
     # Example 5: Supplier scorecard
-    print("\n\n5. SUPPLIER SCORECARD: Performance Analysis")
-    print("-" * 80)
+    logger.info("\n\n5. SUPPLIER SCORECARD: Performance Analysis")
+    logger.info("-" * 80)
     result = generate_supplier_scorecard("SUP-001", ("2025-10-01", "2025-10-31"))
-    print(f"Supplier: {result['supplier']['name']}")
-    print(f"Performance Score: {result['metrics']['performance_score']}/100")
-    print(f"Grade: {result['grade']}")
-    print(f"Defect Rate: {result['metrics']['defect_rate_ppm']} PPM")
-    print(f"Quality Issues: {result['metrics']['quality_issues']['total']}")
-    print(f"  - High: {result['metrics']['quality_issues']['by_severity']['High']}")
-    print(f"  - Medium: {result['metrics']['quality_issues']['by_severity']['Medium']}")
-    print(f"  - Low: {result['metrics']['quality_issues']['by_severity']['Low']}")
-    print(f"Cost of Quality: ${result['metrics']['cost_of_quality']['total']:.2f}")
-    print(f"Recommendation: {result['recommendation']}")
+    logger.info(f"Supplier: {result['supplier']['name']}")
+    logger.info(f"Performance Score: {result['metrics']['performance_score']}/100")
+    logger.info(f"Grade: {result['grade']}")
+    logger.info(f"Defect Rate: {result['metrics']['defect_rate_ppm']} PPM")
+    logger.info(f"Quality Issues: {result['metrics']['quality_issues']['total']}")
+    logger.info(f"  - High: {result['metrics']['quality_issues']['by_severity']['High']}")
+    logger.info(f"  - Medium: {result['metrics']['quality_issues']['by_severity']['Medium']}")
+    logger.info(f"  - Low: {result['metrics']['quality_issues']['by_severity']['Low']}")
+    logger.info(f"Cost of Quality: ${result['metrics']['cost_of_quality']['total']:.2f}")
+    logger.info(f"Recommendation: {result['recommendation']}")
 
-    print("\n" + "=" * 80)
+    logger.info("\n" + "=" * 80)
