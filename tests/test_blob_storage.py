@@ -8,13 +8,18 @@ Tests cover:
 - Retry logic on transient failures
 - Connection string validation
 - JSON parsing errors
-- Client cleanup
+- Upload size validation (PR24C)
+
+Updated to match the refactored async context manager pattern in blob_storage.py.
+The client now uses _get_service_client() as an async context manager instead of
+_get_blob_client(). Each operation manages its own client lifecycle.
 """
 
 import json
 import pytest
 from typing import Dict, Any, AsyncGenerator
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
+from contextlib import asynccontextmanager
 from azure.core.exceptions import (
     ResourceNotFoundError,
     ClientAuthenticationError,
@@ -58,8 +63,21 @@ async def blob_client(valid_connection_string: str) -> AsyncGenerator[BlobStorag
         blob_name="test-blob.json"
     )
     yield client
-    # Cleanup
+    # Cleanup (no-op with new pattern)
     await client.close()
+
+
+def create_mock_service_client(mock_blob_client: AsyncMock) -> MagicMock:
+    """Create a mock service client that returns a mock blob client."""
+    mock_service = MagicMock()
+    mock_service.get_blob_client = MagicMock(return_value=mock_blob_client)
+    return mock_service
+
+
+@asynccontextmanager
+async def mock_service_context(mock_service: MagicMock):
+    """Async context manager wrapper for mock service client."""
+    yield mock_service
 
 
 # Initialization Tests
@@ -102,8 +120,9 @@ async def test_blob_exists_returns_true(blob_client):
     """Test blob_exists returns True when blob exists."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(return_value=True)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         result = await blob_client.blob_exists()
         assert result is True
         mock_blob_client.exists.assert_called_once()
@@ -114,8 +133,9 @@ async def test_blob_exists_returns_false(blob_client):
     """Test blob_exists returns False when blob doesn't exist."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(return_value=False)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         result = await blob_client.blob_exists()
         assert result is False
         mock_blob_client.exists.assert_called_once()
@@ -128,8 +148,9 @@ async def test_blob_exists_handles_auth_error(blob_client):
     mock_blob_client.exists = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.blob_exists()
         assert "authentication failed" in str(exc_info.value).lower()
@@ -140,8 +161,9 @@ async def test_blob_exists_returns_false_on_generic_error(blob_client):
     """Test blob_exists returns False on unexpected errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(side_effect=Exception("Unexpected error"))
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         result = await blob_client.blob_exists()
         assert result is False
 
@@ -153,8 +175,9 @@ async def test_upload_blob_success(blob_client, test_data):
     """Test successful blob upload."""
     mock_blob_client = AsyncMock()
     mock_blob_client.upload_blob = AsyncMock()
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         await blob_client.upload_blob(test_data)
 
         # Verify upload was called with correct arguments
@@ -177,8 +200,9 @@ async def test_upload_blob_auth_error(blob_client, test_data):
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "authentication failed" in str(exc_info.value).lower()
@@ -196,8 +220,9 @@ async def test_upload_blob_network_error_retries(blob_client, test_data):
     # SDK retries internally, so from our perspective the operation just succeeds
     # after the SDK's internal retry attempts
     mock_blob_client.upload_blob = AsyncMock(return_value=None)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         await blob_client.upload_blob(test_data)
 
         # Verify upload was called once (SDK handles retries internally)
@@ -212,8 +237,9 @@ async def test_upload_blob_network_error_exhausts_retries(blob_client, test_data
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
             with pytest.raises(RuntimeError) as exc_info:
                 await blob_client.upload_blob(test_data)
@@ -231,8 +257,9 @@ async def test_upload_blob_http_response_error(blob_client, test_data):
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=HttpResponseError("Container not found")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "service error" in str(exc_info.value).lower()
@@ -245,11 +272,24 @@ async def test_upload_blob_unexpected_error(blob_client, test_data):
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=Exception("Unexpected error")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "failed to upload blob" in str(exc_info.value).lower()
+
+
+@pytest.mark.anyio
+async def test_upload_blob_size_limit(blob_client):
+    """Test upload_blob rejects oversized uploads (PR24C)."""
+    # Create data larger than the limit (default 50MB)
+    large_data = {"data": "x" * (51 * 1024 * 1024)}  # 51MB of data
+
+    with pytest.raises(ValueError) as exc_info:
+        await blob_client.upload_blob(large_data)
+
+    assert "exceeds maximum" in str(exc_info.value).lower()
 
 
 # Download Blob Tests
@@ -265,8 +305,9 @@ async def test_download_blob_success(blob_client, test_data):
 
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         result = await blob_client.download_blob()
 
         assert result == test_data
@@ -281,8 +322,9 @@ async def test_download_blob_not_found(blob_client):
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ResourceNotFoundError("Blob not found")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "not found" in str(exc_info.value).lower()
@@ -296,8 +338,9 @@ async def test_download_blob_auth_error(blob_client):
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "authentication failed" in str(exc_info.value).lower()
@@ -318,8 +361,9 @@ async def test_download_blob_network_error_retries(blob_client, test_data):
     mock_blob_client = AsyncMock()
     # SDK retries internally, so from our perspective the operation just succeeds
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream_success)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         result = await blob_client.download_blob()
 
         assert result == test_data
@@ -335,8 +379,9 @@ async def test_download_blob_network_error_exhausts_retries(blob_client):
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
             with pytest.raises(RuntimeError) as exc_info:
                 await blob_client.download_blob()
@@ -357,8 +402,9 @@ async def test_download_blob_invalid_json(blob_client):
 
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream)
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "invalid json" in str(exc_info.value).lower()
@@ -371,8 +417,9 @@ async def test_download_blob_http_response_error(blob_client):
     mock_blob_client.download_blob = AsyncMock(
         side_effect=HttpResponseError("Service unavailable")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "service error" in str(exc_info.value).lower()
@@ -385,8 +432,9 @@ async def test_download_blob_unexpected_error(blob_client):
     mock_blob_client.download_blob = AsyncMock(
         side_effect=Exception("Unexpected error")
     )
+    mock_service = create_mock_service_client(mock_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', return_value=mock_blob_client):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "failed to download blob" in str(exc_info.value).lower()
@@ -395,37 +443,22 @@ async def test_download_blob_unexpected_error(blob_client):
 # Client Cleanup Tests
 
 @pytest.mark.anyio
-async def test_close_client(valid_connection_string):
-    """Test close() properly cleans up blob service client."""
+async def test_close_client_is_noop(valid_connection_string):
+    """Test close() is a no-op with the new context manager pattern.
+
+    The refactored client manages service client lifecycle per-operation
+    using async context managers, so close() is kept for backward
+    compatibility but does nothing.
+    """
     client = BlobStorageClient(
         connection_string=valid_connection_string,
         container_name="test-container",
         blob_name="test.json"
     )
 
-    # Simulate client creation
-    mock_service_client = AsyncMock()
-    mock_service_client.close = AsyncMock()
-    client._blob_service_client = mock_service_client
-
+    # Should not raise error - close is now a no-op
     await client.close()
-
-    mock_service_client.close.assert_called_once()
-    assert client._blob_service_client is None
-
-
-@pytest.mark.anyio
-async def test_close_client_no_client_created(valid_connection_string):
-    """Test close() when no client has been created (no-op)."""
-    client = BlobStorageClient(
-        connection_string=valid_connection_string,
-        container_name="test-container",
-        blob_name="test.json"
-    )
-
-    # Should not raise error
-    await client.close()
-    assert client._blob_service_client is None
+    # No assertions needed - just verifying it doesn't raise
 
 
 # Integration Test (simulated)
@@ -436,16 +469,29 @@ async def test_full_upload_download_cycle(blob_client, test_data):
     json_content = json.dumps(test_data).encode("utf-8")
 
     # Mock upload
-    mock_upload_client = AsyncMock()
-    mock_upload_client.upload_blob = AsyncMock()
+    mock_upload_blob_client = AsyncMock()
+    mock_upload_blob_client.upload_blob = AsyncMock()
+    mock_upload_service = create_mock_service_client(mock_upload_blob_client)
 
     # Mock download
     mock_stream = AsyncMock()
     mock_stream.readall = AsyncMock(return_value=json_content)
-    mock_download_client = AsyncMock()
-    mock_download_client.download_blob = AsyncMock(return_value=mock_stream)
+    mock_download_blob_client = AsyncMock()
+    mock_download_blob_client.download_blob = AsyncMock(return_value=mock_stream)
+    mock_download_service = create_mock_service_client(mock_download_blob_client)
 
-    with patch.object(blob_client, '_get_blob_client', side_effect=[mock_upload_client, mock_download_client]):
+    # First call returns upload service, second returns download service
+    call_count = [0]
+
+    @asynccontextmanager
+    async def mock_get_service_client():
+        if call_count[0] == 0:
+            call_count[0] += 1
+            yield mock_upload_service
+        else:
+            yield mock_download_service
+
+    with patch.object(blob_client, '_get_service_client', mock_get_service_client):
         # Upload
         await blob_client.upload_blob(test_data)
 
