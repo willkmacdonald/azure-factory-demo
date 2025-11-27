@@ -37,7 +37,7 @@ from shared.data import (
     MACHINES,
 )
 from shared.config import RATE_LIMIT_SETUP, REQUIRE_AUTH, DEBUG
-from src.api.auth import get_current_user_conditional
+from ..auth import get_current_user_conditional
 
 logger = logging.getLogger(__name__)
 
