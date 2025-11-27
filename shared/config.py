@@ -121,6 +121,17 @@ DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 # When REQUIRE_AUTH=false (default), POST endpoints allow anonymous access (demo mode)
 REQUIRE_AUTH: bool = os.getenv("REQUIRE_AUTH", "false").lower() in ("true", "1", "yes")
 
+# Prompt injection protection mode (PR24D)
+# "log": Log suspicious patterns but allow the request (default for demos)
+# "block": Reject requests with suspicious patterns (recommended for production)
+PROMPT_INJECTION_MODE: str = os.getenv("PROMPT_INJECTION_MODE", "log").lower()
+if PROMPT_INJECTION_MODE not in ("log", "block"):
+    logger.warning(
+        f"Invalid PROMPT_INJECTION_MODE '{PROMPT_INJECTION_MODE}'. "
+        f"Using 'log' as default. Valid values: 'log', 'block'"
+    )
+    PROMPT_INJECTION_MODE = "log"
+
 # Storage settings
 STORAGE_MODE: str = os.getenv("STORAGE_MODE", "azure")  # "local" or "azure"
 
@@ -147,6 +158,27 @@ AZURE_BLOB_MAX_UPLOAD_SIZE: int = int(os.getenv("AZURE_BLOB_MAX_UPLOAD_SIZE", st
 
 # Cost estimation settings
 DEFECT_COST_ESTIMATE: float = 50.0  # USD per defect (for demo cost impact calculations)
+
+# OEE Performance Factor (PR24D)
+# This is a simplified performance factor for demo purposes.
+# In production, performance should be calculated from actual cycle times.
+# Valid range: 0.0 to 1.0 (e.g., 0.95 = 95% performance efficiency)
+# Default: 0.95 (industry typical for well-maintained equipment)
+_oee_factor_str = os.getenv("OEE_PERFORMANCE_FACTOR", "0.95")
+try:
+    OEE_PERFORMANCE_FACTOR: float = float(_oee_factor_str)
+    if not 0.0 <= OEE_PERFORMANCE_FACTOR <= 1.0:
+        logger.warning(
+            f"OEE_PERFORMANCE_FACTOR={OEE_PERFORMANCE_FACTOR} is outside valid range [0.0, 1.0]. "
+            f"Using default value 0.95"
+        )
+        OEE_PERFORMANCE_FACTOR = 0.95
+except ValueError:
+    logger.warning(
+        f"Invalid OEE_PERFORMANCE_FACTOR value '{_oee_factor_str}'. "
+        f"Must be a number between 0.0 and 1.0. Using default value 0.95"
+    )
+    OEE_PERFORMANCE_FACTOR = 0.95
 
 # Memory storage settings (PR25)
 # Uses existing AZURE_BLOB_CONTAINER, just different blob name

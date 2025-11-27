@@ -37,19 +37,22 @@ from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Tuple
 import json
 import logging
+import re
 
 from openai import AsyncAzureOpenAI
 
 logger = logging.getLogger(__name__)
 
 # Import from shared package (proper Python imports, no sys.path manipulation)
-from shared.config import FACTORY_NAME, AZURE_DEPLOYMENT_NAME
+from shared.config import FACTORY_NAME, AZURE_DEPLOYMENT_NAME, PROMPT_INJECTION_MODE
 from shared.data import load_data, load_data_async, MACHINES
 from shared.metrics import (
     calculate_oee,
     get_scrap_metrics,
     get_quality_issues,
     get_downtime_analysis,
+    validate_date_format,
+    DateValidationError,
 )
 from shared.memory_service import (
     save_investigation,
@@ -58,6 +61,21 @@ from shared.memory_service import (
     get_relevant_memories,
     generate_shift_summary,
 )
+
+
+class PromptInjectionError(ValueError):
+    """Exception raised when a prompt injection attempt is detected and blocked.
+
+    This exception is raised when PROMPT_INJECTION_MODE is set to "block"
+    and a suspicious pattern is detected in user input.
+    """
+
+    def __init__(self, pattern: str):
+        self.pattern = pattern
+        super().__init__(
+            f"Message blocked: Suspicious pattern detected. "
+            f"If you believe this is an error, please rephrase your question."
+        )
 
 
 def sanitize_user_input(user_message: str) -> str:
@@ -69,28 +87,35 @@ def sanitize_user_input(user_message: str) -> str:
     Returns:
         Sanitized message safe for LLM processing
 
-    Security Considerations (PR20B):
-        This function provides BASIC protection against prompt injection attacks,
-        which is sufficient for demo/prototype environments. It includes:
+    Raises:
+        PromptInjectionError: If PROMPT_INJECTION_MODE="block" and
+            suspicious patterns are detected
+
+    Security Considerations (PR20B, PR24D):
+        This function provides protection against prompt injection attacks.
+        The behavior is controlled by the PROMPT_INJECTION_MODE environment variable:
+
+        - "log" (default): Log suspicious patterns but allow the request
+        - "block": Reject requests with suspicious patterns (recommended for production)
 
         ✅ Detection of common prompt injection patterns
         ✅ Logging of suspicious inputs for security monitoring
+        ✅ Optional blocking mode for production deployments (PR24D)
         ✅ Removal of null bytes and excessive newlines
         ✅ Whitespace normalization
 
-        ⚠️  LIMITATIONS (Not suitable for production as-is):
-        - Does NOT block detected injection attempts (only logs warnings)
+        ⚠️  LIMITATIONS:
         - Pattern matching is basic and can be bypassed with creative encoding
         - No defense against adversarial prompts or jailbreak techniques
         - No semantic analysis of potentially malicious instructions
-        - No user reputation or rate limiting integration
+        - No user reputation tracking
 
         🔒 PRODUCTION RECOMMENDATIONS:
-        1. Implement strict input validation with length limits (already done: 2000 chars)
-        2. Use LLM-based content filtering (Azure Content Safety API)
-        3. Implement semantic analysis for malicious intent detection
-        4. Add user authentication and rate limiting per user (not just IP)
-        5. Consider rejecting (not just logging) messages with injection patterns
+        1. Set PROMPT_INJECTION_MODE=block for public deployments
+        2. Implement strict input validation with length limits (already done: 2000 chars)
+        3. Use LLM-based content filtering (Azure Content Safety API)
+        4. Implement semantic analysis for malicious intent detection
+        5. Add user authentication and rate limiting per user (not just IP)
         6. Implement output filtering to prevent data exfiltration
         7. Use separate system prompts with strong delimiter tokens
         8. Monitor and alert on repeated injection attempts
@@ -101,11 +126,6 @@ def sanitize_user_input(user_message: str) -> str:
         - OWASP LLM Top 10 (LLM01: Prompt Injection)
         - Azure OpenAI Content Safety: https://learn.microsoft.com/azure/ai-services/openai/concepts/content-filter
         - Prompt Injection Primer: https://simonwillison.net/2023/Apr/14/worst-that-can-happen/
-
-    Note:
-        This is a basic sanitization approach suitable for demo purposes.
-        Production systems should implement more comprehensive security measures
-        as outlined above.
     """
     # Strip leading/trailing whitespace
     sanitized = user_message.strip()
@@ -128,22 +148,27 @@ def sanitize_user_input(user_message: str) -> str:
     # Convert to lowercase for case-insensitive matching
     lower_message = sanitized.lower()
 
-    # Log warning if suspicious patterns detected (but don't block - could be false positive)
+    # Check for suspicious patterns
     for pattern in suspicious_patterns:
         if pattern in lower_message:
             logger.warning(
-                f"Potential prompt injection detected in user input: pattern '{pattern}' found",
+                f"Potential prompt injection detected: pattern '{pattern}' found",
                 extra={"user_message_preview": sanitized[:100]},
             )
-            # For demo purposes, we log but don't block
-            # Production systems might want to reject or further sanitize
+
+            # Block or log based on configuration (PR24D)
+            if PROMPT_INJECTION_MODE == "block":
+                logger.warning(
+                    f"Blocking message due to PROMPT_INJECTION_MODE=block",
+                    extra={"pattern": pattern},
+                )
+                raise PromptInjectionError(pattern)
+            # In "log" mode, we continue processing after logging
 
     # Remove any null bytes
     sanitized = sanitized.replace("\x00", "")
 
     # Limit consecutive newlines to prevent prompt breaking
-    import re
-
     sanitized = re.sub(r"\n{4,}", "\n\n\n", sanitized)
 
     return sanitized
@@ -496,6 +521,27 @@ async def _build_memory_context() -> str:
     return ""
 
 
+def _validate_tool_date_args(tool_args: Dict[str, Any]) -> None:
+    """Validate date arguments in tool calls.
+
+    This function provides defense-in-depth validation for date inputs
+    from LLM tool calls before they are passed to metrics functions.
+    Prevents malformed inputs from causing unexpected behavior.
+
+    Args:
+        tool_args: Dictionary of tool arguments to validate
+
+    Raises:
+        DateValidationError: If any date argument has invalid format
+    """
+    date_params = ["start_date", "end_date", "follow_up_date"]
+    for param in date_params:
+        if param in tool_args and tool_args[param]:
+            date_value = tool_args[param]
+            if not validate_date_format(date_value):
+                raise DateValidationError(date_value, param)
+
+
 async def execute_tool(tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
     """Execute a tool function and return results as dictionary.
 
@@ -510,6 +556,11 @@ async def execute_tool(tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, A
     """
     logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
     try:
+        # Validate date format for metrics tools (defense-in-depth - PR24D)
+        metrics_tools = ["calculate_oee", "get_scrap_metrics", "get_quality_issues", "get_downtime_analysis"]
+        if tool_name in metrics_tools:
+            _validate_tool_date_args(tool_args)
+
         result: Any
 
         # Metrics tools

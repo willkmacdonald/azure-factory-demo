@@ -1,9 +1,11 @@
 """Analysis and metrics calculation functions for factory production data."""
 
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from .data import load_data, load_data_async, MACHINES
+from .config import OEE_PERFORMANCE_FACTOR
 from .models import (
     OEEMetrics,
     ScrapMetrics,
@@ -19,7 +21,13 @@ logger = logging.getLogger(__name__)
 # Configuration Constants
 # ============================================================================
 
-# DEMO SIMPLIFICATION: Hardcoded performance factor for OEE calculation
+# Date format pattern for validation (YYYY-MM-DD)
+DATE_FORMAT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# DEMO SIMPLIFICATION: Performance factor for OEE calculation (PR24D)
+# This value is configurable via the OEE_PERFORMANCE_FACTOR environment variable.
+# See shared/config.py for configuration, validation, and default value (0.95).
+#
 # In production, performance should be calculated as:
 #   performance = (actual_output / theoretical_maximum_output)
 # where theoretical_maximum_output = ideal_cycle_time * uptime
@@ -29,13 +37,53 @@ logger = logging.getLogger(__name__)
 # 2. Calculate: theoretical_output = uptime_hours * (3600 / ideal_cycle_time)
 # 3. Calculate: performance = total_parts / theoretical_output
 #
-# This constant represents typical speed efficiency in well-maintained manufacturing:
+# The 0.95 default represents typical speed efficiency in well-maintained manufacturing:
 # - Equipment rarely runs at 100% theoretical speed due to minor slowdowns
 # - 95% is industry-typical for well-maintained equipment
 # - Accounts for micro-stops, reduced speed periods, and quality checks
-#
-# See inline comments in calculate_oee() for detailed implementation guidance
-DEFAULT_PERFORMANCE_FACTOR = 0.95  # 95% - industry typical for well-maintained equipment
+
+
+def validate_date_format(date_str: str) -> bool:
+    """Validate that a date string matches YYYY-MM-DD format.
+
+    This function provides defense-in-depth validation for date inputs
+    before they are passed to datetime parsing functions. It prevents
+    malformed inputs that could cause unexpected behavior or errors.
+
+    Args:
+        date_str: Date string to validate
+
+    Returns:
+        True if format matches YYYY-MM-DD, False otherwise
+
+    Examples:
+        >>> validate_date_format("2024-01-15")
+        True
+        >>> validate_date_format("01-15-2024")
+        False
+        >>> validate_date_format("2024/01/15")
+        False
+        >>> validate_date_format("invalid")
+        False
+    """
+    if not date_str or not isinstance(date_str, str):
+        return False
+    return bool(DATE_FORMAT_PATTERN.match(date_str))
+
+
+class DateValidationError(ValueError):
+    """Exception raised when date format validation fails.
+
+    Provides clear error messages for invalid date inputs to metrics functions.
+    """
+
+    def __init__(self, date_str: str, param_name: str = "date"):
+        self.date_str = date_str
+        self.param_name = param_name
+        super().__init__(
+            f"Invalid {param_name} format: '{date_str}'. "
+            f"Expected format: YYYY-MM-DD (e.g., '2024-01-15')"
+        )
 
 
 def get_date_range(start_date: str, end_date: str) -> List[str]:
@@ -48,7 +96,16 @@ def get_date_range(start_date: str, end_date: str) -> List[str]:
 
     Returns:
         List of date strings in YYYY-MM-DD format
+
+    Raises:
+        DateValidationError: If date format is invalid (not YYYY-MM-DD)
     """
+    # Validate date formats before parsing (defense-in-depth - PR24D)
+    if not validate_date_format(start_date):
+        raise DateValidationError(start_date, "start_date")
+    if not validate_date_format(end_date):
+        raise DateValidationError(end_date, "end_date")
+
     start = datetime.fromisoformat(start_date)
     end = datetime.fromisoformat(end_date)
     dates = []
@@ -119,12 +176,14 @@ async def calculate_oee(
         availability = total_uptime / total_planned_time if total_planned_time > 0 else 0
         quality = total_good / total_parts if total_parts > 0 else 0
 
-        # Performance (simplified for demo - uses module-level constant)
+        # Performance (simplified for demo - uses configurable constant)
+        # See shared/config.py OEE_PERFORMANCE_FACTOR for:
+        # - Configuration via environment variable
+        # - Validation of range [0.0, 1.0]
         # See DEFAULT_PERFORMANCE_FACTOR at module level for:
-        # - Detailed justification of this demo simplification
         # - Production implementation steps with cycle time calculations
         # - Industry context (95% = typical speed efficiency)
-        performance = DEFAULT_PERFORMANCE_FACTOR
+        performance = OEE_PERFORMANCE_FACTOR
 
         oee = availability * performance * quality
 

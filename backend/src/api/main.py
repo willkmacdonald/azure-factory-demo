@@ -8,12 +8,14 @@ and provides a basic health check endpoint for monitoring service availability.
 Code Flow:
 1. Import required dependencies (FastAPI, CORSMiddleware, SlowAPI, type hints)
 2. Create FastAPI application instance with metadata for auto-generated docs
-3. Configure rate limiting with SlowAPI (prevents DoS attacks)
-4. Configure security headers middleware (PR24C)
-5. Configure CORS middleware with specific allowed origins from config
-6. Define health check endpoint for service monitoring
+3. Configure lifespan for startup validation and cleanup (PR24D)
+4. Configure rate limiting with SlowAPI (prevents DoS attacks)
+5. Configure security headers middleware (PR24C)
+6. Configure CORS middleware with specific allowed origins from config
+7. Define health check endpoint for service monitoring
 
 This module provides:
+- Startup config validation (fail fast if Azure credentials missing)
 - Rate limiting to prevent abuse (configurable per endpoint)
 - Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
 - Health check endpoint at GET /health
@@ -23,7 +25,8 @@ This module provides:
 
 import logging
 import time
-from typing import Dict
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, Dict
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,9 +35,96 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from shared.config import ALLOWED_ORIGINS, DEBUG
+from shared.config import (
+    ALLOWED_ORIGINS,
+    DEBUG,
+    AZURE_ENDPOINT,
+    AZURE_API_KEY,
+    STORAGE_MODE,
+    AZURE_STORAGE_CONNECTION_STRING,
+)
 
 from .routes import metrics, data, chat, traceability, memory
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# STARTUP CONFIGURATION VALIDATION (PR24D)
+# =============================================================================
+
+
+def validate_config() -> None:
+    """Validate required configuration at startup.
+
+    This function checks that all required configuration values are present
+    and valid. It provides early failure with clear error messages rather
+    than failing later during request handling.
+
+    Raises:
+        RuntimeError: If required configuration is missing or invalid
+    """
+    errors: list[str] = []
+
+    # Validate Azure OpenAI configuration (required for chat endpoints)
+    if not AZURE_ENDPOINT:
+        errors.append(
+            "AZURE_ENDPOINT is not set. "
+            "Configure via environment variable or Azure Key Vault."
+        )
+
+    if not AZURE_API_KEY:
+        errors.append(
+            "AZURE_API_KEY is not set. "
+            "Configure via environment variable or Azure Key Vault."
+        )
+
+    # Validate Azure Blob Storage configuration (required when STORAGE_MODE=azure)
+    if STORAGE_MODE.lower() == "azure" and not AZURE_STORAGE_CONNECTION_STRING:
+        errors.append(
+            "AZURE_STORAGE_CONNECTION_STRING is not set but STORAGE_MODE='azure'. "
+            "Either provide the connection string or set STORAGE_MODE='local' for development."
+        )
+
+    if errors:
+        error_msg = "Configuration validation failed:\n  - " + "\n  - ".join(errors)
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan context manager for startup/shutdown logic.
+
+    This context manager handles:
+    - Startup: Configuration validation (fail fast if credentials missing)
+    - Shutdown: Cleanup tasks (currently none, placeholder for future needs)
+
+    Using the modern lifespan approach instead of deprecated @app.on_event decorators.
+    See: https://fastapi.tiangolo.com/advanced/events/
+
+    Args:
+        app: FastAPI application instance
+
+    Yields:
+        None - Application runs between startup and shutdown
+    """
+    # === STARTUP ===
+    logger.info("Starting Factory Agent API...")
+
+    # Validate configuration early (fail fast with clear error messages)
+    validate_config()
+
+    logger.info("Configuration validation passed")
+    logger.info(f"Storage mode: {STORAGE_MODE}")
+    logger.info(f"Debug mode: {DEBUG}")
+
+    yield  # Application runs here
+
+    # === SHUTDOWN ===
+    logger.info("Shutting down Factory Agent API...")
+    # Future cleanup tasks would go here (e.g., close database connections)
+
 
 # =============================================================================
 # APPLICATION INITIALIZATION
@@ -47,6 +137,7 @@ app = FastAPI(
     title="Factory Agent API",
     description="Backend API for factory operations monitoring and analysis",
     version="1.0.0",
+    lifespan=lifespan,  # Use modern lifespan context manager (PR24D)
 )
 
 # =============================================================================
