@@ -474,3 +474,115 @@ export interface OrderBatches {
     quality_rate: number;
   };
 }
+
+// ============================================================================
+// Memory Types (from backend/shared/models.py - PR25)
+// ============================================================================
+
+/**
+ * Investigation status enum
+ */
+export type InvestigationStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+/**
+ * Action type enum
+ */
+export type ActionType = 'parameter_change' | 'maintenance' | 'process_change';
+
+/**
+ * Investigation - Track ongoing issue investigations
+ * GET /api/memory/investigations
+ */
+export interface Investigation {
+  id: string;                             // e.g., "INV-20241126-001"
+  title: string;                          // Brief investigation title
+  machine_id: string | null;              // Related machine ID if applicable
+  supplier_id: string | null;             // Related supplier ID if applicable
+  status: InvestigationStatus;            // Current investigation status
+  initial_observation: string;            // What triggered this investigation
+  findings: string[];                     // Discovered findings during investigation
+  hypotheses: string[];                   // Working hypotheses for root cause
+  created_at: string;                     // ISO timestamp of creation
+  updated_at: string;                     // ISO timestamp of last update
+}
+
+/**
+ * Action - Track actions taken and their outcomes
+ * GET /api/memory/actions
+ */
+export interface Action {
+  id: string;                             // e.g., "ACT-20241126-001"
+  description: string;                    // What action was taken
+  action_type: ActionType;                // Category of action
+  machine_id: string | null;              // Related machine ID if applicable
+  baseline_metrics: Record<string, number>; // Metrics captured before action
+  expected_impact: string;                // What improvement is expected
+  actual_impact: string | null;           // Measured impact after follow-up
+  follow_up_date: string | null;          // When to check results (ISO date)
+  created_at: string;                     // ISO timestamp of creation
+}
+
+/**
+ * Memory Summary Response
+ * GET /api/memory/summary
+ */
+export interface MemorySummaryResponse {
+  total_investigations: number;           // Total number of investigations
+  total_actions: number;                  // Total number of actions
+  open_investigations: number;            // Count of open investigations
+  in_progress_investigations: number;     // Count of in-progress investigations
+  resolved_investigations: number;        // Count of resolved investigations
+  pending_followups: number;              // Count of actions pending follow-up
+  last_updated: string;                   // Last memory store update timestamp
+}
+
+/**
+ * Investigations List Response
+ * GET /api/memory/investigations
+ */
+export interface InvestigationsResponse {
+  investigations: Investigation[];        // List of investigations
+  total: number;                          // Total count
+}
+
+/**
+ * Actions List Response
+ * GET /api/memory/actions
+ */
+export interface ActionsResponse {
+  actions: Action[];                      // List of actions
+  total: number;                          // Total count
+}
+
+/**
+ * Shift Summary Response
+ * GET /api/memory/shift-summary
+ */
+export interface ShiftSummaryResponse {
+  date: string;                           // Summary date (YYYY-MM-DD)
+  active_investigations: Array<{          // Active investigations summary
+    id: string;
+    title: string;
+    status: InvestigationStatus;
+    machine_id: string | null;
+    updated_at: string;
+  }>;
+  todays_actions: Array<{                 // Actions taken today
+    id: string;
+    description: string;
+    action_type: ActionType;
+    machine_id: string | null;
+    expected_impact: string;
+  }>;
+  pending_followups: Array<{              // Actions pending follow-up
+    id: string;
+    description: string;
+    follow_up_date: string;
+    expected_impact: string;
+  }>;
+  counts: {                               // Summary counts
+    active_investigations: number;
+    todays_actions: number;
+    pending_followups: number;
+  };
+}

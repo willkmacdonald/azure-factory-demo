@@ -420,8 +420,8 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 | Item | Hours | Priority | Status |
 |------|-------|----------|--------|
 | **PR26: Memory Integration with Chat** | ~1.5 | HIGH | ✅ COMPLETE |
-| **PR27: Memory API Endpoints** | 2 | HIGH | 📋 Planned |
-| **PR28: Frontend Memory UI** | 3-4 | HIGH | 📋 Planned |
+| **PR27: Memory API Endpoints** | 2 | HIGH | ✅ COMPLETE |
+| **PR28: Frontend Memory UI** | 3-4 | HIGH | ✅ COMPLETE |
 | **PR29: Testing & Demo Polish** | 2 | MEDIUM | 📋 Planned |
 | **PR24B: Authentication & Protection** | 4-6 | HIGH | 📋 Planned |
 | **PR24D: Quality Enhancements** | 0.75-1.5 | LOW | 📋 Planned |
@@ -439,6 +439,8 @@ See PR21 detailed task list below (move to PR24B due to security priority):
 - ✅ PR24C: Security Headers & Upload Validation
 - ✅ PR25: Memory Data Model & Service
 - ✅ PR26: Memory Integration with Chat
+- ✅ PR27: Memory API Endpoints
+- ✅ PR28: Frontend Memory UI
 
 ---
 
@@ -575,37 +577,43 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 
 **Dependencies**: PR26
 
-### PR28: Frontend Memory UI (3-4 hrs) 📋 PENDING
+### PR28: Frontend Memory UI ✅ COMPLETE
 
-**Status**: Not started - Ready to begin after PR27
+**Status**: ✅ COMPLETE (2025-11-26)
 **Priority**: HIGH - Key UX enhancement
+**Actual Effort**: ~1.5 hours
 
-**New Files**:
-1. [ ] `frontend/src/components/MemoryBadge.tsx`
-   - Shows count of open investigations
+**New Files Created**:
+1. [x] `frontend/src/components/MemoryBadge.tsx`
+   - Shows count of open investigations and pending follow-ups
    - Click to open memory panel
-   - Styled with MUI components
+   - Pulsing animation when items need attention
+   - Color-coded badge (error, warning, primary)
 
-2. [ ] `frontend/src/components/MemoryPanel.tsx`
-   - Sidebar component showing active memories
-   - Investigation list with status badges
-   - Action log with impact indicators
+2. [x] `frontend/src/components/MemoryPanel.tsx`
+   - Drawer component with three tabs: Investigations, Actions, Summary
+   - Investigation list with status badges (Open, In Progress, Resolved, Closed)
+   - Action log with impact tracking
+   - Shift summary with counts and details
+   - Loading and error states
 
 **Modifications**:
-1. [ ] `frontend/src/types/api.ts` - Add memory TypeScript types
-   - Investigation, Action, MemoryStore interfaces
-   - API response types
+1. [x] `frontend/src/types/api.ts` - Added memory TypeScript types
+   - Investigation, Action interfaces
+   - InvestigationStatus, ActionType enums
+   - MemorySummaryResponse, InvestigationsResponse, ActionsResponse
+   - ShiftSummaryResponse
 
-2. [ ] `frontend/src/api/client.ts` - Add memory API methods
-   - getMemorySummary(), getInvestigations(), getActions()
-   - Type-safe axios methods
+2. [x] `frontend/src/api/client.ts` - Added memory API methods
+   - getMemorySummary(), getInvestigations(), getActions(), getShiftSummary()
+   - Type-safe axios methods with optional filters
 
-3. [ ] `frontend/src/pages/ChatPage.tsx` - Integrate memory UI
-   - Add MemoryBadge to header
-   - Add MemoryPanel to sidebar
-   - Load memory on component mount
+3. [x] `frontend/src/pages/ChatPage.tsx` - Integrated memory UI
+   - Added MemoryBadge to header next to clear button
+   - Added MemoryPanel drawer
+   - Auto-refresh memory counts after sending messages
 
-**Dependencies**: PR27
+**Dependencies**: PR27 (Complete)
 
 ### PR29: Testing & Demo Polish (2 hrs) 📋 PENDING
 
@@ -642,10 +650,12 @@ Enhance chat with **Investigation**, **Action**, and **Pattern** memory to demon
 | `shared/models.py` | Add Investigation, Action, MemoryStore | ✅ PR25 |
 | `shared/memory_service.py` | **NEW** - Memory CRUD | ✅ PR25 |
 | `shared/chat_service.py` | Add memory tools + system prompt | ✅ PR26 |
-| `backend/src/api/routes/memory.py` | **NEW** - Memory routes | 📋 PR27 |
-| `frontend/src/components/MemoryBadge.tsx` | **NEW** | 📋 PR28 |
-| `frontend/src/components/MemoryPanel.tsx` | **NEW** | 📋 PR28 |
-| `frontend/src/pages/ChatPage.tsx` | Integrate memory UI | 📋 PR28 |
+| `backend/src/api/routes/memory.py` | **NEW** - Memory routes | ✅ PR27 |
+| `frontend/src/components/MemoryBadge.tsx` | **NEW** | ✅ PR28 |
+| `frontend/src/components/MemoryPanel.tsx` | **NEW** | ✅ PR28 |
+| `frontend/src/pages/ChatPage.tsx` | Integrate memory UI | ✅ PR28 |
+| `frontend/src/types/api.ts` | Add memory TypeScript types | ✅ PR28 |
+| `frontend/src/api/client.ts` | Add memory API methods | ✅ PR28 |
 
 ### Success Criteria
 

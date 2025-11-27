@@ -32,6 +32,11 @@ import type {
   ForwardTrace,
   Order,
   OrderBatches,
+  MemorySummaryResponse,
+  InvestigationsResponse,
+  ActionsResponse,
+  ShiftSummaryResponse,
+  InvestigationStatus,
 } from '../types/api';
 
 // ============================================================================
@@ -232,6 +237,16 @@ function formatApiError(error: AxiosError): FormattedApiError {
   }
 
   return formatted;
+}
+
+/**
+ * Validate that a parameter is a string (defense-in-depth for filter params)
+ * Prevents malformed objects from being passed as query parameters
+ */
+function validateStringParam(value: unknown, paramName: string): void {
+  if (value !== undefined && value !== null && typeof value !== 'string') {
+    throw new Error(`Invalid parameter: ${paramName} must be a string`);
+  }
 }
 
 /**
@@ -568,6 +583,70 @@ export const apiService = {
    */
   getOrderBatches: async (orderId: string): Promise<OrderBatches> => {
     const response = await apiClient.get<OrderBatches>(`/api/orders/${orderId}/batches`);
+    return response.data;
+  },
+
+  // ========================================
+  // Memory Endpoints (PR28)
+  // ========================================
+
+  /**
+   * Get memory summary statistics
+   * GET /api/memory/summary
+   * Returns counts of investigations, actions, and status breakdowns
+   */
+  getMemorySummary: async (): Promise<MemorySummaryResponse> => {
+    const response = await apiClient.get<MemorySummaryResponse>('/api/memory/summary');
+    return response.data;
+  },
+
+  /**
+   * Get investigations list with optional filters
+   * GET /api/memory/investigations
+   * @param params - Optional query parameters for filtering
+   */
+  getInvestigations: async (params?: {
+    machine_id?: string;
+    supplier_id?: string;
+    status?: InvestigationStatus;
+  }): Promise<InvestigationsResponse> => {
+    // Validate string parameters to prevent injection attacks
+    if (params) {
+      validateStringParam(params.machine_id, 'machine_id');
+      validateStringParam(params.supplier_id, 'supplier_id');
+      validateStringParam(params.status, 'status');
+    }
+    const response = await apiClient.get<InvestigationsResponse>('/api/memory/investigations', {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get actions list with optional filters
+   * GET /api/memory/actions
+   * @param params - Optional query parameters for filtering
+   */
+  getActions: async (params?: {
+    machine_id?: string;
+  }): Promise<ActionsResponse> => {
+    // Validate string parameters to prevent injection attacks
+    if (params) {
+      validateStringParam(params.machine_id, 'machine_id');
+    }
+    const response = await apiClient.get<ActionsResponse>('/api/memory/actions', {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get shift handoff summary
+   * GET /api/memory/shift-summary
+   * Returns summary of active investigations, today's actions, and pending follow-ups
+   */
+  getShiftSummary: async (): Promise<ShiftSummaryResponse> => {
+    const response = await apiClient.get<ShiftSummaryResponse>('/api/memory/shift-summary');
     return response.data;
   },
 };

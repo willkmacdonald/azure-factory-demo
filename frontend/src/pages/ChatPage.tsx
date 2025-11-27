@@ -32,6 +32,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import { useChat } from '../hooks/useChat';
+import { apiService } from '../api/client';
+import MemoryBadge from '../components/MemoryBadge';
+import MemoryPanel from '../components/MemoryPanel';
 
 // ============================================================================
 // Suggested Prompts
@@ -57,8 +60,35 @@ const ChatPage: React.FC = () => {
   // Local state for input field
   const [input, setInput] = useState('');
 
+  // Memory panel state
+  const [memoryPanelOpen, setMemoryPanelOpen] = useState(false);
+  const [openInvestigations, setOpenInvestigations] = useState(0);
+  const [pendingFollowups, setPendingFollowups] = useState(0);
+
   // Ref for auto-scrolling to latest message
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Load memory summary on mount and after sending messages
+   * Updates badge counts for investigations and follow-ups
+   */
+  useEffect(() => {
+    const loadMemorySummary = async (): Promise<void> => {
+      try {
+        const summary = await apiService.getMemorySummary();
+        // Defensive handling for API response fields
+        setOpenInvestigations(
+          (summary.open_investigations || 0) + (summary.in_progress_investigations || 0)
+        );
+        setPendingFollowups(summary.pending_followups || 0);
+      } catch (err) {
+        // Silently fail - memory badge will show 0
+        console.warn('[ChatPage] Failed to load memory summary:', err);
+      }
+    };
+
+    loadMemorySummary();
+  }, [messages.length]); // Refresh when messages change
 
   /**
    * Auto-scroll to bottom when new messages arrive
@@ -133,16 +163,25 @@ const ChatPage: React.FC = () => {
             Ask questions about your factory operations - powered by Azure OpenAI
           </Typography>
         </Box>
-        {messages.length > 0 && (
-          <IconButton
-            onClick={handleClearChat}
-            color="error"
-            title="Clear chat history"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Memory Badge - opens panel to view investigations and actions */}
+          <MemoryBadge
+            openInvestigations={openInvestigations}
+            pendingFollowups={pendingFollowups}
+            onClick={() => setMemoryPanelOpen(true)}
             disabled={isLoading}
-          >
-            <DeleteIcon />
-          </IconButton>
-        )}
+          />
+          {messages.length > 0 && (
+            <IconButton
+              onClick={handleClearChat}
+              color="error"
+              title="Clear chat history"
+              disabled={isLoading}
+            >
+              <DeleteIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       {/* Main Chat Container */}
@@ -410,6 +449,12 @@ const ChatPage: React.FC = () => {
           )}
         </Box>
       </Paper>
+
+      {/* Memory Panel - Drawer showing investigations and actions */}
+      <MemoryPanel
+        open={memoryPanelOpen}
+        onClose={() => setMemoryPanelOpen(false)}
+      />
     </Container>
   );
 };
