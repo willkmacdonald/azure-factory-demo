@@ -31,6 +31,7 @@ from .data_generator import (
     generate_orders,
     generate_production_batches,
     generate_suppliers,
+    initialize_random_seed,
 )
 
 logger = logging.getLogger(__name__)
@@ -460,7 +461,14 @@ def generate_production_data(days: int = 30) -> Dict[str, Any]:
         - Scenario 2: Major breakdown on day 22 for Packaging-001
         - Scenario 3: Performance improvement from 65% to 80% OEE
         - Scenario 4: Night shift 5-8% lower performance
+
+    Note:
+        When DEMO_SEED environment variable is set, data generation is deterministic.
+        This enables scripted walkthroughs with predictable data.
     """
+    # Initialize random seed for deterministic generation (if DEMO_SEED is set)
+    initialize_random_seed()
+
     end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     start_date = end_date - timedelta(days=days - 1)
 

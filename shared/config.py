@@ -183,3 +183,19 @@ except ValueError:
 # Memory storage settings (PR25)
 # Uses existing AZURE_BLOB_CONTAINER, just different blob name
 MEMORY_BLOB_NAME: str = os.getenv("MEMORY_BLOB_NAME", "memory.json")
+
+# Demo data generation seed
+# When set, data generation is deterministic (same data every time)
+# When empty/unset, data generation is random (different each time)
+# Example: DEMO_SEED=42 for scripted walkthroughs
+_demo_seed_str = os.getenv("DEMO_SEED", "")
+DEMO_SEED: Optional[int] = None
+if _demo_seed_str:
+    try:
+        DEMO_SEED = int(_demo_seed_str)
+        logger.info(f"DEMO_SEED={DEMO_SEED}: Data generation will be deterministic")
+    except ValueError:
+        logger.warning(
+            f"Invalid DEMO_SEED value '{_demo_seed_str}'. "
+            f"Must be an integer. Data generation will be random."
+        )

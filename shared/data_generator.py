@@ -6,9 +6,25 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from pydantic import ValidationError
+from shared.config import DEMO_SEED
 from shared.models import MaterialLot, MaterialSpec, Order, OrderItem, Supplier
 
 logger = logging.getLogger(__name__)
+
+
+def initialize_random_seed() -> None:
+    """Initialize random seed for deterministic data generation.
+
+    When DEMO_SEED is set, data generation produces the same results every time.
+    This enables scripted walkthroughs and reproducible demos.
+
+    Call this function at the start of data generation (e.g., in POST /api/setup).
+    """
+    if DEMO_SEED is not None:
+        random.seed(DEMO_SEED)
+        logger.info(f"Random seed initialized to {DEMO_SEED} for deterministic generation")
+    else:
+        logger.debug("No DEMO_SEED set, using random data generation")
 
 
 def generate_suppliers() -> List[Supplier]:
