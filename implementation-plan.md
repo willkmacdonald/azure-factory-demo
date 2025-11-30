@@ -1,9 +1,292 @@
 # Factory Agent - Implementation Plan
 
-**Last Updated**: 2025-11-27
+**Last Updated**: 2025-11-29
 **Project Status**: Phase 4 COMPLETE (100%) | Phase 5B COMPLETE (PR24A-D, PR25-29 Complete) | All Core Features Done
 **Architecture**: React 19 + FastAPI + Azure Container Apps + Azure AI Foundry + Azure Blob Storage + Azure AD Auth
-**Current Focus**: Project complete for demo purposes. Optional Phase 5 polish remaining.
+**Current Focus**: Phase 6 - Complete Tailwind CSS Migration
+
+---
+
+## Phase 6: Tailwind CSS Migration
+
+**Status**: 📋 PLANNED
+**Priority**: HIGH - UI framework consistency
+**Estimated Effort**: 8-10 hours total (6 PRs)
+**Goal**: Complete migration from Material-UI to Tailwind CSS + Framer Motion + Lucide React
+
+### Background
+
+The frontend has a mixed UI state:
+- Some components use Tailwind + Framer Motion (MainLayout, AuthButton)
+- Most pages still use Material-UI (Dashboard, Machines, Alerts, Chat, Traceability)
+- Tailwind v4 is installed but MUI dependencies remain
+
+This happened during commit `8a4c3de` which bundled UI changes with deployment config changes.
+
+### Dependencies to Change
+
+**Keep**:
+- `tailwindcss@4.1.17`
+- `@tailwindcss/vite@4.1.17`
+- `framer-motion@12.23.24`
+- `lucide-react@0.554.0`
+
+**Remove** (after migration complete):
+- `@mui/material@7.3.4`
+- `@mui/icons-material@7.3.4`
+
+### Files to Migrate
+
+| File | Lines | Current | Priority |
+|------|-------|---------|----------|
+| `MainLayout.tsx` | 171 | Tailwind ✅ | Done |
+| `AuthButton.tsx` | 133 | Tailwind ✅ | Done |
+| `DashboardPage.tsx` | 466 | MUI (restored) | PR30 |
+| `MachinesPage.tsx` | 366 | MUI | PR31 |
+| `AlertsPage.tsx` | 379 | MUI | PR31 |
+| `ChatPage.tsx` | 462 | MUI | PR32 |
+| `TraceabilityPage.tsx` | 1044 | MUI | PR33 |
+| `MemoryPanel.tsx` | 474 | MUI | PR34 |
+| `MemoryBadge.tsx` | 97 | MUI | PR34 |
+| `ApiHealthCheck.tsx` | 131 | MUI | PR35 |
+
+### Design System
+
+#### Color Palette
+```
+Primary:    blue-600 / blue-400 (dark)
+Success:    green-600 / green-400 (dark)
+Warning:    amber-600 / amber-400 (dark)
+Error:      red-600 / red-400 (dark)
+Background: gray-50 / gray-900 (dark)
+Surface:    white / gray-800 (dark)
+Text:       gray-900 / white (dark)
+Secondary:  gray-600 / gray-400 (dark)
+Border:     gray-200 / gray-700 (dark)
+```
+
+#### Component Patterns
+
+**Card**
+```tsx
+<div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+```
+
+**Primary Button**
+```tsx
+<motion.button
+  whileHover={{ scale: 1.02 }}
+  whileTap={{ scale: 0.98 }}
+  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+>
+```
+
+**Alert/Info Box**
+```tsx
+<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-blue-800 dark:text-blue-200">
+```
+
+**Loading Spinner**
+```tsx
+<Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+```
+
+**Page Container**
+```tsx
+<div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+  <div className="max-w-7xl mx-auto">
+```
+
+#### Icon Mapping (MUI → Lucide)
+
+| MUI Icon | Lucide Icon |
+|----------|-------------|
+| `Add` | `Plus` |
+| `Login` | `LogIn` |
+| `Send` | `Send` |
+| `Delete` | `Trash2` |
+| `Person` | `User` |
+| `SmartToy` | `Bot` |
+| `Warning` | `AlertTriangle` |
+| `CheckCircle` | `CheckCircle` |
+| `Error` | `XCircle` |
+| `Close` | `X` |
+| `Search` | `Search` |
+| `Refresh` | `RefreshCw` |
+| `ExpandMore` | `ChevronDown` |
+| `Psychology` | `Brain` |
+| `Summarize` | `FileText` |
+
+---
+
+### PR30: Dashboard Page Migration
+
+**Status**: 📋 Planned
+**Priority**: HIGH (main landing page)
+**Estimate**: 1.5-2 hours
+
+**Tasks**:
+- [ ] Replace MUI imports with Lucide icons
+- [ ] Convert Container/Box/Paper to div with Tailwind classes
+- [ ] Convert Grid to CSS Grid with Tailwind (`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6`)
+- [ ] Convert Card/CardContent to Tailwind card pattern
+- [ ] Convert Typography to semantic HTML with Tailwind
+- [ ] Convert Alert to Tailwind alert pattern
+- [ ] Convert Button to motion.button with Tailwind
+- [ ] Convert CircularProgress to Loader2 spinner
+- [ ] Style Recharts tooltips to match dark theme
+- [ ] Test responsive layout (mobile, tablet, desktop)
+- [ ] Test dark mode
+
+**MUI Components to Replace**:
+- Container → `<div className="max-w-7xl mx-auto px-4">`
+- Box → `<div>` with appropriate Tailwind spacing
+- Paper → `<div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">`
+- Grid container → `<div className="grid grid-cols-... gap-6">`
+- Grid item → Remove (CSS grid doesn't need item wrapper)
+- Card → `<div className="bg-white dark:bg-gray-800 rounded-xl shadow-md">`
+- Typography → `<h1>`, `<h2>`, `<p>`, `<span>` with Tailwind classes
+- Alert → Custom div with bg colors
+- Button → `<motion.button>` with Tailwind
+- CircularProgress → `<Loader2 className="animate-spin">`
+
+---
+
+### PR31: Machines & Alerts Pages Migration
+
+**Status**: 📋 Planned
+**Priority**: HIGH
+**Estimate**: 2-2.5 hours
+
+**Tasks**:
+- [ ] **MachinesPage**: Convert machine cards with status indicators
+- [ ] **MachinesPage**: Convert Tabs to custom Tailwind tabs
+- [ ] **MachinesPage**: Convert OEE gauge display
+- [ ] **AlertsPage**: Convert alert list with severity colors
+- [ ] **AlertsPage**: Convert Chip components to Tailwind badges
+- [ ] **AlertsPage**: Convert Table to Tailwind table
+- [ ] Test filtering and sorting interactions
+
+**Custom Components Needed**:
+- **Tabs**: `<div role="tablist">` with button group styling
+- **Chip/Badge**: `<span className="px-2 py-1 rounded-full text-xs font-medium bg-...">`
+- **Table**: Native `<table>` with Tailwind styling
+
+---
+
+### PR32: Chat Page Migration
+
+**Status**: 📋 Planned
+**Priority**: HIGH
+**Estimate**: 1.5-2 hours
+
+**Tasks**:
+- [ ] Convert message bubbles (user vs AI styling)
+- [ ] Convert text input with send button
+- [ ] Convert tool call status indicators
+- [ ] Convert streaming text display with cursor
+- [ ] Add typing indicator animation
+- [ ] Convert clear history button/dialog
+
+**Key Patterns**:
+- User message: `bg-blue-600 text-white rounded-2xl rounded-br-sm`
+- AI message: `bg-gray-100 dark:bg-gray-700 rounded-2xl rounded-bl-sm`
+- Tool status: `bg-amber-50 dark:bg-amber-900/20 border border-amber-200`
+
+---
+
+### PR33: Traceability Page Migration
+
+**Status**: 📋 Planned
+**Priority**: MEDIUM (largest file, most complex)
+**Estimate**: 2.5-3 hours
+
+**Tasks**:
+- [ ] Convert supplier cards and ratings
+- [ ] Convert batch table with expandable rows
+- [ ] Convert order tracking timeline
+- [ ] Convert quality issue indicators
+- [ ] Convert material lot details
+- [ ] Convert Accordion to custom expandable component
+- [ ] Test complex data display
+
+**Custom Components Needed**:
+- **Accordion**: Custom expandable with Framer Motion `AnimatePresence`
+- **Timeline**: CSS-based vertical timeline
+- **Expandable Row**: Table row + detail row pattern
+
+---
+
+### PR34: Memory Components Migration
+
+**Status**: 📋 Planned
+**Priority**: MEDIUM
+**Estimate**: 1.5-2 hours
+
+**Tasks**:
+- [ ] **MemoryPanel**: Convert drawer to slide-out panel
+- [ ] **MemoryPanel**: Convert tabs for Investigations/Actions/Summary
+- [ ] **MemoryPanel**: Convert memory item cards
+- [ ] **MemoryPanel**: Convert search input
+- [ ] **MemoryBadge**: Convert badge indicator
+- [ ] Test panel open/close animation
+
+**Custom Components Needed**:
+- **Drawer/Panel**: Fixed positioned div with Framer Motion slide
+- **Badge**: Positioned indicator with pulse animation
+
+---
+
+### PR35: Utility Components & Cleanup
+
+**Status**: 📋 Planned
+**Priority**: LOW (final cleanup)
+**Estimate**: 1 hour
+
+**Tasks**:
+- [ ] Convert ApiHealthCheck status indicator
+- [ ] Remove @mui/material from package.json
+- [ ] Remove @mui/icons-material from package.json
+- [ ] Run `npm prune` to clean node_modules
+- [ ] Update CLAUDE.md to reflect Tailwind as UI framework
+- [ ] Final testing of all pages
+- [ ] Verify bundle size reduction
+
+---
+
+### Testing Checklist (Per PR)
+
+- [ ] Light mode appearance
+- [ ] Dark mode appearance (toggle or system preference)
+- [ ] Mobile responsive (< 768px)
+- [ ] Tablet responsive (768px - 1024px)
+- [ ] Desktop (> 1024px)
+- [ ] Hover states
+- [ ] Focus states (keyboard navigation)
+- [ ] Loading states
+- [ ] Error states
+- [ ] Empty states
+
+---
+
+### Risk Mitigation
+
+1. **Recharts Styling**: Custom tooltip styling needed for dark theme
+2. **Form Controls**: Need custom styled inputs (Tailwind + headless pattern)
+3. **Complex Components**: Tabs, Accordion, Dialog need custom implementations
+4. **Accessibility**: Maintain ARIA attributes from MUI components
+
+---
+
+### Success Criteria
+
+1. All pages render correctly in light and dark mode
+2. No MUI dependencies remain in package.json
+3. Consistent styling across all pages
+4. Responsive design works on all breakpoints
+5. Animations are smooth (60fps with Framer Motion)
+6. Bundle size reduced (MUI is ~300KB)
+7. CLAUDE.md updated to reflect Tailwind
 
 ---
 
