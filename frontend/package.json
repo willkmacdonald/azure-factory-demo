@@ -12,10 +12,6 @@
   "dependencies": {
     "@azure/msal-browser": "^4.26.0",
     "@azure/msal-react": "^3.0.21",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.4",
-    "@mui/material": "^7.3.4",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.13.1",
     "framer-motion": "^12.23.24",
