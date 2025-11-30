@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, LogIn, Loader2 } from 'lucide-react';
+import { Plus, LogIn, Loader2, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -17,10 +17,21 @@ import { loginRequest, isAzureAdConfigured } from '../auth/authConfig';
 import type { OEEMetrics, ScrapMetrics, DowntimeAnalysis, StatsResponse } from '../types/api';
 
 /**
+ * Custom tooltip props for Recharts dark mode compatibility
+ */
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    value: number | string;
+    name: string;
+    color?: string;
+    dataKey?: string;
+  }>;
+  label?: string;
+}
+
+/**
  * DashboardPage - Main dashboard overview page
- *
- * Now using Tailwind CSS for styling, Framer Motion for animations,
- * and Lucide React for icons to match the my-website project style.
  *
  * Displays:
  * - Production metrics cards (OEE components)
@@ -99,18 +110,6 @@ const DashboardPage: React.FC = () => {
   }, []); // Run once on mount
 
   /**
-   * Handle user sign-in with Azure AD
-   */
-  const handleSignIn = async (): Promise<void> => {
-    try {
-      await instance.loginPopup(loginRequest);
-    } catch (err) {
-      console.error('Failed to sign in:', err);
-      setError('Failed to sign in with Microsoft account');
-    }
-  };
-
-  /**
    * Handle data generation
    * - Prompts for sign-in if Azure AD is configured and user is not authenticated
    * - Calls backend API to generate synthetic data
@@ -167,8 +166,12 @@ const DashboardPage: React.FC = () => {
    */
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin" />
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -176,18 +179,17 @@ const DashboardPage: React.FC = () => {
   /**
    * Render error state
    */
-  if (error) {
+  if (error && !stats?.exists) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-7xl mx-auto"
-        >
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-800 dark:text-red-200">
-            {error}
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mt-8">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 dark:text-red-200">{error}</p>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -196,21 +198,14 @@ const DashboardPage: React.FC = () => {
    * Render empty state if no data exists
    */
   if (!stats?.exists) {
-    // Always show generate button - it will prompt sign-in if needed when clicked
-    const showSignInButton = false; // No separate sign-in button needed
-    const showGenerateButton = true; // Always visible
     const requiresSignIn = azureAdConfigured && !isAuthenticated;
 
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-7xl mx-auto"
-        >
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Dashboard
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -218,7 +213,9 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          {/* Info Alert */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <p className="text-blue-800 dark:text-blue-200">
               No production data available.
               {requiresSignIn
@@ -227,58 +224,43 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex gap-4 flex-wrap">
-            {showSignInButton && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleSignIn}
-                className="inline-flex items-center gap-2 px-6 py-3 border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-              >
-                <LogIn className="w-5 h-5" />
-                Sign in with Microsoft
-              </motion.button>
-            )}
-
-            {showGenerateButton && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleGenerateData}
-                disabled={generating}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {requiresSignIn ? 'Signing in...' : 'Generating Data...'}
-                  </>
-                ) : requiresSignIn ? (
-                  <>
-                    <LogIn className="w-5 h-5" />
-                    Sign in & Generate Demo Data
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-5 h-5" />
-                    Generate Demo Data (30 days)
-                  </>
-                )}
-              </motion.button>
-            )}
-          </div>
-
-          {/* Success message */}
-          {successMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-800 dark:text-green-200"
-            >
-              {successMessage}
-            </motion.div>
+          {/* Error Alert */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 dark:text-red-200">{error}</p>
+            </div>
           )}
-        </motion.div>
+
+          {/* Success Alert */}
+          {successMessage && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <p className="text-green-800 dark:text-green-200">{successMessage}</p>
+            </div>
+          )}
+
+          {/* Generate Data Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleGenerateData}
+            disabled={generating}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {requiresSignIn ? 'Signing in...' : 'Generating Data...'}
+              </>
+            ) : (
+              <>
+                {requiresSignIn ? <LogIn className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                {requiresSignIn ? 'Sign in & Generate Demo Data' : 'Generate Demo Data (30 days)'}
+              </>
+            )}
+          </motion.button>
+        </div>
       </div>
     );
   }
@@ -290,17 +272,17 @@ const DashboardPage: React.FC = () => {
     {
       name: 'Availability',
       value: oee ? oee.availability * 100 : 0,
-      fill: '#3b82f6',
+      fill: '#8884d8',
     },
     {
       name: 'Performance',
       value: oee ? oee.performance * 100 : 0,
-      fill: '#10b981',
+      fill: '#82ca9d',
     },
     {
       name: 'Quality',
       value: oee ? oee.quality * 100 : 0,
-      fill: '#f59e0b',
+      fill: '#ffc658',
     },
   ];
 
@@ -314,17 +296,32 @@ const DashboardPage: React.FC = () => {
       }))
     : [];
 
+  /**
+   * Custom tooltip for dark mode compatibility
+   */
+  const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+          <p className="text-gray-900 dark:text-white font-medium">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-gray-600 dark:text-gray-300">
+              {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
+              {entry.name === 'value' ? '%' : ' hours'}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto"
-      >
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -342,17 +339,15 @@ const DashboardPage: React.FC = () => {
           {/* Overall Equipment Effectiveness (OEE) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            whileHover={{ y: -8 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6"
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Overall OEE</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Overall OEE</p>
             <p className="text-4xl font-bold text-gray-900 dark:text-white">
               {oee ? formatPercent(oee.oee) : '—'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               Equipment Effectiveness
             </p>
           </motion.div>
@@ -360,17 +355,15 @@ const DashboardPage: React.FC = () => {
           {/* Availability */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            whileHover={{ y: -8 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6"
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Availability</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Availability</p>
             <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
               {oee ? formatPercent(oee.availability) : '—'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               Uptime vs. Downtime
             </p>
           </motion.div>
@@ -378,17 +371,15 @@ const DashboardPage: React.FC = () => {
           {/* Performance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            whileHover={{ y: -8 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6"
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Performance</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Performance</p>
             <p className="text-4xl font-bold text-green-600 dark:text-green-400">
               {oee ? formatPercent(oee.performance) : '—'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               Speed vs. Ideal
             </p>
           </motion.div>
@@ -396,143 +387,114 @@ const DashboardPage: React.FC = () => {
           {/* Quality */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            whileHover={{ y: -8 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6"
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Quality</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Quality</p>
             <p className="text-4xl font-bold text-amber-600 dark:text-amber-400">
               {oee ? formatPercent(oee.quality) : '—'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               Good Parts Ratio
             </p>
           </motion.div>
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* OEE Components Bar Chart */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
               OEE Components
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Breakdown of Overall Equipment Effectiveness
             </p>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={oeeComponentsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" />
-                <YAxis domain={[0, 100]} stroke="#9ca3af" />
-                <Tooltip
-                  formatter={(value: number) => `${value.toFixed(1)}%`}
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '0.5rem',
-                    color: '#f3f4f6',
-                  }}
-                />
-                <Bar dataKey="value" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis dataKey="name" stroke="#9CA3AF" />
+                <YAxis domain={[0, 100]} stroke="#9CA3AF" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </motion.div>
 
-          {/* Downtime Analysis Bar Chart */}
+          {/* Scrap Rate Card with Production Stats */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Downtime Analysis
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Total downtime: {downtime ? `${downtime.total_downtime_hours.toFixed(1)} hours` : '—'}
-              {downtime && downtime.major_events.length > 0 && ` (${downtime.major_events.length} major events > 2 hours)`}
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              Production Quality
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Parts production and scrap statistics
             </p>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={downtimeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="reason" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip
-                  formatter={(value: number) => `${value} hours`}
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '0.5rem',
-                    color: '#f3f4f6',
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="hours" fill="#ff7300" name="Downtime Hours" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {oee?.total_parts.toLocaleString() ?? '—'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Parts</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {oee?.good_parts.toLocaleString() ?? '—'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Good Parts</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                  {scrap?.total_scrap.toLocaleString() ?? '—'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Scrap Parts</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                  {scrap ? `${scrap.scrap_rate.toFixed(1)}%` : '—'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Scrap Rate</p>
+              </div>
+            </div>
           </motion.div>
         </div>
 
-        {/* Scrap Rate Card with Production Stats */}
+        {/* Downtime Analysis Bar Chart - Full Width */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.7 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
           className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
         >
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Production Quality
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            Parts production and scrap statistics
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            Downtime Analysis
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Total downtime: {downtime ? `${downtime.total_downtime_hours.toFixed(1)} hours` : '—'}
+            {downtime && downtime.major_events.length > 0 && ` (${downtime.major_events.length} major events > 2 hours)`}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center p-4">
-              <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                {oee?.total_parts.toLocaleString() ?? '—'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Total Parts
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <p className="text-4xl font-bold text-green-600 dark:text-green-400">
-                {oee?.good_parts.toLocaleString() ?? '—'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Good Parts
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <p className="text-4xl font-bold text-red-600 dark:text-red-400">
-                {scrap?.total_scrap.toLocaleString() ?? '—'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Scrap Parts
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <p className="text-4xl font-bold text-amber-600 dark:text-amber-400">
-                {scrap ? `${scrap.scrap_rate.toFixed(1)}%` : '—'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Scrap Rate
-              </p>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={downtimeData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+              <XAxis dataKey="reason" stroke="#9CA3AF" />
+              <YAxis stroke="#9CA3AF" label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ color: '#9CA3AF' }} />
+              <Bar dataKey="hours" fill="#ff7300" name="Downtime Hours" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 };
