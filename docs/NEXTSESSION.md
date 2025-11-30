@@ -2,34 +2,41 @@
 
 **Date**: 2025-11-29
 **Task**: Complete Tailwind CSS Migration (Phase 6)
-**Start With**: PR30 - Dashboard Page Migration
+**Start With**: PR32 - ChatPage Migration
 
 ---
 
 ## What Happened This Session
 
-1. **Dashboard was broken** - showing only header, no content
-2. **Root cause**: Dashboard was rewritten to Tailwind CSS in commit `8a4c3de` but Tailwind wasn't fully working
-3. **Quick fix applied**: Restored Dashboard to MUI (now working)
-4. **Decision made**: Complete the Tailwind migration (Option A) rather than revert to pure MUI
+1. **PR30 COMPLETE** - DashboardPage migrated to Tailwind CSS
+   - Commit: `9d73bb8`
+   - All MUI components replaced with Tailwind + Lucide icons
+   - Custom Recharts tooltip for dark mode
+   - Framer Motion animations added
+
+2. **PR31 COMPLETE** - MachinesPage + AlertsPage migrated to Tailwind CSS
+   - Commit: `9b85f61`
+   - Custom progress bars replacing MUI LinearProgress
+   - Custom table with pagination controls
+   - Native select dropdown styling
 
 ---
 
 ## Current UI State
 
 **Already Tailwind** (working):
-- `frontend/src/components/layout/MainLayout.tsx`
-- `frontend/src/components/auth/AuthButton.tsx`
+- `frontend/src/components/layout/MainLayout.tsx` ✅
+- `frontend/src/components/auth/AuthButton.tsx` ✅
+- `frontend/src/pages/DashboardPage.tsx` ✅ (PR30)
+- `frontend/src/pages/MachinesPage.tsx` ✅ (PR31)
+- `frontend/src/pages/AlertsPage.tsx` ✅ (PR31)
 
 **Still MUI** (need to convert):
-- `frontend/src/pages/DashboardPage.tsx` ← **START HERE**
-- `frontend/src/pages/MachinesPage.tsx`
-- `frontend/src/pages/AlertsPage.tsx`
-- `frontend/src/pages/ChatPage.tsx`
-- `frontend/src/pages/TraceabilityPage.tsx`
-- `frontend/src/components/MemoryPanel.tsx`
-- `frontend/src/components/MemoryBadge.tsx`
-- `frontend/src/components/ApiHealthCheck.tsx`
+- `frontend/src/pages/ChatPage.tsx` ← **START HERE (PR32)**
+- `frontend/src/pages/TraceabilityPage.tsx` (PR33)
+- `frontend/src/components/MemoryPanel.tsx` (PR34)
+- `frontend/src/components/MemoryBadge.tsx` (PR34)
+- `frontend/src/components/ApiHealthCheck.tsx` (PR35)
 
 ---
 
@@ -49,23 +56,44 @@ Then open http://localhost:5174
 
 ---
 
-## PR30: Dashboard Page Migration
+## PR32: Chat Page Migration
 
-**File**: `frontend/src/pages/DashboardPage.tsx` (466 lines)
+**File**: `frontend/src/pages/ChatPage.tsx` (462 lines)
 
 **Tasks**:
-1. Replace MUI imports with Lucide icons
+1. Replace MUI imports with Lucide icons (Send, Trash2, Bot, User, etc.)
 2. Convert Container/Box/Paper to div with Tailwind
-3. Convert Grid to CSS Grid (`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6`)
-4. Convert Card/CardContent to Tailwind card pattern
-5. Convert Typography to semantic HTML with Tailwind
-6. Convert Alert to Tailwind alert pattern
-7. Convert Button to motion.button
-8. Convert CircularProgress to Loader2 spinner
-9. Style Recharts tooltips for dark theme
-10. Test responsive + dark mode
+3. Convert message bubbles (user vs AI styling)
+4. Convert TextField to styled input with send button
+5. Convert tool call status indicators
+6. Convert IconButton to motion.button
+7. Convert CircularProgress to Loader2 spinner
+8. Style markdown rendering for dark theme
+9. Test responsive + dark mode
 
-**Reference file for patterns**: `MainLayout.tsx` - shows the Tailwind + Framer Motion style
+**Key Patterns**:
+```tsx
+// User message bubble
+<div className="bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 ml-auto max-w-[80%]">
+
+// AI message bubble
+<div className="bg-gray-100 dark:bg-gray-700 rounded-2xl rounded-bl-sm px-4 py-2 max-w-[80%]">
+
+// Tool status indicator
+<div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-1.5 text-sm">
+
+// Chat input
+<input className="flex-1 px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" />
+```
+
+**Icon mapping for ChatPage**:
+- `Send` → `Send`
+- `Delete` → `Trash2`
+- `Person` → `User`
+- `SmartToy` → `Bot`
+- `Psychology` → `Brain`
+- `Summarize` → `FileText`
+- `Close` → `X`
 
 ---
 
@@ -83,7 +111,10 @@ Then open http://localhost:5174
 >
 
 // Alert (info)
-<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-blue-800 dark:text-blue-200">
+<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+  <p className="text-blue-800 dark:text-blue-200">...</p>
+</div>
 
 // Loading
 <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
@@ -93,7 +124,13 @@ Then open http://localhost:5174
   <div className="max-w-7xl mx-auto">
 ```
 
-**Icon mapping**: `Add`→`Plus`, `Login`→`LogIn`, `Warning`→`AlertTriangle`, `CheckCircle`→`CheckCircle`
+---
+
+## Remaining PRs After PR32
+
+- **PR33**: TraceabilityPage (1044 lines - largest, most complex)
+- **PR34**: MemoryPanel + MemoryBadge
+- **PR35**: ApiHealthCheck + remove MUI dependencies
 
 ---
 
@@ -107,14 +144,5 @@ See `implementation-plan.md` → "Phase 6: Tailwind CSS Migration" section for:
 - Success criteria
 
 ---
-
-## After PR30
-
-Continue with:
-- PR31: MachinesPage + AlertsPage
-- PR32: ChatPage
-- PR33: TraceabilityPage
-- PR34: MemoryPanel + MemoryBadge
-- PR35: ApiHealthCheck + remove MUI dependencies
 
 Delete this file when Phase 6 is complete.
