@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Container,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  CircularProgress,
-  Alert,
-  Chip,
-  LinearProgress,
-} from '@mui/material';
-import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  Settings as SettingsIcon,
-} from '@mui/icons-material';
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Settings,
+  Loader2,
+  AlertCircle,
+  Info,
+} from 'lucide-react';
 import { apiService, getErrorMessage } from '../api/client';
 import type { MachineInfo, OEEMetrics, StatsResponse } from '../types/api';
+
+/**
+ * Progress bar color classes based on status
+ */
+interface ProgressBarColors {
+  bg: string;
+  fill: string;
+}
 
 /**
  * MachinesPage Component
@@ -101,31 +102,31 @@ const MachinesPage: React.FC = () => {
     return 'error';
   };
 
-  // Helper function to get status color for Chip
-  const getStatusColorChip = (status: string): 'success' | 'warning' | 'error' | 'default' => {
+  // Helper function to get status badge styles
+  const getStatusBadgeStyles = (status: string): string => {
     switch (status) {
       case 'operational':
-        return 'success';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800';
       case 'warning':
-        return 'warning';
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
       case 'error':
-        return 'error';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800';
       default:
-        return 'default';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600';
     }
   };
 
-  // Helper function to get status color for LinearProgress
-  const getStatusColorProgress = (status: string): 'success' | 'warning' | 'error' | 'inherit' => {
+  // Helper function to get progress bar colors
+  const getProgressColors = (status: string): ProgressBarColors => {
     switch (status) {
       case 'operational':
-        return 'success';
+        return { bg: 'bg-green-200 dark:bg-green-900/50', fill: 'bg-green-500 dark:bg-green-400' };
       case 'warning':
-        return 'warning';
+        return { bg: 'bg-amber-200 dark:bg-amber-900/50', fill: 'bg-amber-500 dark:bg-amber-400' };
       case 'error':
-        return 'error';
+        return { bg: 'bg-red-200 dark:bg-red-900/50', fill: 'bg-red-500 dark:bg-red-400' };
       default:
-        return 'inherit';
+        return { bg: 'bg-gray-200 dark:bg-gray-700', fill: 'bg-gray-400 dark:bg-gray-500' };
     }
   };
 
@@ -133,13 +134,13 @@ const MachinesPage: React.FC = () => {
   const getStatusIcon = (status: string): React.ReactElement => {
     switch (status) {
       case 'operational':
-        return <CheckCircleIcon />;
+        return <CheckCircle className="w-4 h-4" />;
       case 'warning':
-        return <WarningIcon />;
+        return <AlertTriangle className="w-4 h-4" />;
       case 'error':
-        return <ErrorIcon />;
+        return <XCircle className="w-4 h-4" />;
       default:
-        return <SettingsIcon />;
+        return <Settings className="w-4 h-4" />;
     }
   };
 
@@ -151,215 +152,223 @@ const MachinesPage: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ mt: 4 }}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mt-8">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (!stats?.exists) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Machines
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Monitor machine status and performance
-          </Typography>
-        </Box>
-        <Alert severity="info">
-          No production data available. Please generate data using the setup endpoint.
-        </Alert>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Machines
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Monitor machine status and performance
+            </p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-blue-800 dark:text-blue-200">
+              No production data available. Please generate data using the setup endpoint.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Main content
   return (
-    <Container maxWidth="xl">
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Machines
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Real-time machine status and performance monitoring
-        </Typography>
-      </Box>
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Machines
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Real-time machine status and performance monitoring
+          </p>
+        </div>
 
-      {/* Machines Grid */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-          },
-          gap: 3,
-        }}
-      >
-        {machines.map((machine) => {
-          const oee = oeeData[machine.name];
-          const status = getMachineStatus(oee);
-          const statusColorChip = getStatusColorChip(status);
-          const statusColorProgress = getStatusColorProgress(status);
-          const statusIcon = getStatusIcon(status);
+        {/* Machines Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {machines.map((machine, index) => {
+            const oee = oeeData[machine.name];
+            const status = getMachineStatus(oee);
+            const progressColors = getProgressColors(status);
 
-          return (
-            <Box key={machine.id}>
-              <Card>
-                <CardContent>
-                  {/* Machine Name and Status */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6" component="div">
-                      {machine.name}
-                    </Typography>
-                    <Chip
-                      icon={statusIcon}
-                      label={status.toUpperCase()}
-                      color={statusColorChip}
-                      size="small"
-                    />
-                  </Box>
+            return (
+              <motion.div
+                key={machine.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+              >
+                {/* Machine Name and Status */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {machine.name}
+                  </h2>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadgeStyles(status)}`}>
+                    {getStatusIcon(status)}
+                    {status.toUpperCase()}
+                  </span>
+                </div>
 
-                  {/* Machine Type */}
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {machine.type}
-                  </Typography>
+                {/* Machine Type */}
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  {machine.type}
+                </p>
 
-                  {/* Ideal Cycle Time */}
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Ideal Cycle: {machine.ideal_cycle_time}s
-                  </Typography>
+                {/* Ideal Cycle Time */}
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Ideal Cycle: {machine.ideal_cycle_time}s
+                </p>
 
-                  {/* OEE Metrics */}
-                  {oee ? (
-                    <>
-                      {/* Overall OEE */}
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="body2" fontWeight="medium">
-                            OEE
-                          </Typography>
-                          <Typography variant="body2" fontWeight="medium">
-                            {formatPercent(oee.oee)}
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={oee.oee * 100}
-                          color={statusColorProgress}
-                          sx={{ height: 8, borderRadius: 4 }}
+                {/* OEE Metrics */}
+                {oee ? (
+                  <>
+                    {/* Overall OEE */}
+                    <div className="mb-4">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          OEE
+                        </span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {formatPercent(oee.oee)}
+                        </span>
+                      </div>
+                      <div className={`w-full h-2 rounded-full ${progressColors.bg}`}>
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${progressColors.fill}`}
+                          style={{ width: `${Math.min(oee.oee * 100, 100)}%` }}
                         />
-                      </Box>
+                      </div>
+                    </div>
 
-                      {/* Availability */}
-                      <Box sx={{ mb: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Availability
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatPercent(oee.availability)}
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={oee.availability * 100}
-                          sx={{ height: 4, borderRadius: 2 }}
+                    {/* Availability */}
+                    <div className="mb-2">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Availability
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatPercent(oee.availability)}
+                        </span>
+                      </div>
+                      <div className="w-full h-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div
+                          className="h-full rounded-full bg-blue-500 dark:bg-blue-400 transition-all duration-500"
+                          style={{ width: `${Math.min(oee.availability * 100, 100)}%` }}
                         />
-                      </Box>
+                      </div>
+                    </div>
 
-                      {/* Performance */}
-                      <Box sx={{ mb: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Performance
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatPercent(oee.performance)}
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={oee.performance * 100}
-                          sx={{ height: 4, borderRadius: 2 }}
+                    {/* Performance */}
+                    <div className="mb-2">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Performance
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatPercent(oee.performance)}
+                        </span>
+                      </div>
+                      <div className="w-full h-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div
+                          className="h-full rounded-full bg-blue-500 dark:bg-blue-400 transition-all duration-500"
+                          style={{ width: `${Math.min(oee.performance * 100, 100)}%` }}
                         />
-                      </Box>
+                      </div>
+                    </div>
 
-                      {/* Quality */}
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Quality
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatPercent(oee.quality)}
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={oee.quality * 100}
-                          sx={{ height: 4, borderRadius: 2 }}
+                    {/* Quality */}
+                    <div className="mb-4">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Quality
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatPercent(oee.quality)}
+                        </span>
+                      </div>
+                      <div className="w-full h-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div
+                          className="h-full rounded-full bg-blue-500 dark:bg-blue-400 transition-all duration-500"
+                          style={{ width: `${Math.min(oee.quality * 100, 100)}%` }}
                         />
-                      </Box>
+                      </div>
+                    </div>
 
-                      {/* Production Stats */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Total Parts
-                          </Typography>
-                          <Typography variant="body2" fontWeight="medium">
-                            {oee.total_parts.toLocaleString()}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Good Parts
-                          </Typography>
-                          <Typography variant="body2" fontWeight="medium" color="success.main">
-                            {oee.good_parts.toLocaleString()}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Scrap
-                          </Typography>
-                          <Typography variant="body2" fontWeight="medium" color="error.main">
-                            {oee.scrap_parts.toLocaleString()}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </>
-                  ) : (
-                    <Alert severity="info" sx={{ mt: 2 }}>
+                    {/* Production Stats */}
+                    <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Total Parts
+                        </p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {oee.total_parts.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Good Parts
+                        </p>
+                        <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                          {oee.good_parts.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Scrap
+                        </p>
+                        <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                          {oee.scrap_parts.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2 flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
                       No data available
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            </Box>
-          );
-        })}
-      </Box>
-    </Container>
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };
 

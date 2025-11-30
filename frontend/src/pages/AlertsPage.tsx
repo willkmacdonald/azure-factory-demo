@@ -1,31 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  CircularProgress,
-  Alert,
-  Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  type SelectChangeEvent,
-  Stack,
-} from '@mui/material';
-import {
-  Error as ErrorIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-} from '@mui/icons-material';
+  XCircle,
+  AlertTriangle,
+  Info,
+  Loader2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+} from 'lucide-react';
 import { apiService, getErrorMessage } from '../api/client';
 import type { QualityIssues, QualityIssue, StatsResponse } from '../types/api';
 
@@ -98,32 +82,32 @@ const AlertsPage: React.FC = () => {
   }, [severityFilter, qualityData]);
 
   // Handler for severity filter change
-  const handleSeverityFilterChange = (event: SelectChangeEvent<string>): void => {
+  const handleSeverityFilterChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     setSeverityFilter(event.target.value);
   };
 
   // Handler for page change
-  const handleChangePage = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
+  const handleChangePage = (newPage: number): void => {
     setPage(newPage);
   };
 
   // Handler for rows per page change
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // Helper function to get severity color
-  const getSeverityColor = (severity: string): 'error' | 'warning' | 'info' => {
+  // Helper function to get severity badge styles
+  const getSeverityBadgeStyles = (severity: string): string => {
     switch (severity) {
       case 'High':
-        return 'error';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800';
       case 'Medium':
-        return 'warning';
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
       case 'Low':
-        return 'info';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800';
       default:
-        return 'info';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600';
     }
   };
 
@@ -131,54 +115,74 @@ const AlertsPage: React.FC = () => {
   const getSeverityIcon = (severity: string): React.ReactElement => {
     switch (severity) {
       case 'High':
-        return <ErrorIcon />;
+        return <XCircle className="w-4 h-4" />;
       case 'Medium':
-        return <WarningIcon />;
+        return <AlertTriangle className="w-4 h-4" />;
       case 'Low':
-        return <InfoIcon />;
+        return <Info className="w-4 h-4" />;
       default:
-        return <InfoIcon />;
+        return <Info className="w-4 h-4" />;
     }
+  };
+
+  // Helper function to get root cause badge styles
+  const getRootCauseBadgeStyles = (rootCause: string): string => {
+    if (rootCause === 'supplier_quality') {
+      return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700';
+    }
+    return 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700';
   };
 
   // Loading state
   if (loading) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ mt: 4 }}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mt-8">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (!stats?.exists) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Alerts
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Quality issues and system alerts
-          </Typography>
-        </Box>
-        <Alert severity="info">
-          No production data available. Please generate data using the setup endpoint.
-        </Alert>
-      </Container>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Alerts
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Quality issues and system alerts
+            </p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-blue-800 dark:text-blue-200">
+              No production data available. Please generate data using the setup endpoint.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -187,192 +191,279 @@ const AlertsPage: React.FC = () => {
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
+  const totalPages = Math.ceil(filteredIssues.length / rowsPerPage);
 
   // Main content
   return (
-    <Container maxWidth="xl">
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Alerts
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Quality issues and system alerts
-        </Typography>
-      </Box>
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Alerts
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Quality issues and system alerts
+          </p>
+        </div>
 
-      {/* Summary Cards */}
-      {qualityData && (
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-          <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Total Issues
-            </Typography>
-            <Typography variant="h4">{qualityData.total_issues}</Typography>
-          </Paper>
-          <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Parts Affected
-            </Typography>
-            <Typography variant="h4">{qualityData.total_parts_affected.toLocaleString()}</Typography>
-          </Paper>
-          <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              High Severity
-            </Typography>
-            <Typography variant="h4" color="error.main">
-              {qualityData.severity_breakdown.High || 0}
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Medium Severity
-            </Typography>
-            <Typography variant="h4" color="warning.main">
-              {qualityData.severity_breakdown.Medium || 0}
-            </Typography>
-          </Paper>
-          <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Low Severity
-            </Typography>
-            <Typography variant="h4" color="info.main">
-              {qualityData.severity_breakdown.Low || 0}
-            </Typography>
-          </Paper>
-        </Stack>
-      )}
-
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="severity-filter-label">Severity</InputLabel>
-            <Select
-              labelId="severity-filter-label"
-              id="severity-filter"
-              value={severityFilter}
-              label="Severity"
-              onChange={handleSeverityFilterChange}
+        {/* Summary Cards */}
+        {qualityData && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4"
             >
-              <MenuItem value="all">All Severities</MenuItem>
-              <MenuItem value="High">High</MenuItem>
-              <MenuItem value="Medium">Medium</MenuItem>
-              <MenuItem value="Low">Low</MenuItem>
-            </Select>
-          </FormControl>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Issues</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {qualityData.total_issues}
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4"
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Parts Affected</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {qualityData.total_parts_affected.toLocaleString()}
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4"
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">High Severity</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {qualityData.severity_breakdown?.High ?? 0}
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4"
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Medium Severity</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                {qualityData.severity_breakdown?.Medium ?? 0}
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4"
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Low Severity</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {qualityData.severity_breakdown?.Low ?? 0}
+              </p>
+            </motion.div>
+          </div>
+        )}
 
-          <Typography variant="body2" color="text.secondary">
-            Showing {filteredIssues.length} of {qualityData?.total_issues || 0} issues
-          </Typography>
-        </Stack>
-      </Paper>
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6"
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <label htmlFor="severity-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Severity:
+              </label>
+              <select
+                id="severity-filter"
+                value={severityFilter}
+                onChange={handleSeverityFilterChange}
+                className="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Severities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {filteredIssues.length} of {qualityData?.total_issues || 0} issues
+            </p>
+          </div>
+        </motion.div>
 
-      {/* Issues Table */}
-      <Paper>
-        <TableContainer>
-          <Table sx={{ minWidth: 650 }} aria-label="quality issues table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Machine</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Material/Lot</TableCell>
-                <TableCell>Supplier</TableCell>
-                <TableCell>Root Cause</TableCell>
-                <TableCell align="center">Severity</TableCell>
-                <TableCell align="right">Parts Affected</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedIssues.length > 0 ? (
-                paginatedIssues.map((issue, index) => (
-                  <TableRow
-                    key={`${issue.date}-${issue.machine}-${index}`}
-                    hover
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell>{issue.date}</TableCell>
-                    <TableCell>{issue.machine}</TableCell>
-                    <TableCell>{issue.type}</TableCell>
-                    <TableCell>{issue.description}</TableCell>
-                    <TableCell>
-                      {issue.material_id && issue.lot_number ? (
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {issue.material_id}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Lot: {issue.lot_number}
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">—</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {issue.supplier_name ? (
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {issue.supplier_name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {issue.supplier_id}
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">—</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {issue.root_cause && issue.root_cause !== 'unknown' ? (
-                        <Chip
-                          label={issue.root_cause.replace('_', ' ')}
-                          size="small"
-                          color={issue.root_cause === 'supplier_quality' ? 'error' : 'warning'}
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">—</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        icon={getSeverityIcon(issue.severity)}
-                        label={issue.severity}
-                        color={getSeverityColor(issue.severity)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">{issue.parts_affected.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} align="center">
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                      No issues found matching the current filters
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {/* Issues Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Machine
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Material/Lot
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Supplier
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Root Cause
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Severity
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Parts
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {paginatedIssues.length > 0 ? (
+                  paginatedIssues.map((issue, index) => (
+                    <tr
+                      key={`${issue.date}-${issue.machine}-${index}`}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {issue.date}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {issue.machine}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {issue.type}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                        {issue.description}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {issue.material_id && issue.lot_number ? (
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
+                              {issue.material_id}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Lot: {issue.lot_number}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {issue.supplier_name ? (
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
+                              {issue.supplier_name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {issue.supplier_id}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {issue.root_cause && issue.root_cause !== 'unknown' ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getRootCauseBadgeStyles(issue.root_cause)}`}>
+                            {issue.root_cause.replace('_', ' ')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getSeverityBadgeStyles(issue.severity)}`}>
+                          {getSeverityIcon(issue.severity)}
+                          {issue.severity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                        {issue.parts_affected.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center">
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No issues found matching the current filters
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination */}
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={filteredIssues.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
-    </Container>
+          {/* Pagination */}
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="rows-per-page" className="text-sm text-gray-500 dark:text-gray-400">
+                Rows per page:
+              </label>
+              <select
+                id="rows-per-page"
+                value={rowsPerPage}
+                onChange={handleChangeRowsPerPage}
+                className="px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, filteredIssues.length)} of {filteredIssues.length}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleChangePage(page - 1)}
+                  disabled={page === 0}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <button
+                  onClick={() => handleChangePage(page + 1)}
+                  disabled={page >= totalPages - 1}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 
