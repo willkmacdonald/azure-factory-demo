@@ -95,6 +95,9 @@ def get_secret(secret_name: str, default: Optional[str] = None) -> Optional[str]
 # Azure AI Foundry settings
 AZURE_ENDPOINT: Optional[str] = get_secret("AZURE-ENDPOINT")
 AZURE_API_KEY: Optional[str] = get_secret("AZURE-API-KEY")
+
+# OpenAI API key (for non-Azure OpenAI usage)
+OPENAI_API_KEY: Optional[str] = get_secret("OPENAI-API-KEY")
 AZURE_DEPLOYMENT_NAME: str = get_secret("AZURE-DEPLOYMENT-NAME") or "gpt-4"
 AZURE_API_VERSION: str = get_secret("AZURE-API-VERSION") or "2024-08-01-preview"
 FACTORY_NAME: str = get_secret("FACTORY-NAME") or "Demo Factory"
