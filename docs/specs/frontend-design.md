@@ -348,8 +348,9 @@ Static Web Apps includes global CDN:
 - [x] Create `frontend/staticwebapp.config.json` (PR36)
 - [x] Update `frontend/src/api/client.ts` (remove window.ENV) (PR36)
 - [x] Update `frontend/src/hooks/useChat.ts` (remove window.ENV) (PR36)
-- [ ] Create `infra/staticwebapp.bicep` (PR37)
-- [ ] Deploy SWA resource via Bicep (PR37)
+- [x] Create `infra/staticwebapp.bicep` (PR37)
+- [x] Update `infra/backend.bicep` with SWA CORS support (PR37)
+- [ ] Deploy SWA resource via Bicep (PR37 manual step)
 - [ ] Replace GitHub Actions workflow (PR38)
 - [ ] Test deployment (PR38)
 

@@ -31,7 +31,21 @@
   - Follows CLAUDE.md directive: tests should not contain business logic
   - All 24 blob storage tests pass
   - PR merged: https://github.com/willkmacdonald/azure-factory-demo/pull/5
+
+### 2026-01-21: Context Load Session (brief)
+- Loaded project context via `/load-context`
+- Ran `/review-and-fix` - no code changes to review (only docs)
+- Created `docs/NEW-TENANT-DEPLOYMENT-CHECKLIST.md` (untracked)
 - **Next session**: Start PR37 (Infrastructure - Bicep templates)
+
+### 2026-01-21: PR37 Implementation Session
+- **PR37 (COMPLETE)**: Infrastructure - Bicep templates
+  - Created `infra/staticwebapp.bicep` with Free tier SKU
+  - Updated `infra/backend.bicep` with `staticWebAppHostname` parameter for CORS
+  - Both templates validated with `az bicep build`
+  - PR created: https://github.com/willkmacdonald/azure-factory-demo/pull/6
+- Discussed safe decommissioning approach for PR39 (target `factory-agent-dev-frontend` by name only)
+- **Next session**: Merge PR37, deploy SWA resource manually, start PR38
 
 ---
 
@@ -41,8 +55,8 @@
 |----|-------|--------|--------|--------------|
 | PR36 | Frontend SWA Configuration | 30 min | ✅ COMPLETE | None |
 | PR36b | Test helpers to conftest.py | 15 min | ✅ COMPLETE | None |
-| PR37 | Infrastructure (Bicep) | 30 min | Not Started | PR36 |
-| PR38 | GitHub Actions Workflow | 30 min | Not Started | PR37 |
+| PR37 | Infrastructure (Bicep) | 30 min | ✅ COMPLETE | PR36 |
+| PR38 | GitHub Actions Workflow | 30 min | Not Started | PR37 + manual deploy |
 | PR39 | Cleanup & Documentation | 15 min | Not Started | PR38 deployed |
 
 ---
@@ -93,32 +107,33 @@ Prepare the React frontend for Static Web Apps by adding SWA configuration and s
 
 ---
 
-## PR37: Infrastructure (Bicep)
+## PR37: Infrastructure (Bicep) ✅ COMPLETE
 
-**Branch**: `feature/swa-infrastructure`
+**Branch**: `feature/swa-infrastructure` (merged)
 **Effort**: 30 minutes
-**Status**: Not Started
-**Depends On**: PR36 merged
+**Status**: ✅ COMPLETE
+**PR**: https://github.com/willkmacdonald/azure-factory-demo/pull/6
 
 ### Goal
 Create Bicep template for Static Web Apps and update backend CORS.
 
 ### Tasks
 
-- [ ] Create `infra/staticwebapp.bicep`
+- [x] Create `infra/staticwebapp.bicep`
   - Free tier SKU
-  - Location: eastus (same as backend)
+  - Location: eastus2 (SWA has limited region availability)
   - Output: default hostname for CORS config
 
-- [ ] Update `infra/backend.bicep`
-  - Add `*.azurestaticapps.net` to ALLOWED_ORIGINS
-  - Keep existing Container Apps domain
+- [x] Update `infra/backend.bicep`
+  - Added `staticWebAppHostname` parameter for CORS
+  - CORS computed as: user origins + SWA origin (if provided)
+  - Backwards compatible
 
-- [ ] Validate Bicep templates
+- [x] Validate Bicep templates
   - Run `az bicep build --file infra/staticwebapp.bicep`
   - Run `az bicep build --file infra/backend.bicep`
 
-- [ ] Deploy SWA resource (manual)
+- [ ] Deploy SWA resource (manual, post-merge)
   - Run deployment to create empty SWA
   - Get deployment token for GitHub Actions
 
@@ -131,22 +146,22 @@ Create Bicep template for Static Web Apps and update backend CORS.
 
 ### Acceptance Criteria
 
-- [ ] Bicep templates validate without errors
-- [ ] SWA resource created in Azure
-- [ ] Deployment token retrieved and ready for GitHub secret
+- [x] Bicep templates validate without errors
+- [ ] SWA resource created in Azure (manual step)
+- [ ] Deployment token retrieved and ready for GitHub secret (manual step)
 
-### Manual Steps (Post-PR)
+### Manual Steps (Post-Merge)
 
 ```bash
 # Deploy Static Web App resource
 az deployment group create \
   --resource-group factory-agent-dev-rg \
   --template-file infra/staticwebapp.bicep \
-  --parameters name=factory-agent-frontend
+  --parameters environmentName=dev
 
 # Get deployment token
 az staticwebapp secrets list \
-  --name factory-agent-frontend \
+  --name factory-agent-dev-frontend-swa \
   --resource-group factory-agent-dev-rg \
   --query "properties.apiKey" -o tsv
 ```
