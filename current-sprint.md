@@ -79,6 +79,16 @@
 - **Old Container App deleted**: `factory-agent-dev-frontend` removed from Azure
 - **Phase 7 COMPLETE** 🎉
 
+### 2026-01-22: Cost Optimization Session
+- **Analyzed Azure billing** - found $41/month ACR charges
+- **Deleted empty `slidemakerACR`** - saves ~$20/month
+- **Downgraded `factoryagent4u4zqkacr`** from Standard to Basic - saves ~$15/month
+- **Set `minReplicas: 1`** on backend - warm container, no cold starts (+$10-15/month)
+- **Fixed CORS** - added SWA hostname to allowed origins
+- **Committed infra changes** - `backend.bicep` defaults to minReplicas=1, workflow uses staticWebAppHostname
+- **Net monthly savings**: ~$20-25/month (from ~$45 to ~$20-25)
+- **New architecture verified**: Frontend instant, backend instant (warm container)
+
 ---
 
 ## Sprint Overview
