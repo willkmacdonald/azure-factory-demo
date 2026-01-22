@@ -1,7 +1,7 @@
 # Frontend Architecture Design: Azure Static Web Apps Migration
 
 **Created**: 2026-01-21
-**Status**: In Progress (PR36 complete, PR37-39 pending)
+**Status**: In Progress (PR36-38 complete, PR39 pending)
 **Author**: Claude Code
 
 ---
@@ -340,9 +340,9 @@ Static Web Apps includes global CDN:
 ## Migration Checklist
 
 ### Pre-Migration
-- [ ] Verify backend CORS accepts SWA domain
-- [ ] Create `AZURE_STATIC_WEB_APPS_API_TOKEN` secret in GitHub
-- [ ] Create `BACKEND_URL` secret with backend FQDN
+- [x] Verify backend CORS accepts SWA domain
+- [x] Create `AZURE_STATIC_WEB_APPS_API_TOKEN` secret in GitHub
+- [x] Create `VITE_API_BASE_URL` secret with backend FQDN
 
 ### Migration
 - [x] Create `frontend/staticwebapp.config.json` (PR36)
@@ -350,14 +350,14 @@ Static Web Apps includes global CDN:
 - [x] Update `frontend/src/hooks/useChat.ts` (remove window.ENV) (PR36)
 - [x] Create `infra/staticwebapp.bicep` (PR37)
 - [x] Update `infra/backend.bicep` with SWA CORS support (PR37)
-- [ ] Deploy SWA resource via Bicep (PR37 manual step)
-- [ ] Replace GitHub Actions workflow (PR38)
-- [ ] Test deployment (PR38)
+- [x] Deploy SWA resource via Bicep (PR37 manual step)
+- [x] Replace GitHub Actions workflow (PR38)
+- [x] Test deployment (PR38)
 
 ### Post-Migration
-- [ ] Verify all pages load correctly
-- [ ] Verify API calls succeed (no CORS errors)
-- [ ] Verify Azure AD login works
+- [x] Verify all pages load correctly
+- [x] Verify API calls succeed (no CORS errors)
+- [ ] Verify Azure AD login works (manual test pending)
 - [ ] Delete old Container App frontend resource (PR39)
 - [ ] Delete unused files (Dockerfile, nginx.conf, etc.) (PR39)
 - [ ] Update documentation (PR39)

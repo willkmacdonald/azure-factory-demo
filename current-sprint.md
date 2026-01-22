@@ -47,6 +47,29 @@
 - Discussed safe decommissioning approach for PR39 (target `factory-agent-dev-frontend` by name only)
 - **Next session**: Merge PR37, deploy SWA resource manually, start PR38
 
+### 2026-01-22: PR38 Implementation Session
+- **PR37 merged** to main (fast-forward)
+- **SWA resource deployed** via Bicep
+  - Name: `factory-agent-dev-frontend-swa`
+  - URL: https://gray-ground-0bab7600f.2.azurestaticapps.net
+  - SKU: Free tier
+- **GitHub secrets added**:
+  - `AZURE_STATIC_WEB_APPS_API_TOKEN`
+  - `VITE_API_BASE_URL` (backend URL)
+- **Backend CORS updated** to allow SWA domain
+- **PR38 (COMPLETE)**: GitHub Actions Workflow
+  - Replaced Docker-based workflow with SWA deployment
+  - Fixed: `app_location` must point to `frontend/dist` (not `frontend`)
+  - Fixed: Must copy `staticwebapp.config.json` to dist folder
+  - PR merged: https://github.com/willkmacdonald/azure-factory-demo/pull/7
+- **Verification tests passed**:
+  - SPA routing: All pages return 200
+  - Security headers: All present (X-Frame-Options, CSP, etc.)
+  - Backend health: Healthy
+  - CORS: SWA origin allowed
+  - API data: Working
+- **Next session**: PR39 (Cleanup & Documentation)
+
 ---
 
 ## Sprint Overview
@@ -56,7 +79,7 @@
 | PR36 | Frontend SWA Configuration | 30 min | ✅ COMPLETE | None |
 | PR36b | Test helpers to conftest.py | 15 min | ✅ COMPLETE | None |
 | PR37 | Infrastructure (Bicep) | 30 min | ✅ COMPLETE | PR36 |
-| PR38 | GitHub Actions Workflow | 30 min | Not Started | PR37 + manual deploy |
+| PR38 | GitHub Actions Workflow | 30 min | ✅ COMPLETE | PR37 + manual deploy |
 | PR39 | Cleanup & Documentation | 15 min | Not Started | PR38 deployed |
 
 ---
@@ -168,30 +191,30 @@ az staticwebapp secrets list \
 
 ---
 
-## PR38: GitHub Actions Workflow
+## PR38: GitHub Actions Workflow ✅ COMPLETE
 
-**Branch**: `feature/swa-github-actions`
+**Branch**: `feature/swa-github-actions` (merged)
 **Effort**: 30 minutes
-**Status**: Not Started
-**Depends On**: PR37 merged, SWA resource exists, GitHub secrets configured
+**Status**: ✅ COMPLETE
+**PR**: https://github.com/willkmacdonald/azure-factory-demo/pull/7
 
 ### Goal
 Replace Docker-based deployment with Static Web Apps deployment.
 
 ### Tasks
 
-- [ ] Add GitHub secrets (manual, before PR)
+- [x] Add GitHub secrets (manual, before PR)
   - `AZURE_STATIC_WEB_APPS_API_TOKEN` - from PR37
   - `VITE_API_BASE_URL` - backend Container App URL
 
-- [ ] Replace `.github/workflows/deploy-frontend.yml`
+- [x] Replace `.github/workflows/deploy-frontend.yml`
   - Remove Docker build steps
   - Remove ACR push steps
   - Add Node.js setup
   - Add npm build with env vars
   - Add SWA deploy action
 
-- [ ] Test deployment
+- [x] Test deployment
   - Push to trigger workflow
   - Verify GitHub Action succeeds
   - Verify frontend loads at SWA URL
@@ -202,63 +225,19 @@ Replace Docker-based deployment with Static Web Apps deployment.
 |------|--------|
 | `.github/workflows/deploy-frontend.yml` | Replace |
 
-### New Workflow Structure
+### Learnings
 
-```yaml
-name: Deploy Frontend (Static Web Apps)
-
-on:
-  push:
-    branches: [main]
-    paths: ['frontend/**']
-  workflow_dispatch:
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install and build
-        working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-        run: |
-          npm ci
-          npm run build
-
-      - name: Deploy
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: 'upload'
-          app_location: 'frontend'
-          output_location: 'dist'
-          skip_app_build: true
-```
+- `app_location` must point directly to `frontend/dist` (not `frontend`) when using `skip_app_build: true`
+- `staticwebapp.config.json` must be copied to `dist/` folder during build (not auto-detected when app_location is dist)
+- Workflow simplified from 348 lines (3 jobs) to 108 lines (1 job)
 
 ### Acceptance Criteria
 
-- [ ] GitHub Action runs successfully
-- [ ] Frontend accessible at `*.azurestaticapps.net`
-- [ ] All pages load (Dashboard, Machines, Alerts, Chat, Traceability)
-- [ ] API calls succeed (no CORS errors)
-- [ ] Azure AD login works
-
-### Pre-PR Manual Steps
-
-```bash
-# Add GitHub secrets (Settings > Secrets and variables > Actions)
-# 1. AZURE_STATIC_WEB_APPS_API_TOKEN = <from PR37>
-# 2. VITE_API_BASE_URL = https://factory-agent-dev-backend.mangotree-xxx.eastus.azurecontainerapps.io
-```
+- [x] GitHub Action runs successfully
+- [x] Frontend accessible at https://gray-ground-0bab7600f.2.azurestaticapps.net
+- [x] All pages load (Dashboard, Machines, Alerts, Chat, Traceability)
+- [x] API calls succeed (no CORS errors)
+- [ ] Azure AD login works (manual test pending)
 
 ---
 
