@@ -16,8 +16,9 @@ import { useState, useCallback, useRef } from 'react';
 import { getErrorMessage } from '../api/client';
 import type { ChatRequest, ChatStreamEvent } from '../types/api';
 
-// Get API base URL from runtime config or environment
-const API_BASE_URL = window.ENV?.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Build-time environment configuration
+// VITE_API_BASE_URL is set during CI/CD build for production deployments
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // ============================================================================
 // Types

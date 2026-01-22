@@ -67,7 +67,7 @@ async def blob_client(valid_connection_string: str) -> AsyncGenerator[BlobStorag
     await client.close()
 
 
-def create_mock_service_client(mock_blob_client: AsyncMock) -> MagicMock:
+def create_mock_service_client(mock_blob_client: AsyncMock) -> MagicMock:  # allowed
     """Create a mock service client that returns a mock blob client."""
     mock_service = MagicMock()
     mock_service.get_blob_client = MagicMock(return_value=mock_blob_client)
