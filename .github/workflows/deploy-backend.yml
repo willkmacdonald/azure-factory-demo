@@ -279,7 +279,7 @@ jobs:
               azureStorageConnectionString="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
               azureStorageContainerName="factory-data" \
               staticWebAppHostname="gray-ground-0bab7600f.2.azurestaticapps.net" \
-              allowedOrigins="http://localhost:5173" \
+              allowedOrigins="http://localhost:5173,https://factory.willmacdonald.com" \
               minReplicas=1 \
               environmentName="${{ github.event.inputs.environment || 'dev' }}"
 
