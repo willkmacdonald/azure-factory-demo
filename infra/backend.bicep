@@ -62,6 +62,9 @@ param azureStorageContainerName string = 'factory-data'
 @description('Allowed CORS origins (comma-separated)')
 param allowedOrigins string = ''
 
+@description('Static Web App hostname for CORS (e.g., xxx.azurestaticapps.net)')
+param staticWebAppHostname string = ''
+
 @description('Minimum replicas')
 @minValue(0)
 @maxValue(10)
@@ -90,6 +93,11 @@ var containerEnvName = '${resourceNamePrefix}-env'
 var managedIdentityName = '${resourceNamePrefix}-identity'
 
 var backendImageName = '${containerRegistryName}.azurecr.io/${appName}/backend:${imageTag}'
+
+// Build CORS origins array: user-provided origins + Static Web App origin (if provided)
+var userOrigins = allowedOrigins != '' ? split(allowedOrigins, ',') : []
+var swaOrigin = staticWebAppHostname != '' ? ['https://${staticWebAppHostname}'] : []
+var allCorsOrigins = concat(userOrigins, swaOrigin)
 
 // =============================================================================
 // EXISTING RESOURCES (from shared.bicep)
@@ -133,7 +141,8 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
         corsPolicy: {
-          allowedOrigins: allowedOrigins != '' ? split(allowedOrigins, ',') : ['*']
+          // Allow configured origins, or '*' if none specified
+          allowedOrigins: length(allCorsOrigins) > 0 ? allCorsOrigins : ['*']
           allowedMethods: ['GET', 'POST', 'OPTIONS']
           allowedHeaders: ['*']
           allowCredentials: true
