@@ -68,7 +68,7 @@ param staticWebAppHostname string = ''
 @description('Minimum replicas')
 @minValue(0)
 @maxValue(10)
-param minReplicas int = 0
+param minReplicas int = 1
 
 @description('Maximum replicas')
 @minValue(1)

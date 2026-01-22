@@ -278,7 +278,9 @@ jobs:
               storageMode="blob" \
               azureStorageConnectionString="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
               azureStorageContainerName="factory-data" \
-              allowedOrigins="https://factory-agent-dev-frontend.mangotree-f82b3c1f.eastus.azurecontainerapps.io" \
+              staticWebAppHostname="gray-ground-0bab7600f.2.azurestaticapps.net" \
+              allowedOrigins="http://localhost:5173" \
+              minReplicas=1 \
               environmentName="${{ github.event.inputs.environment || 'dev' }}"
 
       # -----------------------------------------------------------------------
