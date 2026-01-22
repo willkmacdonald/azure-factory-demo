@@ -1,8 +1,8 @@
-# Current Sprint: Static Web Apps Migration
+# Current Sprint: Static Web Apps Migration ✅ COMPLETE
 
 **Sprint Goal**: Migrate frontend from Container Apps to Static Web Apps (Free tier)
 **Started**: 2026-01-21
-**Target**: 2026-01-22
+**Completed**: 2026-01-22
 **Total Effort**: ~2 hours
 
 ---
@@ -70,6 +70,15 @@
   - API data: Working
 - **Next session**: PR39 (Cleanup & Documentation)
 
+### 2026-01-22: PR39 Completion Session
+- **PR39 (COMPLETE)**: Cleanup & Documentation
+  - Deleted `frontend/Dockerfile`, `docker-entrypoint.sh`, `nginx.conf`
+  - Deleted `infra/frontend.bicep`
+  - Updated `.claude/CLAUDE.md` (local only - gitignored)
+  - PR merged: https://github.com/willkmacdonald/azure-factory-demo/pull/8
+- **Old Container App deleted**: `factory-agent-dev-frontend` removed from Azure
+- **Phase 7 COMPLETE** 🎉
+
 ---
 
 ## Sprint Overview
@@ -80,7 +89,7 @@
 | PR36b | Test helpers to conftest.py | 15 min | ✅ COMPLETE | None |
 | PR37 | Infrastructure (Bicep) | 30 min | ✅ COMPLETE | PR36 |
 | PR38 | GitHub Actions Workflow | 30 min | ✅ COMPLETE | PR37 + manual deploy |
-| PR39 | Cleanup & Documentation | 15 min | Not Started | PR38 deployed |
+| PR39 | Cleanup & Documentation | 15 min | ✅ COMPLETE | PR38 deployed |
 
 ---
 
@@ -241,64 +250,51 @@ Replace Docker-based deployment with Static Web Apps deployment.
 
 ---
 
-## PR39: Cleanup & Documentation
+## PR39: Cleanup & Documentation ✅ COMPLETE
 
-**Branch**: `feature/swa-cleanup`
+**Branch**: `feature/swa-cleanup` (merged)
 **Effort**: 15 minutes
-**Status**: Not Started
-**Depends On**: PR38 deployed and verified
+**Status**: ✅ COMPLETE
+**PR**: https://github.com/willkmacdonald/azure-factory-demo/pull/8
 
 ### Goal
 Remove obsolete Container Apps files and update documentation.
 
 ### Tasks
 
-- [ ] Delete obsolete files
+- [x] Delete obsolete files
   - `frontend/Dockerfile`
   - `frontend/docker-entrypoint.sh`
   - `frontend/nginx.conf`
   - `infra/frontend.bicep`
 
-- [ ] Update README.md
+- [x] Update README.md (done in weekly-docs)
   - Update architecture section
   - Update deployment instructions
   - Note Static Web Apps URL
 
-- [ ] Update `.claude/CLAUDE.md`
+- [x] Update `.claude/CLAUDE.md` (local only - gitignored)
   - Update tech stack (remove Nginx/Docker for frontend)
   - Update deployment approach section
 
-- [ ] Delete old Container App resource (manual)
-  - Remove frontend Container App from Azure
-  - Update any DNS/custom domains
+- [x] Delete old Container App resource (manual)
+  - Removed `factory-agent-dev-frontend` from Azure
 
 ### Files Changed
 
 | File | Action |
 |------|--------|
-| `frontend/Dockerfile` | Delete |
-| `frontend/docker-entrypoint.sh` | Delete |
-| `frontend/nginx.conf` | Delete |
-| `infra/frontend.bicep` | Delete |
-| `README.md` | Edit |
-| `.claude/CLAUDE.md` | Edit |
+| `frontend/Dockerfile` | Deleted |
+| `frontend/docker-entrypoint.sh` | Deleted |
+| `frontend/nginx.conf` | Deleted |
+| `infra/frontend.bicep` | Deleted |
 
 ### Acceptance Criteria
 
-- [ ] No Docker files in `frontend/`
-- [ ] No `frontend.bicep` in `infra/`
-- [ ] README reflects new architecture
-- [ ] Old Container App deleted from Azure
-
-### Post-PR Manual Steps
-
-```bash
-# Delete old frontend Container App
-az containerapp delete \
-  --name factory-agent-dev-frontend \
-  --resource-group factory-agent-dev-rg \
-  --yes
-```
+- [x] No Docker files in `frontend/`
+- [x] No `frontend.bicep` in `infra/`
+- [x] README reflects new architecture
+- [x] Old Container App deleted from Azure
 
 ---
 
@@ -306,13 +302,14 @@ az containerapp delete \
 
 After all PRs merged:
 
-- [ ] **Local dev**: `npm run dev` works with localhost backend
-- [ ] **SPA routing**: Direct navigation to `/machines`, `/chat` works
-- [ ] **API calls**: Dashboard loads data from backend
-- [ ] **Security headers**: X-Frame-Options, CSP visible in DevTools
-- [ ] **Auth**: Azure AD sign-in/sign-out works
-- [ ] **Dark mode**: Theme toggle works
-- [ ] **Mobile**: Responsive layout intact
+- [x] **SPA routing**: Direct navigation to `/machines`, `/chat` works
+- [x] **API calls**: Dashboard loads data from backend
+- [x] **Security headers**: X-Frame-Options, CSP visible in DevTools
+- [x] **CORS**: SWA origin allowed by backend
+- [ ] **Local dev**: `npm run dev` works with localhost backend (not tested)
+- [ ] **Auth**: Azure AD sign-in/sign-out works (manual test pending)
+- [ ] **Dark mode**: Theme toggle works (manual test pending)
+- [ ] **Mobile**: Responsive layout intact (manual test pending)
 
 ---
 
