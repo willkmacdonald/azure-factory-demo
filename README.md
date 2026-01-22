@@ -2,12 +2,12 @@
 
 A production-ready cloud-native application for factory operations monitoring and AI-powered insights, featuring comprehensive supply chain traceability, real-time metrics, and an intelligent chatbot. Built with React, FastAPI, and deployed on Azure Container Apps.
 
-## Project Status: Production-Ready (Phase 4 Complete + Phase 5B In Progress)
+## Project Status: Production-Ready (Phase 7 Nearly Complete)
 
-**All core features are implemented and deployed to Azure Container Apps with active CI/CD!**
+**All core features are implemented and deployed with active CI/CD!**
 
-- ✅ **Backend API**: 21 REST endpoints (20 functional + 1 health check)
-- ✅ **Frontend**: 5 complete pages with Material-UI v7
+- ✅ **Backend API**: 21 REST endpoints on Azure Container Apps
+- ✅ **Frontend**: 5 complete pages with Tailwind CSS + Framer Motion on Azure Static Web Apps (Free tier)
 - ✅ **AI Chat**: Azure AI Foundry integration with tool calling
 - ✅ **Supply Chain Traceability**: End-to-end visibility (materials → suppliers → batches → orders)
 - ✅ **Material-Supplier Root Cause Linkage**: Direct traceability from defects to suppliers (PR19)
@@ -15,11 +15,11 @@ A production-ready cloud-native application for factory operations monitoring an
 - ✅ **Authentication**: Azure AD JWT validation for admin endpoints (PR3)
 - ✅ **Security**: Rate limiting, CORS, security headers, input validation, upload size limits, Azure AD auth
 - ✅ **Testing**: 138 tests, 100% passing
-- ✅ **Infrastructure**: Bicep templates (split backend/frontend), Docker, CI/CD active
+- ✅ **Infrastructure**: Bicep templates, CI/CD active (backend: Container Apps, frontend: Static Web Apps)
 - ✅ **Reliability**: Azure Blob Storage retry logic + timeout configuration (PR22)
 - ✅ **Code Quality**: 99.5/10 with 100% type hint coverage
 
-**Current Phase**: Phase 5B In Progress - Memory system backend complete (PR25), chat integration next (PR26-29).
+**Current Phase**: Phase 7 Nearly Complete - Frontend migrated to Azure Static Web Apps (PR36-38), cleanup pending (PR39).
 
 ## Features
 
@@ -46,7 +46,7 @@ A production-ready cloud-native application for factory operations monitoring an
 
 ### Architecture Highlights
 - **Async-First Backend**: FastAPI with async/await for scalability
-- **Type-Safe Frontend**: React 19 + TypeScript with Material-UI v7
+- **Type-Safe Frontend**: React 19 + TypeScript with Tailwind CSS + Framer Motion
 - **Dual Storage**: Local JSON (dev) or Azure Blob Storage (production)
 - **Agent Memory Persistence**: Investigations and actions stored in Azure Blob Storage
 - **Functions-First**: Maintainable code with minimal class overhead
@@ -64,7 +64,9 @@ A production-ready cloud-native application for factory operations monitoring an
 
 ### Frontend
 - **React 19.1** + **TypeScript 5.9** - Modern UI framework with strict mode
-- **Material-UI 7.3** - Comprehensive component library (beginner-friendly)
+- **Tailwind CSS v4** - Utility-first CSS framework
+- **Framer Motion** - Declarative animations
+- **Lucide React** - Open-source icon library
 - **Recharts 3.3** - Data visualization library
 - **Axios 1.13** - HTTP client with request/response interceptors
 - **Vite 7.1** - Lightning-fast build tool (replaces Create React App)
@@ -85,12 +87,12 @@ A production-ready cloud-native application for factory operations monitoring an
 - **pytest 7.4+** - Testing framework
 
 ### Deployment
-- **Azure Container Apps** - Currently deployed (manual deployment)
-- **Azure Container Registry** - Docker image storage
-- **GitHub Actions** - CI/CD workflows (configured but not active)
-- **Docker + Docker Compose** - Multi-stage containerization
+- **Azure Static Web Apps** - Frontend hosting (Free tier)
+- **Azure Container Apps** - Backend hosting (consumption plan)
+- **Azure Container Registry** - Docker image storage (backend only)
+- **GitHub Actions** - CI/CD workflows (active)
+- **Docker + Docker Compose** - Backend containerization
 - **Azure Bicep** - Infrastructure as Code templates
-- **Nginx 1.27** - Frontend static file server (production)
 
 ## Quick Start
 
@@ -387,7 +389,7 @@ React Component
             → Response (Pydantic model)
               → JSON Serialization
                 → React Component State
-                  → Material-UI Visualization
+                  → Tailwind CSS + Recharts Visualization
 ```
 
 ### AI Chat Flow
@@ -537,16 +539,18 @@ npm run build          # Type checking via TypeScript
 
 ## Deployment
 
-### Current: Azure Container Apps (CI/CD Active)
+### Current: Azure Static Web Apps + Container Apps (CI/CD Active)
 
-**Status**: Both frontend and backend are deployed to Azure Container Apps with automatic CI/CD.
+**Status**: Frontend on Azure Static Web Apps (Free tier), backend on Azure Container Apps.
 
 **Deployment Method**:
-- **Frontend**: Automatic deployment via GitHub Actions on push to `main`
-- **Backend**: Automatic deployment via GitHub Actions on push to `main`
+- **Frontend**: Azure Static Web Apps with automatic deployment via GitHub Actions
+  - URL: https://gray-ground-0bab7600f.2.azurestaticapps.net
+  - SKU: Free tier (100GB bandwidth/month, free SSL)
+- **Backend**: Azure Container Apps with automatic deployment via GitHub Actions
 - **CI/CD**: GitHub Actions workflows active and functional
 - **Storage**: Azure Blob Storage (STORAGE_MODE=azure) with retry logic + timeouts
-- **Infrastructure**: Split Bicep templates (backend.bicep, frontend.bicep, shared.bicep)
+- **Infrastructure**: Bicep templates (backend.bicep, staticwebapp.bicep)
 
 ### Local Development
 
@@ -636,11 +640,12 @@ MIT
 
 ---
 
-**Status**: Production-ready with active CI/CD. Phase 5B in progress - Memory system backend complete (PR25), chat integration next (PR26-29). See [implementation-plan.md](implementation-plan.md) for roadmap.
+**Status**: Production-ready with active CI/CD. Phase 7 nearly complete - Frontend migrated to Azure Static Web Apps. See [implementation-plan.md](implementation-plan.md) for roadmap.
 
 **Recent Updates:**
+- **2026-01-22**: PR38 Complete - GitHub Actions workflow for Static Web Apps deployment
+- **2026-01-21**: PR37 Complete - Bicep templates for Static Web Apps infrastructure
+- **2026-01-21**: PR36 Complete - Frontend SWA configuration (staticwebapp.config.json, security headers)
+- **2026-01-21**: Phase 7 Started - Migrate frontend from Container Apps to Static Web Apps (Free tier)
+- **2025-11-29**: Phase 6 Complete - Tailwind CSS migration (MUI fully removed)
 - **2025-11-26**: PR25 Complete - Agent memory system with Investigation, Action, and MemoryStore models
-- **2025-11-26**: PR24C Complete - Security headers middleware and upload size validation (50MB max)
-- **2025-11-26**: PR24A Complete - Secrets migrated to Azure Key Vault, .env.example updated
-- **2025-11-23**: Session 4 - Comprehensive code review (98/10 → 99.5/10), 3 quick wins implemented
-- **2025-11-23**: PR22 - Azure Blob Storage retry logic + timeout configuration (exponential backoff, 24 new tests)
