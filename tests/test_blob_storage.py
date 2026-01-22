@@ -13,12 +13,15 @@ Tests cover:
 Updated to match the refactored async context manager pattern in blob_storage.py.
 The client now uses _get_service_client() as an async context manager instead of
 _get_blob_client(). Each operation manages its own client lifecycle.
+
+Test fixtures (valid_connection_string, test_data, mock helpers) are defined
+in conftest.py for reuse across test modules.
 """
 
 import json
 import pytest
-from typing import Dict, Any, AsyncGenerator
-from unittest.mock import AsyncMock, patch, MagicMock
+from typing import AsyncGenerator
+from unittest.mock import AsyncMock, patch
 from contextlib import asynccontextmanager
 from azure.core.exceptions import (
     ResourceNotFoundError,
@@ -29,30 +32,7 @@ from azure.core.exceptions import (
 from shared.blob_storage import BlobStorageClient
 
 
-# Test Fixtures
-
-@pytest.fixture
-def valid_connection_string() -> str:
-    """Valid Azure Storage connection string for testing."""
-    return "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=dGVzdGtleQ==;EndpointSuffix=core.windows.net"
-
-
-@pytest.fixture
-def test_data() -> Dict[str, Any]:
-    """Sample production data for testing."""
-    return {
-        "machines": [
-            {"id": "M001", "name": "CNC Mill 1", "status": "running"},
-            {"id": "M002", "name": "Lathe 2", "status": "idle"}
-        ],
-        "metrics": {
-            "oee": 0.85,
-            "availability": 0.92,
-            "performance": 0.93,
-            "quality": 0.99
-        }
-    }
-
+# Test Fixtures (blob_client specific to this module)
 
 @pytest.fixture
 async def blob_client(valid_connection_string: str) -> AsyncGenerator[BlobStorageClient, None]:
@@ -65,19 +45,6 @@ async def blob_client(valid_connection_string: str) -> AsyncGenerator[BlobStorag
     yield client
     # Cleanup (no-op with new pattern)
     await client.close()
-
-
-def create_mock_service_client(mock_blob_client: AsyncMock) -> MagicMock:  # allowed
-    """Create a mock service client that returns a mock blob client."""
-    mock_service = MagicMock()
-    mock_service.get_blob_client = MagicMock(return_value=mock_blob_client)
-    return mock_service
-
-
-@asynccontextmanager
-async def mock_service_context(mock_service: MagicMock):
-    """Async context manager wrapper for mock service client."""
-    yield mock_service
 
 
 # Initialization Tests
@@ -116,54 +83,54 @@ def test_init_uses_env_defaults(valid_connection_string):
 # Blob Existence Tests
 
 @pytest.mark.anyio
-async def test_blob_exists_returns_true(blob_client):
+async def test_blob_exists_returns_true(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test blob_exists returns True when blob exists."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(return_value=True)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         result = await blob_client.blob_exists()
         assert result is True
         mock_blob_client.exists.assert_called_once()
 
 
 @pytest.mark.anyio
-async def test_blob_exists_returns_false(blob_client):
+async def test_blob_exists_returns_false(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test blob_exists returns False when blob doesn't exist."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(return_value=False)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         result = await blob_client.blob_exists()
         assert result is False
         mock_blob_client.exists.assert_called_once()
 
 
 @pytest.mark.anyio
-async def test_blob_exists_handles_auth_error(blob_client):
+async def test_blob_exists_handles_auth_error(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test blob_exists raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.blob_exists()
         assert "authentication failed" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_blob_exists_returns_false_on_generic_error(blob_client):
+async def test_blob_exists_returns_false_on_generic_error(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test blob_exists returns False on unexpected errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.exists = AsyncMock(side_effect=Exception("Unexpected error"))
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         result = await blob_client.blob_exists()
         assert result is False
 
@@ -171,13 +138,13 @@ async def test_blob_exists_returns_false_on_generic_error(blob_client):
 # Upload Blob Tests
 
 @pytest.mark.anyio
-async def test_upload_blob_success(blob_client, test_data):
+async def test_upload_blob_success(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test successful blob upload."""
     mock_blob_client = AsyncMock()
     mock_blob_client.upload_blob = AsyncMock()
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         await blob_client.upload_blob(test_data)
 
         # Verify upload was called with correct arguments
@@ -194,22 +161,22 @@ async def test_upload_blob_success(blob_client, test_data):
 
 
 @pytest.mark.anyio
-async def test_upload_blob_auth_error(blob_client, test_data):
+async def test_upload_blob_auth_error(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test upload_blob raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "authentication failed" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_upload_blob_network_error_retries(blob_client, test_data):
+async def test_upload_blob_network_error_retries(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test upload_blob uses SDK retry policy on network errors.
 
     Note: The Azure SDK handles retries automatically via ExponentialRetry policy.
@@ -220,9 +187,9 @@ async def test_upload_blob_network_error_retries(blob_client, test_data):
     # SDK retries internally, so from our perspective the operation just succeeds
     # after the SDK's internal retry attempts
     mock_blob_client.upload_blob = AsyncMock(return_value=None)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         await blob_client.upload_blob(test_data)
 
         # Verify upload was called once (SDK handles retries internally)
@@ -230,16 +197,16 @@ async def test_upload_blob_network_error_retries(blob_client, test_data):
 
 
 @pytest.mark.anyio
-async def test_upload_blob_network_error_exhausts_retries(blob_client, test_data):
+async def test_upload_blob_network_error_exhausts_retries(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test upload_blob raises RuntimeError after SDK exhausts retries."""
     mock_blob_client = AsyncMock()
     # SDK will retry internally and then raise ServiceRequestError after exhausting retries
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
             with pytest.raises(RuntimeError) as exc_info:
                 await blob_client.upload_blob(test_data)
@@ -251,30 +218,30 @@ async def test_upload_blob_network_error_exhausts_retries(blob_client, test_data
 
 
 @pytest.mark.anyio
-async def test_upload_blob_http_response_error(blob_client, test_data):
+async def test_upload_blob_http_response_error(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test upload_blob raises RuntimeError on Azure service errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=HttpResponseError("Container not found")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "service error" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_upload_blob_unexpected_error(blob_client, test_data):
+async def test_upload_blob_unexpected_error(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test upload_blob raises RuntimeError on unexpected errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.upload_blob = AsyncMock(
         side_effect=Exception("Unexpected error")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.upload_blob(test_data)
         assert "failed to upload blob" in str(exc_info.value).lower()
@@ -295,7 +262,7 @@ async def test_upload_blob_size_limit(blob_client):
 # Download Blob Tests
 
 @pytest.mark.anyio
-async def test_download_blob_success(blob_client, test_data):
+async def test_download_blob_success(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test successful blob download."""
     json_content = json.dumps(test_data).encode("utf-8")
 
@@ -305,9 +272,9 @@ async def test_download_blob_success(blob_client, test_data):
 
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         result = await blob_client.download_blob()
 
         assert result == test_data
@@ -316,15 +283,15 @@ async def test_download_blob_success(blob_client, test_data):
 
 
 @pytest.mark.anyio
-async def test_download_blob_not_found(blob_client):
+async def test_download_blob_not_found(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError when blob doesn't exist."""
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ResourceNotFoundError("Blob not found")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "not found" in str(exc_info.value).lower()
@@ -332,22 +299,22 @@ async def test_download_blob_not_found(blob_client):
 
 
 @pytest.mark.anyio
-async def test_download_blob_auth_error(blob_client):
+async def test_download_blob_auth_error(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError on authentication failure."""
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ClientAuthenticationError("Invalid credentials")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "authentication failed" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_download_blob_network_error_retries(blob_client, test_data):
+async def test_download_blob_network_error_retries(blob_client, test_data, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob uses SDK retry policy on network errors.
 
     Note: The Azure SDK handles retries automatically via ExponentialRetry policy.
@@ -361,9 +328,9 @@ async def test_download_blob_network_error_retries(blob_client, test_data):
     mock_blob_client = AsyncMock()
     # SDK retries internally, so from our perspective the operation just succeeds
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream_success)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         result = await blob_client.download_blob()
 
         assert result == test_data
@@ -372,16 +339,16 @@ async def test_download_blob_network_error_retries(blob_client, test_data):
 
 
 @pytest.mark.anyio
-async def test_download_blob_network_error_exhausts_retries(blob_client):
+async def test_download_blob_network_error_exhausts_retries(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError after SDK exhausts retries."""
     mock_blob_client = AsyncMock()
     # SDK will retry internally and then raise ServiceRequestError after exhausting retries
     mock_blob_client.download_blob = AsyncMock(
         side_effect=ServiceRequestError("Network timeout")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with patch("shared.blob_storage.AZURE_BLOB_RETRY_TOTAL", 3):
             with pytest.raises(RuntimeError) as exc_info:
                 await blob_client.download_blob()
@@ -393,7 +360,7 @@ async def test_download_blob_network_error_exhausts_retries(blob_client):
 
 
 @pytest.mark.anyio
-async def test_download_blob_invalid_json(blob_client):
+async def test_download_blob_invalid_json(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError on invalid JSON in blob."""
     invalid_json = b"{ this is not valid JSON }"
 
@@ -402,39 +369,39 @@ async def test_download_blob_invalid_json(blob_client):
 
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(return_value=mock_stream)
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "invalid json" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_download_blob_http_response_error(blob_client):
+async def test_download_blob_http_response_error(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError on Azure service errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(
         side_effect=HttpResponseError("Service unavailable")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "service error" in str(exc_info.value).lower()
 
 
 @pytest.mark.anyio
-async def test_download_blob_unexpected_error(blob_client):
+async def test_download_blob_unexpected_error(blob_client, mock_blob_client_factory, mock_service_context_factory):
     """Test download_blob raises RuntimeError on unexpected errors."""
     mock_blob_client = AsyncMock()
     mock_blob_client.download_blob = AsyncMock(
         side_effect=Exception("Unexpected error")
     )
-    mock_service = create_mock_service_client(mock_blob_client)
+    mock_service = mock_blob_client_factory(mock_blob_client)
 
-    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context(mock_service)):
+    with patch.object(blob_client, '_get_service_client', return_value=mock_service_context_factory(mock_service)):
         with pytest.raises(RuntimeError) as exc_info:
             await blob_client.download_blob()
         assert "failed to download blob" in str(exc_info.value).lower()
@@ -464,21 +431,21 @@ async def test_close_client_is_noop(valid_connection_string):
 # Integration Test (simulated)
 
 @pytest.mark.anyio
-async def test_full_upload_download_cycle(blob_client, test_data):
+async def test_full_upload_download_cycle(blob_client, test_data, mock_blob_client_factory):
     """Test complete upload-download cycle maintains data integrity."""
     json_content = json.dumps(test_data).encode("utf-8")
 
     # Mock upload
     mock_upload_blob_client = AsyncMock()
     mock_upload_blob_client.upload_blob = AsyncMock()
-    mock_upload_service = create_mock_service_client(mock_upload_blob_client)
+    mock_upload_service = mock_blob_client_factory(mock_upload_blob_client)
 
     # Mock download
     mock_stream = AsyncMock()
     mock_stream.readall = AsyncMock(return_value=json_content)
     mock_download_blob_client = AsyncMock()
     mock_download_blob_client.download_blob = AsyncMock(return_value=mock_stream)
-    mock_download_service = create_mock_service_client(mock_download_blob_client)
+    mock_download_service = mock_blob_client_factory(mock_download_blob_client)
 
     # First call returns upload service, second returns download service
     call_count = [0]
