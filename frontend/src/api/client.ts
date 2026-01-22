@@ -43,27 +43,16 @@ import type {
 // Configuration
 // ============================================================================
 
-// Runtime environment configuration (loaded from window.ENV by docker-entrypoint.sh)
-// Falls back to build-time environment variable for local development
-declare global {
-  interface Window {
-    ENV?: {
-      API_BASE_URL?: string;
-      NODE_ENV?: string;
-      VERSION?: string;
-      BUILD_DATE?: string;
-    };
-  }
-}
-
-const API_BASE_URL = window.ENV?.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Build-time environment configuration
+// VITE_API_BASE_URL is set during CI/CD build for production deployments
+// Falls back to localhost for local development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // Log API configuration on startup (helps with debugging deployment issues)
 console.log('🔌 API Client Configuration:', {
   baseUrl: API_BASE_URL,
   timeout: `${REQUEST_TIMEOUT}ms`,
-  runtimeConfig: !!window.ENV,
 });
 
 // ============================================================================
