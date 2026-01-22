@@ -2,12 +2,13 @@
 
 A production-ready cloud-native application for factory operations monitoring and AI-powered insights, featuring comprehensive supply chain traceability, real-time metrics, and an intelligent chatbot. Built with React, FastAPI, and deployed on Azure Container Apps.
 
-## Project Status: Production-Ready (Phase 7 Nearly Complete)
+## Project Status: Production-Ready (All Phases Complete)
 
 **All core features are implemented and deployed with active CI/CD!**
 
 - ✅ **Backend API**: 21 REST endpoints on Azure Container Apps
 - ✅ **Frontend**: 5 complete pages with Tailwind CSS + Framer Motion on Azure Static Web Apps (Free tier)
+- ✅ **Custom Domain**: https://factory.willmacdonald.com
 - ✅ **AI Chat**: Azure AI Foundry integration with tool calling
 - ✅ **Supply Chain Traceability**: End-to-end visibility (materials → suppliers → batches → orders)
 - ✅ **Material-Supplier Root Cause Linkage**: Direct traceability from defects to suppliers (PR19)
@@ -18,8 +19,9 @@ A production-ready cloud-native application for factory operations monitoring an
 - ✅ **Infrastructure**: Bicep templates, CI/CD active (backend: Container Apps, frontend: Static Web Apps)
 - ✅ **Reliability**: Azure Blob Storage retry logic + timeout configuration (PR22)
 - ✅ **Code Quality**: 99.5/10 with 100% type hint coverage
+- ✅ **Documentation**: Security design spec, consolidated planning docs
 
-**Current Phase**: Phase 7 Nearly Complete - Frontend migrated to Azure Static Web Apps (PR36-38), cleanup pending (PR39).
+**Current Status**: All phases complete, maintenance mode. Estimated cost: ~$20-25/month.
 
 ## Features
 
@@ -545,7 +547,8 @@ npm run build          # Type checking via TypeScript
 
 **Deployment Method**:
 - **Frontend**: Azure Static Web Apps with automatic deployment via GitHub Actions
-  - URL: https://gray-ground-0bab7600f.2.azurestaticapps.net
+  - Custom Domain: https://factory.willmacdonald.com
+  - Azure URL: https://gray-ground-0bab7600f.2.azurestaticapps.net
   - SKU: Free tier (100GB bandwidth/month, free SSL)
 - **Backend**: Azure Container Apps with automatic deployment via GitHub Actions
 - **CI/CD**: GitHub Actions workflows active and functional
@@ -596,7 +599,8 @@ See [PR22 summary](docs/PR21_SUMMARY.md) for full details on the retry logic imp
 
 ## Documentation
 
-- **[implementation-plan.md](implementation-plan.md)** - Complete project roadmap with current phase status
+- **[implementation-plan.md](implementation-plan.md)** - Project status and architecture overview
+- **[docs/specs/security-design.md](docs/specs/security-design.md)** - Security architecture (Key Vault, Azure AD, CORS, CI/CD)
 - **[docs/INSTALL.md](docs/INSTALL.md)** - Detailed installation guide
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment instructions and troubleshooting
 - **[docs/AZURE_KEYVAULT_SETUP.md](docs/AZURE_KEYVAULT_SETUP.md)** - Azure Key Vault setup and configuration
@@ -640,12 +644,12 @@ MIT
 
 ---
 
-**Status**: Production-ready with active CI/CD. Phase 7 nearly complete - Frontend migrated to Azure Static Web Apps. See [implementation-plan.md](implementation-plan.md) for roadmap.
+**Status**: Production-ready with active CI/CD. All phases complete, maintenance mode. See [implementation-plan.md](implementation-plan.md) for architecture overview.
 
 **Recent Updates:**
-- **2026-01-22**: PR38 Complete - GitHub Actions workflow for Static Web Apps deployment
-- **2026-01-21**: PR37 Complete - Bicep templates for Static Web Apps infrastructure
-- **2026-01-21**: PR36 Complete - Frontend SWA configuration (staticwebapp.config.json, security headers)
-- **2026-01-21**: Phase 7 Started - Migrate frontend from Container Apps to Static Web Apps (Free tier)
+- **2026-01-22**: Custom domain configured - https://factory.willmacdonald.com
+- **2026-01-22**: Security design spec added - `docs/specs/security-design.md`
+- **2026-01-22**: Phase 7 Complete - Static Web Apps migration, cost optimization (~$20-25/month)
+- **2026-01-21**: PR36-39 Complete - SWA configuration, Bicep templates, GitHub Actions, cleanup
 - **2025-11-29**: Phase 6 Complete - Tailwind CSS migration (MUI fully removed)
 - **2025-11-26**: PR25 Complete - Agent memory system with Investigation, Action, and MemoryStore models

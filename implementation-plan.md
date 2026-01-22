@@ -30,7 +30,6 @@
 
 No planned work. Potential enhancements if needed:
 
-- Custom domain for Static Web Apps
 - Application Insights integration
 - Additional AI agent capabilities
 
@@ -38,6 +37,7 @@ No planned work. Potential enhancements if needed:
 
 ## Quick Reference
 
-- **Frontend URL**: https://gray-ground-0bab7600f.2.azurestaticapps.net
-- **Backend URL**: https://factory-agent-dev-backend.blueriver-b0a87e40.eastus.azurecontainerapps.io
+- **Frontend URL**: https://factory.willmacdonald.com (custom domain)
+- **Frontend URL (Azure)**: https://gray-ground-0bab7600f.2.azurestaticapps.net
+- **Backend URL**: https://factory-agent-dev-backend.mangotree-f82b3c1f.eastus.azurecontainerapps.io
 - **Resource Group**: `factory-agent-dev-rg`
